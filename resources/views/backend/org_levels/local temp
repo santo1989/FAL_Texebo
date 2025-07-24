@@ -1,0 +1,90 @@
+
+
+
+
+
+    <script>
+    var nodes = {!! json_encode($child_details) !!};
+    var parent = {!! json_encode($parent) !!};
+    
+    // Create the HTML for each node
+    function getHtml(node) {
+        var html = '<div class="node" id="node_' + node.id + '">';
+        html += '<img src="' + '{{ asset('images/users/') }}' + '/' + node.image + '" alt="' + node.name + '" class="node-image">';
+        html += '<div class="node-details">';
+        html += '<h6 class="node-name">' + node.name + '</h6>';
+        html += '<h6 class="node-title">' + node.title + '</h6>';
+        html += '</div>';
+        html += '</div>';
+        return html;
+    }
+    
+    // Create the HTML for each connector line
+    function getConnectorHtml(parentNode, childId) {
+        var html = '<div class="connector" id="connector_' + parentNode.id + '_' + childId + '">';
+        html += '</div>';
+        return html;
+    }
+    
+    // Recursively add the nodes and connectors to the family tree
+    function addNodes(parentNode) {
+        if (typeof parentNode === 'undefined') {
+            return;
+        }
+        
+        parentNode.children.forEach(function(childId) {
+            var childNode = nodes[childId];
+            $('#node_' + parentNode.id).append(getHtml(childNode));
+            $('#node_' + parentNode.id).append(getConnectorHtml(parentNode, childId));
+            addNodes(childNode);
+        });
+    }
+    
+    // Position the nodes and connectors in the family tree
+    function positionNodes(parentNode) {
+        parentNode.children.forEach(function(childId) {
+            var childNode = nodes[childId];
+            var connector = $('#connector_' + parentNode.id + '_' + childId);
+            var parentOffset = $('#node_' + parentNode.id).offset();
+            var childOffset = $('#node_' + childNode.id).offset();
+            var leftOffset = childOffset.left - parentOffset.left - $('#node_' + parentNode.id).width() / 2;
+            var topOffset = childOffset.top - parentOffset.top - $('#node_' + parentNode.id).height() / 2;
+            $('#node_' + childNode.id).css({
+                'position': 'absolute',
+                'left': leftOffset + 'px',
+                'top': topOffset + 'px'
+            });
+            connector.css({
+                'position': 'absolute',
+                'left': parentOffset.left + $('#node_' + parentNode.id).width() / 2 + 'px',
+                'top': parentOffset.top + $('#node_' + parentNode.id).height() / 2 + 'px',
+                'width': Math.sqrt(Math.pow(leftOffset, 2) + Math.pow(topOffset, 2)) + 'px',
+                'transform': 'rotate(' + getAngle(leftOffset, topOffset) + 'deg)'
+            });
+            if (childNode.children.length > 0) {
+                positionNodes(childNode);
+            }
+        });
+    }
+
+// Calculate the angle between two points
+   var getAngle = function(x, y) {
+var angle = Math.atan2(y, x) * 180 / Math.PI;
+if (angle < 0) {
+angle += 360;
+}
+return angle;
+}
+
+// Call the function to position the nodes and connectors
+positionNodes(nodes[{{ $parent_details->id }}]);
+</script>
+<div class="container">
+    <h1>Organization Chart</h1>
+    <div class="org-chart-container">
+        <!-- Add the parent node to the family tree -->
+        <div class="org-chart" id="org_chart">
+            {!! getHtml($parent_details) !!}
+        </div>
+    </div>
+</div>
