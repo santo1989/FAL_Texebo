@@ -317,7 +317,7 @@
                                         <th rowspan="2">Style</th>
                                         <th rowspan="2">Color</th>
                                         <th rowspan="2">Size</th>
-                                        <th rowspan="2">Cutting</th>
+                                        <th rowspan="1">Cutting</th>
                                         <th colspan="2">Print Send</th>
                                         <th colspan="2">Print Receive</th>
                                         <th colspan="2">Sewing Input</th>
@@ -326,6 +326,8 @@
                                         <th rowspan="2">Ready Goods</th>
                                     </tr>
                                     <tr class="text-center">
+                                        
+                                        <th>Qty</th>
                                         <th>Qty</th>
                                         <th>Balance<br>(Cutting-Print Send)</th>
                                         <th>Qty</th>
