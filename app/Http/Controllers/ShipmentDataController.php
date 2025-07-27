@@ -329,33 +329,157 @@ class ShipmentDataController extends Controller
         ]);
     }
 
+    // public function finalbalanceReport(Request $request)
+    // {
+    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $reportData = [];
+
+    //     $productCombinations = ProductCombination::whereHas('shipmentData') // Only include PCs that have at least some shipment data
+    //         ->with('style', 'color')
+    //         ->get();
+
+    //     foreach ($productCombinations as $pc) {
+    //         $style = $pc->style->name;
+    //         $color = $pc->color->name;
+    //         $key = $pc->id; // Use product combination ID as key for uniqueness
+
+    //         // Initialize data structure for this product combination
+    //         $reportData[$key] = [
+    //             'style' => $style,
+    //             'color' => $color,
+    //             'stage_balances' => [ // Will hold stage => size => quantity
+    //                 'cutting' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //                 'print_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //                 'sewing_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //                 'packing_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //                 'finish_packing' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //                 'shipment' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //             ],
+    //             'total_per_stage' => [ // Will hold total balances for each stage for this PC
+    //                 'cutting' => 0,
+    //                 'print_wip' => 0,
+    //                 'sewing_wip' => 0,
+    //                 'packing_wip' => 0,
+    //                 'finish_packing' => 0,
+    //                 'shipment' => 0,
+    //             ]
+    //         ];
+
+    //         // Fetch all relevant quantities for this product combination
+    //         $cutQuantities = CuttingData::where('product_combination_id', $pc->id)
+    //             ->get()
+    //             ->flatMap(fn($item) => $item->cut_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
+
+    //         $printSendQuantities = PrintSendData::where('product_combination_id', $pc->id)
+    //             ->get()
+    //             ->flatMap(fn($item) => $item->send_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
+
+    //         $printReceiveQuantities = PrintReceiveData::where('product_combination_id', $pc->id)
+    //             ->get()
+    //             ->flatMap(fn($item) => $item->receive_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
+
+    //         $lineInputQuantities = LineInputData::where('product_combination_id', $pc->id)
+    //             ->get()
+    //             ->flatMap(fn($item) => $item->input_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
+
+    //         $finishPackingQuantities = FinishPackingData::where('product_combination_id', $pc->id)
+    //             ->get()
+    //             ->flatMap(fn($item) => $item->packing_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
+    //         $shipmentQuantities = ShipmentData::where('product_combination_id', $pc->id)
+    //             ->get()
+    //             ->flatMap(fn($item) => $item->shipment_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
+
+    //         foreach ($allSizes as $size) {
+    //             $sizeName = strtolower($size->name);
+
+    //             $cut = $cutQuantities[$sizeName] ?? 0;
+    //             $printSent = $printSendQuantities[$sizeName] ?? 0;
+    //             $printReceived = $printReceiveQuantities[$sizeName] ?? 0;
+    //             $lineInput = $lineInputQuantities[$sizeName] ?? 0;
+    //             $packed = $finishPackingQuantities[$sizeName] ?? 0;
+    //             $shipped = $shipmentQuantities[$sizeName] ?? 0;
+
+
+    //             // Calculate stage balances for this size
+    //             // Cutting: Total quantity cut for this PC and size
+    //             $reportData[$key]['stage_balances']['cutting'][$sizeName] = $cut;
+
+    //             // Print WIP: Items sent to print but not yet received back
+    //             $reportData[$key]['stage_balances']['print_wip'][$sizeName] = max(0, $printSent - $printReceived);
+
+    //             // Sewing WIP: Items received from print but not yet input to line
+    //             $reportData[$key]['stage_balances']['sewing_wip'][$sizeName] = max(0, $printReceived - $lineInput);
+
+    //             // Packing WIP: Items input to line but not yet packed
+    //             $reportData[$key]['stage_balances']['packing_wip'][$sizeName] = max(0, $lineInput - $packed);
+
+    //             // Finish Packing: Items packed but not yet shipped
+    //             $reportData[$key]['stage_balances']['finish_packing'][$sizeName] = max(0, $packed - $shipped);
+
+    //             // Shipment: Items shipped
+    //             $reportData[$key]['stage_balances']['shipment'][$sizeName] = $shipped;
+
+    //             // Accumulate totals for the current product combination
+    //             $reportData[$key]['total_per_stage']['cutting'] += $reportData[$key]['stage_balances']['cutting'][$sizeName];
+    //             $reportData[$key]['total_per_stage']['print_wip'] += $reportData[$key]['stage_balances']['print_wip'][$sizeName];
+    //             $reportData[$key]['total_per_stage']['sewing_wip'] += $reportData[$key]['stage_balances']['sewing_wip'][$sizeName];
+    //             $reportData[$key]['total_per_stage']['packing_wip'] += $reportData[$key]['stage_balances']['packing_wip'][$sizeName];
+    //             $reportData[$key]['total_per_stage']['finish_packing'] += $reportData[$key]['stage_balances']['finish_packing'][$sizeName];
+    //             $reportData[$key]['total_per_stage']['shipment'] += $reportData[$key]['stage_balances']['shipment'][$sizeName];
+    //         }
+    //     }
+
+    //     return view('backend.library.shipment_data.reports.balance', [
+    //         'reportData' => array_values($reportData), // Pass as array of values
+    //         'allSizes' => $allSizes
+    //     ]);
+    // }
+
     public function finalbalanceReport(Request $request)
     {
         $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
         $reportData = [];
 
-        $productCombinations = ProductCombination::whereHas('shipmentData') // Only include PCs that have at least some shipment data
+        $productCombinations = ProductCombination::whereHas('shipmentData')
             ->with('style', 'color')
             ->get();
 
         foreach ($productCombinations as $pc) {
             $style = $pc->style->name;
             $color = $pc->color->name;
-            $key = $pc->id; // Use product combination ID as key for uniqueness
+            $key = $pc->id;
 
-            // Initialize data structure for this product combination
             $reportData[$key] = [
                 'style' => $style,
                 'color' => $color,
-                'stage_balances' => [ // Will hold stage => size => quantity
+                'stage_balances' => [
                     'cutting' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
                     'print_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
                     'sewing_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
                     'packing_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
                     'finish_packing' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
                     'shipment' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+                    'total' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
                 ],
-                'total_per_stage' => [ // Will hold total balances for each stage for this PC
+                'total_per_stage' => [
                     'cutting' => 0,
                     'print_wip' => 0,
                     'sewing_wip' => 0,
@@ -365,7 +489,7 @@ class ShipmentDataController extends Controller
                 ]
             ];
 
-            // Fetch all relevant quantities for this product combination
+            // Fetch all relevant quantities
             $cutQuantities = CuttingData::where('product_combination_id', $pc->id)
                 ->get()
                 ->flatMap(fn($item) => $item->cut_quantities)
@@ -400,6 +524,7 @@ class ShipmentDataController extends Controller
                 ->groupBy(fn($value, $key) => strtolower($key))
                 ->map(fn($group) => $group->sum())
                 ->toArray();
+
             $shipmentQuantities = ShipmentData::where('product_combination_id', $pc->id)
                 ->get()
                 ->flatMap(fn($item) => $item->shipment_quantities)
@@ -417,27 +542,18 @@ class ShipmentDataController extends Controller
                 $packed = $finishPackingQuantities[$sizeName] ?? 0;
                 $shipped = $shipmentQuantities[$sizeName] ?? 0;
 
-
-                // Calculate stage balances for this size
-                // Cutting: Total quantity cut for this PC and size
+                // Calculate stage balances
                 $reportData[$key]['stage_balances']['cutting'][$sizeName] = $cut;
-
-                // Print WIP: Items sent to print but not yet received back
                 $reportData[$key]['stage_balances']['print_wip'][$sizeName] = max(0, $printSent - $printReceived);
-
-                // Sewing WIP: Items received from print but not yet input to line
                 $reportData[$key]['stage_balances']['sewing_wip'][$sizeName] = max(0, $printReceived - $lineInput);
-
-                // Packing WIP: Items input to line but not yet packed
                 $reportData[$key]['stage_balances']['packing_wip'][$sizeName] = max(0, $lineInput - $packed);
-
-                // Finish Packing: Items packed but not yet shipped
                 $reportData[$key]['stage_balances']['finish_packing'][$sizeName] = max(0, $packed - $shipped);
-
-                // Shipment: Items shipped
                 $reportData[$key]['stage_balances']['shipment'][$sizeName] = $shipped;
 
-                // Accumulate totals for the current product combination
+                // Calculate total balance (cutting - shipped)
+                $reportData[$key]['stage_balances']['total'][$sizeName] = $cut - $shipped;
+
+                // Accumulate totals for each stage
                 $reportData[$key]['total_per_stage']['cutting'] += $reportData[$key]['stage_balances']['cutting'][$sizeName];
                 $reportData[$key]['total_per_stage']['print_wip'] += $reportData[$key]['stage_balances']['print_wip'][$sizeName];
                 $reportData[$key]['total_per_stage']['sewing_wip'] += $reportData[$key]['stage_balances']['sewing_wip'][$sizeName];
@@ -448,7 +564,7 @@ class ShipmentDataController extends Controller
         }
 
         return view('backend.library.shipment_data.reports.balance', [
-            'reportData' => array_values($reportData), // Pass as array of values
+            'reportData' => array_values($reportData),
             'allSizes' => $allSizes
         ]);
     }
