@@ -78,4 +78,14 @@ class ProductCombination extends Model
     {
         return $this->hasMany(FinishPackingData::class);
     }
+
+    public function packedData()
+    {
+        return $this->hasMany(FinishPackingData::class);
+    }
+
+    public function shipmentData()
+    {
+        return $this->hasMany(ShipmentData::class);
+    }
 }

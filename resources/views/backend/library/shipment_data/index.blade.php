@@ -35,6 +35,12 @@
                         class="btn btn-lg btn-outline-info ml-2">
                         <i class="fas fa-warehouse"></i> Ready Goods Report
                     </a>
+                    
+                    <a href="{{ route('shipment_data.report.final_balance') }}"
+                        class="btn btn-lg btn-outline-secondary ml-2">
+                        <i class="fas fa-balance-scale"></i> Final Balance Report
+                    </a>
+                    
                     <form class="d-flex float-right" action="{{ route('shipment_data.index') }}" method="GET">
                         <input class="form-control me-2" type="search" name="search"
                             placeholder="Search by Style/Color" value="{{ request('search') }}">

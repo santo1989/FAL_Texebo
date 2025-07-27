@@ -192,6 +192,9 @@ Route::middleware('auth')->group(function () {
     
     Route::get('shipment_data/report/total_shipment', [ShipmentDataController::class, 'totalShipmentReport'])->name('shipment_data.report.total_shipment');
     Route::get('shipment_data/report/ready_goods', [ShipmentDataController::class, 'readyGoodsReport'])->name('shipment_data.report.ready_goods');
+
+    //finalbalanceReport
+    Route::get('shipment_data/report/final_balance', [ShipmentDataController::class, 'finalBalanceReport'])->name('shipment_data.report.final_balance');
 });
 
 

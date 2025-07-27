@@ -409,6 +409,11 @@
                                         class="btn btn-outline-info btn-block">
                                         <i class="fas fa-warehouse"></i> Ready Goods
                                     </a>
+
+                                    <a href="{{ route('shipment_data.report.final_balance') }}"
+                                        class="btn btn-outline-info btn-block">
+                                        <i class="fas fa-balance-scale"></i> Final Balance Report
+                                    </a>
                                 </div>
                             </div>
                         </div>
