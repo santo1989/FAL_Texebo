@@ -8,6 +8,8 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DesignationController;
 use App\Http\Controllers\DivisionController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OrderDataController;
+use App\Http\Controllers\OutputFinishingDataController;
 use App\Http\Controllers\PrintReceiveDataController;
 use App\Http\Controllers\PrintSendDataController;
 use App\Http\Controllers\ProductCombinationController;
@@ -135,7 +137,13 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('product-combinations', ProductCombinationController::class);
     Route::post('product-combinations/{productCombination}/active', [ProductCombinationController::class, 'active'])->name('product-combinations.active');
+   
     Route::post('product-combinations/{productCombination}/print_embroidery', [ProductCombinationController::class, 'print_embroidery'])->name('product-combinations.print_embroidery');
+    Route::post('product-combinations/{productCombination}/sublimation_print', [ProductCombinationController::class, 'sublimation_print'])->name('product-combinations.sublimation_print');
+
+    // Order Data Routes
+    Route::resource('order_data', OrderDataController::class);
+    Route::get('order_data/report/total_order', [OrderDataController::class, 'totalOrderReport'])->name('order_data.report.total_order');
 
     // Cutting Data Routes
     Route::get('cutting_data_report', [CuttingDataController::class, 'cutting_data_report'])->name('cutting_data_report'); // New report route
@@ -174,6 +182,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/input-balance', [LineInputDataController::class, 'inputBalanceReport'])->name('input_balance');
     });
 
+    // Output Finishing Data Routes
+    Route::resource('output_finishing_data', OutputFinishingDataController::class);
+    Route::get('output_finishing_data/max_quantities/{id}', [OutputFinishingDataController::class, 'maxQuantities'])
+        ->name('output_finishing_data.max_quantities');
+    Route::get('output_finishing_data/report/total_balance', [OutputFinishingDataController::class, 'totalBalanceReport'])->name('output_finishing_data.report.total_balance');
+    Route::get('/output_finishing_data/sewing-wip', [OutputFinishingDataController::class, 'sewingWipReport'])->name('sewing_wip');
+    Route::get('output_finishing_data/max_quantities/{id}', [OutputFinishingDataController::class, 'maxQuantities'])
+        ->name('output_finishing_data.max_quantities');
+
+
     Route::resource('finish_packing_data', FinishPackingDataController::class);
     Route::get('finish_packing_data/available_quantities/{productCombination}', [FinishPackingDataController::class, 'getAvailablePackingQuantities'])->name('finish_packing_data.available_quantities');
 
@@ -198,7 +216,21 @@ Route::middleware('auth')->group(function () {
 });
 
 
+// Add these routes to web.php
+Route::get('/get-colors/{styleId}', [ProductCombinationController::class, 'getColorsByStyle'])
+    ->name('get_colors_by_style');
 
+Route::get('/get-combination/{styleId}/{colorId}', [ProductCombinationController::class, 'getCombinationByStyleColor'])
+    ->name('get_combination_by_style_color');
+Route::get('/get-size-name/{sizeId}', function ($sizeId) {
+    $size = \App\Models\Size::find($sizeId);
+    return response()->json(['name' => $size ? $size->name : 'Size ' . $sizeId]);
+});
+
+// web.php
+Route::get('/print_send_data/get-colors/{style_id}', [PrintSendDataController::class, 'getColors']);
+Route::get('/print_send_data/get-combination/{style_id}/{color_id}', [PrintSendDataController::class, 'getCombination']);
+Route::get('/api/print_send_data/available/{pcId}', [PrintSendDataController::class, 'available']);
 
 
 

@@ -8,9 +8,16 @@ use Illuminate\Http\Request;
 class StyleController extends Controller
 {
 
-    public function index()
+    public function index(Request $request)
     {
-        $styles = Style::paginate(10);
+        $query = Style::query();
+
+        // Search filter
+        if ($request->has('search') && !empty($request->search)) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        $styles = $query->paginate(10);
         return view('backend.library.styles.index', compact('styles'));
     }
 

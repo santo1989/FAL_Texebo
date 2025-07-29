@@ -10,4 +10,9 @@ class Color extends Model
     use HasFactory;
     protected $guarded = [];
 
+    public function productCombinations()
+    {
+        return $this->hasMany(ProductCombination::class);
+    }
+
 }

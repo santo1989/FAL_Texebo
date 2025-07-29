@@ -150,4 +150,42 @@ class ProductCombinationController extends Controller
         $status = $combination->print_embroidery ? 'enabled' : 'disabled';
         return redirect()->route('product-combinations.index')->with('message', "Print embroidery {$status} successfully!");
     }
+
+    public function sublimation_print($id)
+    {
+        $combination = ProductCombination::findOrFail($id);
+        $combination->update(['sublimation_print' => !$combination->sublimation_print]);
+        $status = $combination->sublimation_print ? 'enabled' : 'disabled';
+        return redirect()->route('product-combinations.index')->with('message', "Sublimation print {$status} successfully!");
+    }
+
+    public function getColorsByStyle($styleId)
+    {
+        $colors = Color::whereHas('productCombinations', function ($query) use ($styleId) {
+            $query->where('style_id', $styleId);
+        })->get();
+
+        return response()->json($colors);
+    }
+
+    public function getCombinationByStyleColor($styleId, $colorId)
+    {
+        $combination = ProductCombination::with('buyer')
+            ->where('style_id', $styleId)
+            ->where('color_id', $colorId)
+            ->first();
+
+        if ($combination) {
+            return response()->json([
+                'success' => true,
+                'combination' => [
+                    'id' => $combination->id,
+                    'buyer_name' => $combination->buyer->name,
+                    'size_ids' => $combination->size_ids
+                ]
+            ]);
+        }
+
+        return response()->json(['success' => false]);
+    }
 }

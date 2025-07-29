@@ -42,6 +42,7 @@
                                         <th>Size</th>
                                         <th>Active</th>
                                         <th>Print /Embroidered</th>
+                                        <th>Sublimation Print</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -81,6 +82,18 @@
                                                     <button
                                                         class="btn btn-sm {{ $combination->print_embroidery ? 'btn-success' : 'btn-danger' }}">
                                                         {{ $combination->print_embroidery ? 'Enabled' : 'Disabled' }}
+                                                    </button>
+                                                </form>
+                                            </td>
+                                            <!--sublimation print button-->
+                                            <td>
+                                                <form
+                                                    action="{{ route('product-combinations.sublimation_print', $combination->id) }}"
+                                                    method="POST">
+                                                    @csrf
+                                                    <button
+                                                        class="btn btn-sm {{ $combination->sublimation_print ? 'btn-success' : 'btn-danger' }}">
+                                                        {{ $combination->sublimation_print ? 'Enabled' : 'Disabled' }}
                                                     </button>
                                                 </form>
                                             </td>

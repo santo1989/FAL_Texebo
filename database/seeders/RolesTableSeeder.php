@@ -48,15 +48,22 @@ class RolesTableSeeder extends Seeder
 
         //7
         Role::create([
+            'name' => 'Output'
+        ]);
+
+
+        //8
+        Role::create([
             'name' => 'Packing'
         ]);
 
-        //8
+
+        //9
         Role::create([
             'name' => 'Shipment'
         ]);
 
-        //9
+        //10
         Role::create([
             'name' => 'HR'
         ]);

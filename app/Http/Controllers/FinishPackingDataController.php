@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FinishPackingData;
-use App\Models\LineInputData;
+use App\Models\OutputFinishingData;
 use App\Models\ProductCombination;
 use App\Models\Size;
 use App\Models\CuttingData; // Import CuttingData
@@ -98,9 +98,9 @@ class FinishPackingDataController extends Controller
         $allSizes = Size::where('is_active', 1)->get();
 
         // Get total input quantities
-        $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
+        $inputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
             ->get()
-            ->flatMap(fn($item) => $item->input_quantities)
+            ->flatMap(fn($item) => $item->output_quantities)
             ->groupBy(fn($value, $key) => strtolower($key))
             ->map(fn($group) => $group->sum())
             ->toArray();
@@ -263,9 +263,9 @@ class FinishPackingDataController extends Controller
             ];
 
             // Get input quantities
-            $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
+            $inputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
                 ->get()
-                ->flatMap(fn($item) => $item->input_quantities)
+                ->flatMap(fn($item) => $item->output_quantities)
                 ->groupBy(fn($value, $key) => strtolower($key))
                 ->map(fn($group) => $group->sum())
                 ->toArray();
@@ -360,9 +360,9 @@ class FinishPackingDataController extends Controller
                 ->map(fn($group) => $group->sum())
                 ->toArray();
 
-            $lineInputQuantities = LineInputData::where('product_combination_id', $pc->id)
+            $lineInputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
                 ->get()
-                ->flatMap(fn($item) => $item->input_quantities)
+                ->flatMap(fn($item) => $item->output_quantities)
                 ->groupBy(fn($value, $key) => strtolower($key))
                 ->map(fn($group) => $group->sum())
                 ->toArray();

@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Color;
 use App\Models\CuttingData;
 use App\Models\ProductCombination;
 use App\Models\Size; // We'll need this to display size names
+use App\Models\Style;
 use Illuminate\Http\Request;
 
 class CuttingDataController extends Controller
@@ -33,13 +35,13 @@ class CuttingDataController extends Controller
         return view('backend.library.cutting_data.index', compact('cuttingData', 'allSizes'));
     }
 
-
+    // In your controller (e.g., CuttingDataController.php)
     public function create()
     {
-        $productCombinations = ProductCombination::with('buyer', 'style', 'color')->get();
-        $sizes = Size::where('is_active', 1)->get(); // All available sizes to render dynamic input fields
+        $styles = Style::get();
+        $sizes = Size::where('is_active', 1)->get();
 
-        return view('backend.library.cutting_data.create', compact('productCombinations', 'sizes'));
+        return view('backend.library.cutting_data.create', compact('styles', 'sizes'));
     }
 
 
@@ -219,8 +221,8 @@ class CuttingDataController extends Controller
         // Convert to indexed array
         $reportData = array_values($reportData);
 
-        $styles = \App\Models\Style::all();
-        $colors = \App\Models\Color::all();
+        $styles = Style::all();
+        $colors = Color::all();
 
         return view('backend.library.cutting_data.report', compact(
             'reportData',

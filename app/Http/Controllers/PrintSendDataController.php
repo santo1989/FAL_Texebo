@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Color;
 use App\Models\CuttingData;
 use App\Models\PrintSendData;
 use App\Models\ProductCombination;
 use App\Models\Size;
+use App\Models\Style;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -33,18 +35,30 @@ class PrintSendDataController extends Controller
         return view('backend.library.print_send_data.index', compact('printSendData', 'allSizes'));
     }
 
+    // public function create()
+    // {
+    //     // Only show product combinations with print_embroidery = true
+    //     $productCombinations = ProductCombination::where('print_embroidery', true)
+    //         ->with('buyer', 'style', 'color')
+    //         ->get();
+
+    //     $sizes = Size::where('is_active', 1)->get();
+
+    //     return view('backend.library.print_send_data.create', compact('productCombinations', 'sizes'));
+    // }
+
+
     public function create()
     {
-        // Only show product combinations with print_embroidery = true
-        $productCombinations = ProductCombination::where('print_embroidery', true)
+        $styles = Style::get();
+        $sizes = Size::where('is_active', 1)->get();
+        // Show only combinations that are ready for input
+        $productCombinations = ProductCombination::whereHas('cuttingData')
             ->with('buyer', 'style', 'color')
             ->get();
-            
-        $sizes = Size::where('is_active', 1)->get();
 
-        return view('backend.library.print_send_data.create', compact('productCombinations', 'sizes'));
+        return view('backend.library.print_send_data.create', compact('styles', 'sizes', 'productCombinations'));
     }
-
     public function store(Request $request)
     {
         $request->validate([
@@ -386,5 +400,86 @@ class PrintSendDataController extends Controller
         }
 
         return view('backend.library.print_send_data.reports.ready', compact('readyData'));
+    }
+
+    public function getColors($style_id)
+    {
+        $colors = Color::whereHas('productCombinations', function ($query) use ($style_id) {
+            $query->where('style_id', $style_id)
+                ->where('print_embroidery', true);
+        })->get(['id', 'name']);
+
+        return response()->json($colors);
+    }
+
+    public function getCombination($style_id, $color_id)
+    {
+        $combination = ProductCombination::with('buyer')
+            ->where('style_id', $style_id)
+            ->where('color_id', $color_id)
+            ->where('print_embroidery', true)
+            ->first();
+
+        if ($combination) {
+            return response()->json([
+                'success' => true,
+                'combination' => [
+                    'id' => $combination->id,
+                    'buyer_name' => $combination->buyer->name,
+                    'size_ids' => $combination->size_ids // Ensure this is included
+                ]
+            ]);
+        }
+
+        return response()->json(['success' => false]);
+    }
+
+    public function available($product_combination_id)
+    {
+        $sizes = Size::where('is_active', 1)->get();
+        $sizeMap = [];
+        foreach ($sizes as $size) {
+            $sizeMap[strtolower($size->name)] = $size->id;
+        }
+
+    
+
+        $cutQuantities = CuttingData::where('product_combination_id', $product_combination_id)
+            ->get()
+            ->flatMap(function ($record) use ($sizeMap) {
+                $quantities = [];
+                foreach ($record->cut_quantities as $sizeName => $quantity) {
+                    $normalized = strtolower(trim($sizeName));
+                    if (isset($sizeMap[$normalized])) {
+                        $sizeId = $sizeMap[$normalized];
+                        $quantities[$sizeId] = $quantity;
+                    }
+                }
+                return $quantities;
+            })
+            ->groupBy(function ($item, $sizeId) {
+                return $sizeId;
+            })
+            ->map->sum();
+
+        $sentQuantities = PrintSendData::where('product_combination_id', $product_combination_id)
+            ->get()
+            ->flatMap(function ($record) {
+                return collect($record->send_quantities)
+                    ->mapWithKeys(fn($qty, $sizeId) => [(int)$sizeId => $qty]);
+            })
+            ->groupBy('key')
+            ->map->sum('value');
+
+        $availableQuantities = [];
+        foreach ($cutQuantities as $sizeId => $cutQty) {
+            $sentQty = $sentQuantities->get($sizeId, 0);
+            $availableQuantities[(string)$sizeId] = $cutQty - $sentQty;
+        }
+
+        return response()->json([
+            'available' => array_sum($availableQuantities),
+            'available_per_size' => $availableQuantities
+        ]);
     }
 }

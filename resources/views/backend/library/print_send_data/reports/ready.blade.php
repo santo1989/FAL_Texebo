@@ -22,6 +22,7 @@
                             <a href="{{ route('print_send_data.index') }}" class="btn btn-lg btn-outline-danger float-right">
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
+                            
                         </div>
                         <div class="card-body">
                             <table class="table table-bordered table-hover">

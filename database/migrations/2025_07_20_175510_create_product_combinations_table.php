@@ -22,6 +22,7 @@ class CreateProductCombinationsTable extends Migration
             $table->json('size_ids'); // store multiple sizes
             $table->boolean('is_active')->default(true);
             $table->boolean('print_embroidery')->default(false);
+            $table->boolean('sublimation_print')->default(false);
             $table->timestamps();
 
             $table->foreign('buyer_id')->references('id')->on('buyers')->onDelete('cascade');

@@ -91,60 +91,7 @@ class LineInputDataController extends Controller
         return redirect()->route('line_input_data.index')->with('success', 'Line input data added successfully.');
     }
 
-    public function getMaxInputQuantities(ProductCombination $pc)
-    {
-        $maxQuantities = [];
-        $allSizes = Size::where('is_active', 1)->get();
-
-        // For non-print/embroidery: max = cut quantities
-        if (!$pc->print_embroidery) {
-            $cutQuantities = CuttingData::where('product_combination_id', $pc->id)
-                ->get()
-                ->flatMap(fn($item) => $item->cut_quantities)
-                ->groupBy(fn($value, $key) => strtolower($key))
-                ->map(fn($group) => $group->sum())
-                ->toArray();
-
-            $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
-                ->get()
-                ->flatMap(fn($item) => $item->input_quantities)
-                ->groupBy(fn($value, $key) => strtolower($key))
-                ->map(fn($group) => $group->sum())
-                ->toArray();
-
-            foreach ($allSizes as $size) {
-                $sizeName = strtolower($size->name);
-                $cut = $cutQuantities[$sizeName] ?? 0;
-                $input = $inputQuantities[$sizeName] ?? 0;
-                $maxQuantities[$sizeName] = max(0, $cut - $input);
-            }
-        }
-        // For print/embroidery: max = received print quantities
-        else {
-            $receiveQuantities = PrintReceiveData::where('product_combination_id', $pc->id)
-                ->get()
-                ->flatMap(fn($item) => $item->receive_quantities)
-                ->groupBy(fn($value, $key) => strtolower($key))
-                ->map(fn($group) => $group->sum())
-                ->toArray();
-
-            $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
-                ->get()
-                ->flatMap(fn($item) => $item->input_quantities)
-                ->groupBy(fn($value, $key) => strtolower($key))
-                ->map(fn($group) => $group->sum())
-                ->toArray();
-
-            foreach ($allSizes as $size) {
-                $sizeName = strtolower($size->name);
-                $received = $receiveQuantities[$sizeName] ?? 0;
-                $input = $inputQuantities[$sizeName] ?? 0;
-                $maxQuantities[$sizeName] = max(0, $received - $input);
-            }
-        }
-
-        return $maxQuantities;
-    }
+   
 
     public function show(LineInputData $lineInputDatum)
     {
@@ -342,6 +289,60 @@ class LineInputDataController extends Controller
         ]);
     }
 
+    public function getMaxInputQuantities(ProductCombination $pc)
+    {
+        $maxQuantities = [];
+        $allSizes = Size::where('is_active', 1)->get();
+
+        // For non-print/embroidery: max = cut quantities
+        if (!$pc->print_embroidery) {
+            $cutQuantities = CuttingData::where('product_combination_id', $pc->id)
+                ->get()
+                ->flatMap(fn($item) => $item->cut_quantities)
+                ->groupBy(fn($value, $key) => strtolower($key))
+                ->map(fn($group) => $group->sum())
+                ->toArray();
+
+            $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
+                ->get()
+                ->flatMap(fn($item) => $item->input_quantities)
+                ->groupBy(fn($value, $key) => strtolower($key))
+                ->map(fn($group) => $group->sum())
+                ->toArray();
+
+            foreach ($allSizes as $size) {
+                $sizeName = strtolower($size->name);
+                $cut = $cutQuantities[$sizeName] ?? 0;
+                $input = $inputQuantities[$sizeName] ?? 0;
+                $maxQuantities[$sizeName] = max(0, $cut - $input);
+            }
+        }
+        // For print/embroidery: max = received print quantities
+        else {
+            $receiveQuantities = PrintReceiveData::where('product_combination_id', $pc->id)
+                ->get()
+                ->flatMap(fn($item) => $item->receive_quantities)
+                ->groupBy(fn($value, $key) => strtolower($key))
+                ->map(fn($group) => $group->sum())
+                ->toArray();
+
+            $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
+                ->get()
+                ->flatMap(fn($item) => $item->input_quantities)
+                ->groupBy(fn($value, $key) => strtolower($key))
+                ->map(fn($group) => $group->sum())
+                ->toArray();
+
+            foreach ($allSizes as $size) {
+                $sizeName = strtolower($size->name);
+                $received = $receiveQuantities[$sizeName] ?? 0;
+                $input = $inputQuantities[$sizeName] ?? 0;
+                $maxQuantities[$sizeName] = max(0, $received - $input);
+            }
+        }
+
+        return $maxQuantities;
+    }
     public function getAvailableQuantities(ProductCombination $productCombination)
     {
         $maxQuantities = $this->getMaxInputQuantities($productCombination);
