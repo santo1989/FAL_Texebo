@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Color;
 use App\Models\CuttingData;
+use App\Models\OrderData;
 use App\Models\ProductCombination;
 use App\Models\Size; // We'll need this to display size names
 use App\Models\Style;
@@ -230,5 +231,47 @@ class CuttingDataController extends Controller
             'styles',
             'colors'
         ));
+    }
+
+    public function getOrderAndCuttingQuantities($productCombinationId)
+    {
+        try {
+            // Fetch total order quantities
+            $orderData = OrderData::where('product_combination_id', $productCombinationId)->get();
+            $totalOrderQuantities = [];
+            foreach ($orderData as $data) {
+                foreach ($data->order_quantities as $size => $quantity) {
+                    $normalizedSize = strtolower($size);
+                    if (!isset($totalOrderQuantities[$normalizedSize])) {
+                        $totalOrderQuantities[$normalizedSize] = 0;
+                    }
+                    $totalOrderQuantities[$normalizedSize] += (int)$quantity;
+                }
+            }
+
+            // Fetch total cutting quantities
+            $cuttingData = CuttingData::where('product_combination_id', $productCombinationId)->get();
+            $totalCuttingQuantities = [];
+            foreach ($cuttingData as $data) {
+                foreach ($data->cut_quantities as $size => $quantity) {
+                    $normalizedSize = strtolower($size);
+                    if (!isset($totalCuttingQuantities[$normalizedSize])) {
+                        $totalCuttingQuantities[$normalizedSize] = 0;
+                    }
+                    $totalCuttingQuantities[$normalizedSize] += (int)$quantity;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'order_quantities' => $totalOrderQuantities,
+                'cutting_quantities' => $totalCuttingQuantities,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching quantities',
+            ], 500);
+        }
     }
 }

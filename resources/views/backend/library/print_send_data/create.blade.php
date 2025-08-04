@@ -1,4 +1,4 @@
-<x-backend.layouts.master>
+{{-- <x-backend.layouts.master>
     <x-slot name="pageTitle">
         Add Print/Embroidery Send Data
     </x-slot>
@@ -161,7 +161,7 @@
             }
         });
     </script>
-</x-backend.layouts.master>
+</x-backend.layouts.master> --}}
 {{-- <x-backend.layouts.master>
     <x-slot name="pageTitle">
         Add Print/Embroidery Send Data
@@ -559,3 +559,213 @@
 });
     </script>
 </x-backend.layouts.master> --}}
+
+<x-backend.layouts.master>
+    <x-slot name="pageTitle">
+        Add Print/Embroidery Send Data
+    </x-slot>
+
+    <x-slot name='breadCrumb'>
+        <x-backend.layouts.elements.breadcrumb>
+            <x-slot name="pageHeader"> Print/Emb Send Data </x-slot>
+            <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('print_send_data.index') }}">Print/Emb Send</a></li>
+            <li class="breadcrumb-item active">Add</li>
+        </x-backend.layouts.elements.breadcrumb>
+    </x-slot>
+
+    <x-backend.layouts.elements.errors />
+    <form action="{{ route('print_send_data.store') }}" method="post">
+        @csrf
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <input type="date" name="date" id="date" class="form-control"
+                        value="{{ old('date', date('Y-m-d')) }}" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="style_id">Style</label>
+                    <select name="style_id" id="style_id" class="form-control" required>
+                        <option value="">Select Style</option>
+                        @foreach ($styles as $style)
+                            <option value="{{ $style->id }}" {{ old('style_id') == $style->id ? 'selected' : '' }}>
+                                {{ $style->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="color_id">Color</label>
+                    <select name="color_id" id="color_id" class="form-control" required disabled>
+                        <option value="">Select Style first</option>
+                        @if (old('color_id'))
+                            <option value="{{ old('color_id') }}" selected>
+                                {{ \App\Models\Color::find(old('color_id'))->name ?? 'Selected' }}
+                            </option>
+                        @endif
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label>Product Combination (Buyer)</label>
+                    <div class="form-control bg-light" id="combination-display">
+                        @if (old('product_combination_id'))
+                            @php
+                                $oldCombination = \App\Models\ProductCombination::with('buyer')->find(old('product_combination_id'));
+                            @endphp
+                            {{ $oldCombination->buyer->name ?? 'Invalid combination' }}
+                        @else
+                            Select Style and Color
+                        @endif
+                    </div>
+                    <input type="hidden" name="product_combination_id" id="product_combination_id"
+                        value="{{ old('product_combination_id') }}">
+                </div>
+            </div>
+        </div>
+
+        <div id="sizeInputs">
+            <div class="text-center mt-4">
+                <p class="text-muted">Select a style and color to see available quantities</p>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Save Print/Emb Send Data</button>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const styleSelect = document.getElementById('style_id');
+            const colorSelect = document.getElementById('color_id');
+            const combinationDisplay = document.getElementById('combination-display');
+            const combinationInput = document.getElementById('product_combination_id');
+            const sizeInputsContainer = document.getElementById('sizeInputs');
+
+            function fetchColors(styleId) {
+                if (!styleId) {
+                    colorSelect.innerHTML = '<option value="">Select Style first</option>';
+                    colorSelect.disabled = true;
+                    combinationDisplay.textContent = 'Select Style and Color';
+                    combinationInput.value = '';
+                    sizeInputsContainer.innerHTML = '<div class="text-center mt-4"><p class="text-muted">Select a style and color to see available quantities</p></div>';
+                    return;
+                }
+
+                fetch(`/print_send_data/get-colors/${styleId}`)
+                    .then(response => response.json())
+                    .then(colors => {
+                        colorSelect.innerHTML = '<option value="">Select Color</option>';
+                        colors.forEach(color => {
+                            const option = document.createElement('option');
+                            option.value = color.id;
+                            option.textContent = color.name;
+                            colorSelect.appendChild(option);
+                        });
+                        colorSelect.disabled = false;
+                        if ("{{ old('color_id') }}") {
+                            colorSelect.value = "{{ old('color_id') }}";
+                            fetchCombination(styleSelect.value, colorSelect.value);
+                        }
+                    });
+            }
+
+            function fetchCombination(styleId, colorId) {
+                fetch(`/print_send_data/get-combination/${styleId}/${colorId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            combinationDisplay.textContent = data.combination.buyer_name;
+                            combinationInput.value = data.combination.id;
+                            loadSizeInputs(data.combination.id);
+                        } else {
+                            combinationDisplay.textContent = 'No combination found';
+                            sizeInputsContainer.innerHTML = '<div class="text-center mt-4"><p class="text-muted">No sizes available</p></div>';
+                        }
+                    });
+            }
+
+            function loadSizeInputs(combinationId) {
+                sizeInputsContainer.innerHTML = '<div class="text-center mt-4"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div><p class="mt-2">Loading available quantities...</p></div>';
+
+                fetch(`/print_send_data/available_quantities/${combinationId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.availableQuantities) {
+                            console.log(data.availableQuantities);
+                            let html = '<div class="form-group"><label>Send Quantities by Size</label><div class="row">';
+                            data.sizes.forEach(size => {
+                                const sizeName = size.name.toLowerCase();
+                                const availableQty = data.availableQuantities[sizeName] || 0;
+                                html += `
+                                    <div class="col-md-3 mb-3">
+                                        <label for="quantity_${size.id}">${size.name} (Available: ${availableQty})</label>
+                                        <input type="number" name="quantities[${size.id}]" id="quantity_${size.id}"
+                                            class="form-control" value="0" min="0" max="${availableQty}"
+                                            data-size="${sizeName}">
+                                        <small class="form-text text-muted">Max: ${availableQty}</small>
+                                        <div class="progress mt-2" style="height: 5px;">
+                                            <div class="progress-bar" role="progressbar" style="width: 0%;"></div>
+                                        </div>
+                                        <div class="text-danger" id="error_${size.id}"></div>
+                                    </div>
+                                `;
+                            });
+                            html += '</div></div>';
+                            sizeInputsContainer.innerHTML = html;
+
+                            document.querySelectorAll('input[type="number"]').forEach(input => {
+                                input.addEventListener('input', function() {
+                                    const max = parseInt(this.max);
+                                    const value = parseInt(this.value) || 0;
+                                    const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+                                    const progressBar = this.nextElementSibling.nextElementSibling.querySelector('.progress-bar');
+                                    progressBar.style.width = `${percent}%`;
+                                    if (value > max) {
+                                        this.classList.add('is-invalid');
+                                        this.nextElementSibling.nextElementSibling.nextElementSibling.textContent = `Cannot exceed ${max}`;
+                                    } else {
+                                        this.classList.remove('is-invalid');
+                                        this.nextElementSibling.nextElementSibling.nextElementSibling.textContent = '';
+                                    }
+                                });
+                            });
+                        } else {
+                            sizeInputsContainer.innerHTML = '<div class="alert alert-danger">Error loading available quantities.</div>';
+                        }
+                    })
+                    .catch(error => {
+                        sizeInputsContainer.innerHTML = '<div class="alert alert-danger">Error loading available quantities: ${error.message}</div>';
+                    });
+            }
+
+            styleSelect.addEventListener('change', function() {
+                fetchColors(this.value);
+                colorSelect.value = '';
+            });
+
+            colorSelect.addEventListener('change', function() {
+                if (styleSelect.value && this.value) {
+                    fetchCombination(styleSelect.value, this.value);
+                }
+            });
+
+            if ("{{ old('style_id') }}") {
+                fetchColors("{{ old('style_id') }}");
+            }
+        });
+    </script>
+
+    <style>
+        .progress { background-color: #e9ecef; }
+        .progress-bar { background-color: #28a745; transition: width 0.3s ease; }
+    </style>
+</x-backend.layouts.master>

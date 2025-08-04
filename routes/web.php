@@ -230,16 +230,16 @@ Route::get('/get-size-name/{sizeId}', function ($sizeId) {
 // web.php
 Route::get('/print_send_data/get-colors/{style_id}', [PrintSendDataController::class, 'getColors']);
 Route::get('/print_send_data/get-combination/{style_id}/{color_id}', [PrintSendDataController::class, 'getCombination']);
-Route::get('/api/print_send_data/available/{pcId}', [PrintSendDataController::class, 'available']);
+Route::get('/print_send_data/available/{product_combination_id}', [PrintSendDataController::class, 'available']);
 
 
+Route::get('/get-order-and-cutting-quantities/{product_combination_id}', [CuttingDataController::class, 'getOrderAndCuttingQuantities'])->name('get.order.and.cutting.quantities');
 
+//create print_receive_data/available_quantities/{product_combination_id}
+Route::get('/print_receive_data/available_quantities/{product_combination_id}', [PrintReceiveDataController::class, 'getAvailableReceiveQuantities'])->name('print_receive_data.available_quantities');
 
-
-
-
-
-
+//create for print_send_data/available_quantities/{product_combination_id}
+Route::get('/print_send_data/available_quantities/{product_combination_id}', [PrintSendDataController::class, 'getAvailableSendQuantities'])->name('print_send_data.available_quantities');
 
 
 
