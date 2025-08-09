@@ -16,9 +16,13 @@ class CreateOrderDataTable extends Migration
         Schema::create('order_data', function (Blueprint $table) {
             $table->id();
             $table->date('date');
+            $table->string('po_number');
+            $table->unsignedBigInteger('style_id');
+            $table->unsignedBigInteger('color_id');
             $table->unsignedBigInteger('product_combination_id');
             $table->json('order_quantities'); // Stores quantities per size
             $table->integer('total_order_quantity')->default(0);
+            $table->string('po_status')->default('running'); // New field for PO status, running, completed, or cancelled
             $table->timestamps();
 
             $table->foreign('product_combination_id')

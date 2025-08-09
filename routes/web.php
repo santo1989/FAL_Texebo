@@ -144,10 +144,14 @@ Route::middleware('auth')->group(function () {
     // Order Data Routes
     Route::resource('order_data', OrderDataController::class);
     Route::get('order_data/report/total_order', [OrderDataController::class, 'totalOrderReport'])->name('order_data.report.total_order');
+    //order_data.update_status
+    Route::patch('/order_data/update_status/{id}', [OrderDataController::class, 'updateStatus'])->name('order_data.update_status');
+
 
     // Cutting Data Routes
-    Route::get('cutting_data_report', [CuttingDataController::class, 'cutting_data_report'])->name('cutting_data_report'); // New report route
-    Route::resource('cutting_data', CuttingDataController::class);
+    Route::get('cutting_data_report', [CuttingDataController::class, 'cutting_data_report'])->name('cutting_data_report');
+    Route::get('cutting_data/find', [CuttingDataController::class, 'find'])->name('cutting_data.find'); // Custom route first
+    Route::resource('cutting_data', CuttingDataController::class); // Resource route last
 
     // Print/Send Data Routes
     Route::prefix('print_send_data')->group(function () {
@@ -216,12 +220,18 @@ Route::middleware('auth')->group(function () {
 });
 
 
+
 // Add these routes to web.php
 Route::get('/get-colors/{styleId}', [ProductCombinationController::class, 'getColorsByStyle'])
     ->name('get_colors_by_style');
 
 Route::get('/get-combination/{styleId}/{colorId}', [ProductCombinationController::class, 'getCombinationByStyleColor'])
     ->name('get_combination_by_style_color');
+
+// Routes for Product Combinations
+Route::get('/get-colors-by-style/{styleId}', [ProductCombinationController::class, 'getColorsByStylecom'])->name('get-colors-by-style');
+Route::get('/get-combination-sizes/{styleId}/{colorId}', [ProductCombinationController::class, 'getCombinationSizes'])->name('get-combination-sizes');
+
 Route::get('/get-size-name/{sizeId}', function ($sizeId) {
     $size = \App\Models\Size::find($sizeId);
     return response()->json(['name' => $size ? $size->name : 'Size ' . $sizeId]);
@@ -240,9 +250,6 @@ Route::get('/print_receive_data/available_quantities/{product_combination_id}', 
 
 //create for print_send_data/available_quantities/{product_combination_id}
 Route::get('/print_send_data/available_quantities/{product_combination_id}', [PrintSendDataController::class, 'getAvailableSendQuantities'])->name('print_send_data.available_quantities');
-
-
-
 
 
 

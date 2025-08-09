@@ -41,8 +41,8 @@
                                         <th>Color</th>
                                         <th>Size</th>
                                         <th>Active</th>
-                                        <th>Print /Embroidered</th>
                                         <th>Sublimation Print</th>
+                                        <th>Print /Embroidered</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -73,6 +73,18 @@
                                                     </button>
                                                 </form>
                                             </td>
+                                             <!--sublimation print button-->
+                                            <td>
+                                                <form
+                                                    action="{{ route('product-combinations.sublimation_print', $combination->id) }}"
+                                                    method="POST">
+                                                    @csrf
+                                                    <button
+                                                        class="btn btn-sm {{ $combination->sublimation_print ? 'btn-success' : 'btn-danger' }}">
+                                                        {{ $combination->sublimation_print ? 'Enabled' : 'Disabled' }}
+                                                    </button>
+                                                </form>
+                                            </td>
                                             <!--print embroidery button-->
                                             <td>
                                                 <form
@@ -85,18 +97,7 @@
                                                     </button>
                                                 </form>
                                             </td>
-                                            <!--sublimation print button-->
-                                            <td>
-                                                <form
-                                                    action="{{ route('product-combinations.sublimation_print', $combination->id) }}"
-                                                    method="POST">
-                                                    @csrf
-                                                    <button
-                                                        class="btn btn-sm {{ $combination->sublimation_print ? 'btn-success' : 'btn-danger' }}">
-                                                        {{ $combination->sublimation_print ? 'Enabled' : 'Disabled' }}
-                                                    </button>
-                                                </form>
-                                            </td>
+                                           
                                             <td>
                                                 <a href="{{ route('product-combinations.edit', $combination->id) }}"
                                                     class="btn btn-sm btn-outline-primary">

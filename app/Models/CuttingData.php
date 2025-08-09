@@ -18,7 +18,9 @@ class CuttingData extends Model
     protected $casts = [
         'cut_quantities' => 'array', // Cast to array to easily work with JSON
         'date' => 'date',
+        'cut_waste_quantities' => 'array',
     ];
+
 
     public function productCombination()
     {

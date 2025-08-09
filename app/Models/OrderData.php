@@ -14,6 +14,18 @@ class OrderData extends Model
         'order_quantities' => 'array'
     ];
 
+    public function style()
+    {
+        return $this->belongsTo(Style::class);
+    }
+
+    public function color()
+    {
+        return $this->belongsTo(Color::class);
+    }
+
+  
+
     public function productCombination()
     {
         return $this->belongsTo(ProductCombination::class);

@@ -26,31 +26,56 @@
                             <div class="card-body">
                                 <div class="form-group">
                                     <label for="date">Date</label>
-                                    <input type="date" name="date" class="form-control" id="date" value="{{ old('date', $orderDatum->date) }}" required>
+                                    <input type="date" name="date" class="form-control" id="date"
+                                        value="{{ old('date', $orderDatum->date) }}" required>
                                     @error('date')
                                         <div class="text-danger">{{ $message }}</div>
                                     @enderror
                                 </div>
-
                                 <div class="form-group">
-                                    <label for="product_combination">Product Combination (Style - Color)</label>
-                                    <input type="text" class="form-control" id="product_combination"
-                                        value="{{ $orderDatum->productCombination->style->name }} - {{ $orderDatum->productCombination->color->name }}" readonly>
-                                    <input type="hidden" name="product_combination_id" value="{{ $orderDatum->product_combination_id }}">
+                                    <label for="po_number">PO Number</label>
+                                    <input type="text" name="po_number" class="form-control" id="po_number"
+                                        value="{{ old('po_number', $orderDatum->po_number) }}" required>
+                                    @error('po_number')
+                                        <div class="text-danger">{{ $message }}</div>
+                                    @enderror
                                 </div>
-
+                                <div class="form-group">
+                                    <label for="style_name">Style</label>
+                                    <input type="text" class="form-control" id="style_name"
+                                        value="{{ $orderDatum->style->name ?? 'N/A' }}" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label for="color_name">Color</label>
+                                    <input type="text" class="form-control" id="color_name"
+                                        value="{{ $orderDatum->color->name ?? 'N/A' }}" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label for="po_status">PO Status</label>
+                                    <select name="po_status" id="po_status" class="form-control" required>
+                                        @foreach ($poStatuses as $status)
+                                            <option value="{{ $status }}"
+                                                @if ($orderDatum->po_status === $status) selected @endif>
+                                                {{ ucfirst($status) }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('po_status')
+                                        <div class="text-danger">{{ $message }}</div>
+                                    @enderror
+                                </div>
                                 <div class="form-group">
                                     <label>Order Quantities by Size</label>
                                     <div class="row">
-                                        @foreach($sizes as $size)
+                                        @php
+                                            $quantities = json_decode($orderDatum->order_quantities, true);
+                                        @endphp
+                                        @foreach ($sizes as $size)
                                             <div class="col-md-3 mb-3">
                                                 <label for="quantity_{{ $size->id }}">{{ $size->name }}</label>
-                                                <input type="number"
-                                                       name="quantities[{{ $size->id }}]"
-                                                       id="quantity_{{ $size->id }}"
-                                                       class="form-control"
-                                                       value="{{ old('quantities.' . $size->id, $orderDatum->order_quantities[$size->name] ?? 0) }}"
-                                                       min="0">
+                                                <input type="number" name="quantities[{{ $size->id }}]"
+                                                    id="quantity_{{ $size->id }}" class="form-control"
+                                                    value="{{ old('quantities.' . $size->id, $quantities[$size->id] ?? 0) }}"
+                                                    min="0">
                                                 @error('quantities.' . $size->id)
                                                     <div class="text-danger">{{ $message }}</div>
                                                 @enderror

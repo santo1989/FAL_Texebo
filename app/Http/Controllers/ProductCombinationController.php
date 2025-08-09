@@ -188,4 +188,33 @@ class ProductCombinationController extends Controller
 
         return response()->json(['success' => false]);
     }
+    public function getColorsByStylecom($styleId)
+    {
+        $colors = Color::whereHas('productCombinations', function ($query) use ($styleId) {
+            $query->where('style_id', $styleId);
+        })->get();
+
+        return response()->json($colors);
+    }
+    public function getCombinationSizes($styleId, $colorId)
+    {
+        $combination = ProductCombination::with('size')
+            ->where('style_id', $styleId)
+            ->where('color_id', $colorId)
+            ->first();
+
+        if ($combination) {
+            $sizeData = $combination->sizes->map(function ($size) {
+                return ['id' => $size->id, 'name' => $size->name];
+            });
+
+            return response()->json([
+                'success' => true,
+                'combination_id' => $combination->id,
+                'sizes' => $sizeData
+            ]);
+        }
+
+        return response()->json(['success' => false]);
+    }
 }

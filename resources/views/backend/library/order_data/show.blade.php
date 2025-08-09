@@ -23,14 +23,20 @@
                         <dt class="col-sm-3">Date</dt>
                         <dd class="col-sm-9">{{ \Carbon\Carbon::parse($orderDatum->date)->format('d-M-Y') }}</dd>
 
+                        <dt class="col-sm-3">PO Number</dt>
+                        <dd class="col-sm-9">{{ $orderDatum->po_number }}</dd>
+
                         <dt class="col-sm-3">Buyer</dt>
                         <dd class="col-sm-9">{{ $orderDatum->productCombination->buyer->name ?? 'N/A' }}</dd>
 
                         <dt class="col-sm-3">Style</dt>
-                        <dd class="col-sm-9">{{ $orderDatum->productCombination->style->name ?? 'N/A' }}</dd>
+                        <dd class="col-sm-9">{{ $orderDatum->style->name ?? 'N/A' }}</dd>
 
                         <dt class="col-sm-3">Color</dt>
-                        <dd class="col-sm-9">{{ $orderDatum->productCombination->color->name ?? 'N/A' }}</dd>
+                        <dd class="col-sm-9">{{ $orderDatum->color->name ?? 'N/A' }}</dd>
+
+                        <dt class="col-sm-3">PO Status</dt>
+                        <dd class="col-sm-9">{{ ucfirst($orderDatum->po_status) }}</dd>
 
                         <dt class="col-sm-3">Total Order Quantity</dt>
                         <dd class="col-sm-9">{{ $orderDatum->total_order_quantity }}</dd>
@@ -40,8 +46,13 @@
                             <table class="table table-bordered table-sm">
                                 <thead>
                                     <tr>
-                                        @foreach(array_keys($orderDatum->order_quantities) as $sizeName)
-                                            <th>{{ ucfirst($sizeName) }}</th>
+                                        @foreach(array_keys($orderDatum->order_quantities) as $size)
+                                            <th>
+                                                @php
+                                                    $sizeModel = \App\Models\Size::find($size);
+                                                @endphp
+                                                {{ $sizeModel->name ?? 'Unknown' }}
+                                            </th>
                                         @endforeach
                                     </tr>
                                 </thead>
