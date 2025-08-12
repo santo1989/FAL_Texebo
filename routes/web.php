@@ -16,6 +16,8 @@ use App\Http\Controllers\ProductCombinationController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SizeController;
 use App\Http\Controllers\LineInputDataController;
+use App\Http\Controllers\SublimationPrintReceiveController;
+use App\Http\Controllers\SublimationPrintSendController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FinishPackingDataController;
 use App\Http\Controllers\StyleController;
@@ -137,7 +139,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('product-combinations', ProductCombinationController::class);
     Route::post('product-combinations/{productCombination}/active', [ProductCombinationController::class, 'active'])->name('product-combinations.active');
-   
+
     Route::post('product-combinations/{productCombination}/print_embroidery', [ProductCombinationController::class, 'print_embroidery'])->name('product-combinations.print_embroidery');
     Route::post('product-combinations/{productCombination}/sublimation_print', [ProductCombinationController::class, 'sublimation_print'])->name('product-combinations.sublimation_print');
 
@@ -152,6 +154,32 @@ Route::middleware('auth')->group(function () {
     Route::get('cutting_data_report', [CuttingDataController::class, 'cutting_data_report'])->name('cutting_data_report');
     Route::get('cutting_data/find', [CuttingDataController::class, 'find'])->name('cutting_data.find'); // Custom route first
     Route::resource('cutting_data', CuttingDataController::class); // Resource route last
+
+    //sublimation print send routes
+    Route::resource('sublimation_print_send_data', SublimationPrintSendController::class);
+
+    // Sublimation Print Send Report Routes
+    Route::get('/sublimation_print_send_data/reports/total', [SublimationPrintSendController::class, 'totalPrintEmbSendReport'])->name('sublimation_print_send_data.report.total');
+    Route::get('/sublimation_print_send_data/reports/wip', [SublimationPrintSendController::class, 'wipReport'])->name('sublimation_print_send_data.report.wip');
+    Route::get('/sublimation_print_send_data/reports/ready', [SublimationPrintSendController::class, 'readyToInputReport'])->name('sublimation_print_send_data.report.ready');
+
+    // Sublimation Print Receive Routes
+
+    Route::resource('sublimation_print_receive_data', SublimationPrintReceiveController::class);
+
+    Route::prefix('sublimation_print_receive_data/reports')->name('print_receive_data.report.')->group(function () {
+        Route::get('/total-receive', [SublimationPrintReceiveController::class, 'totalPrintEmbReceiveReport'])->name('total_receive');
+        Route::get('/balance-quantity', [SublimationPrintReceiveController::class, 'totalPrintEmbBalanceReport'])->name('balance_quantity');
+    });
+
+
+
+
+
+
+
+
+
 
     // Print/Send Data Routes
     Route::prefix('print_send_data')->group(function () {
@@ -211,7 +239,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/shipment_data/available_quantities/{productCombination}', [ShipmentDataController::class, 'getAvailableQuantities'])
         ->name('shipment_data.available_quantities');
-    
+
     Route::get('shipment_data/report/total_shipment', [ShipmentDataController::class, 'totalShipmentReport'])->name('shipment_data.report.total_shipment');
     Route::get('shipment_data/report/ready_goods', [ShipmentDataController::class, 'readyGoodsReport'])->name('shipment_data.report.ready_goods');
 

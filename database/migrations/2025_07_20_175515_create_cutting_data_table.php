@@ -18,6 +18,7 @@ class CreateCuttingDataTable extends Migration
             $table->date('date');
             $table->unsignedBigInteger('product_combination_id');
             $table->string('po_number'); // Purchase Order number
+            $table->string('old_order')->nullable(); // Optional: to store old order number if work start form there
             $table->json('cut_quantities'); // Stores quantities for each size, e.g., {'1': 500, '2': 500}
             $table->integer('total_cut_quantity')->nullable(); // Optional: to easily store pre-calculated total
             //stores waste quantities for each size, e.g., {'1': 500, '2': 500} 

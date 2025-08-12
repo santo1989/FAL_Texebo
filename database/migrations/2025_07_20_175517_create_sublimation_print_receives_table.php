@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateOutputFinishingDataTable extends Migration
+class CreateSublimationPrintReceivesTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,19 +13,18 @@ class CreateOutputFinishingDataTable extends Migration
      */
     public function up()
     {
-        Schema::create('output_finishing_data', function (Blueprint $table) {
+        Schema::create('sublimation_print_receives', function (Blueprint $table) {
             $table->id();
             $table->date('date');
             $table->unsignedBigInteger('product_combination_id');
             $table->string('po_number'); // Purchase Order number
             $table->string('old_order')->nullable(); // Optional: to store old order number if work start form there
-            $table->json('output_quantities'); // Stores quantities per size
-            $table->integer('total_output_quantity')->default(0);
+            $table->json('sublimation_print_receive_quantities'); // Stores quantities per size
+            $table->integer('total_sublimation_print_receive_quantity')->default(0);
             // Optional: to store waste quantities for each size
-            $table->json('output_waste_quantities')->nullable(); // Optional: to store waste quantities for each size
-            $table->integer('total_output_waste_quantity')->nullable(); // Optional: to store total waste quantity
+            $table->json('sublimation_print_receive_waste_quantities')->nullable(); // Optional: to store waste quantities for each size
+            $table->integer('total_sublimation_print_receive_waste_quantity')->nullable(); // Optional: to store total waste quantity
             $table->timestamps();
-
             $table->foreign('product_combination_id')
                 ->references('id')
                 ->on('product_combinations')
@@ -40,6 +39,6 @@ class CreateOutputFinishingDataTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('output_finishing_data');
+        Schema::dropIfExists('sublimation_print_receives');
     }
 }
