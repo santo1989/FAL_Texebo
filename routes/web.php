@@ -167,7 +167,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('sublimation_print_receive_data', SublimationPrintReceiveController::class);
 
-    Route::prefix('sublimation_print_receive_data/reports')->name('print_receive_data.report.')->group(function () {
+    Route::prefix('sublimation_print_receive_data/reports')->name('sublimation_print_receive_data.report.')->group(function () {
         Route::get('/total-receive', [SublimationPrintReceiveController::class, 'totalPrintEmbReceiveReport'])->name('total_receive');
         Route::get('/balance-quantity', [SublimationPrintReceiveController::class, 'totalPrintEmbBalanceReport'])->name('balance_quantity');
     });
