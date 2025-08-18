@@ -12,11 +12,17 @@ class PrintReceiveData extends Model
 
 
     protected $casts = [
-        'receive_quantities' => 'array'
+        'receive_quantities' => 'array',
+        'receive_waste_quantities' => 'array'
     ];
 
     public function productCombination()
     {
         return $this->belongsTo(ProductCombination::class);
+    }
+
+    public function orderData()
+    {
+        return $this->belongsTo(OrderData::class, 'po_number', 'po_number');
     }
 }

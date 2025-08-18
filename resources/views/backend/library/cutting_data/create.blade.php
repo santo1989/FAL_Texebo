@@ -23,7 +23,7 @@
                         value="{{ old('date', date('Y-m-d')) }}" required>
                 </div>
             </div>
-            <div class="col-md-9">
+            <div class="col-md-6">
                 <div class="form-group">
                     <label for="po_number">PO Number</label>
                     <select name="po_number[]" id="po_number" class="form-control select2" multiple="multiple"
@@ -34,6 +34,15 @@
                                 {{ $poNumber }}
                             </option>
                         @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="old_order">Old Order</label>
+                    <select name="old_order" id="old_order" class="form-control">
+                        <option value="no" {{ old('old_order') == 'no' ? 'selected' : '' }}>No</option>
+                        <option value="yes" {{ old('old_order') == 'yes' ? 'selected' : '' }}>Yes</option>
                     </select>
                 </div>
             </div>
@@ -77,8 +86,7 @@
             const cuttingDataBody = document.getElementById('cutting-data-body');
 
             poNumberSelect.addEventListener('change', function() {
-                const selectedPoNumbers = Array.from(poNumberSelect.selectedOptions).map(option => option
-                    .value);
+                const selectedPoNumbers = Array.from(poNumberSelect.selectedOptions).map(option => option.value);
                 if (selectedPoNumbers.length > 0) {
                     updateCuttingDataRows(selectedPoNumbers);
                 } else {
@@ -87,99 +95,89 @@
             });
 
             function updateCuttingDataRows(poNumbers) {
-                console.log('Fetching data for PO numbers:', poNumbers);
-                fetch('{{ route('cutting_data.find') }}?po_numbers[]=' + poNumbers.join('&po_numbers[]='))
-                    .then(response => {
-                        if (!response.ok) throw new Error('Network response was not ok');
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('API response data:', data);
-                        cuttingDataBody.innerHTML = '';
-                        let rowIndex = 0;
+    const url = '{{ route('cutting_data.find') }}?po_numbers[]=' + poNumbers.join('&po_numbers[]=');
 
-                        for (const poNumber in data) {
-                            data[poNumber].forEach(combination => {
-                                console.log('Processing combination:', combination);
-                                const row = document.createElement('tr');
-                                row.dataset.combinationId = combination.combination_id;
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            cuttingDataBody.innerHTML = '';
+            let rowIndex = 0;
 
-                                row.innerHTML = `
-                    <td>
-                        <input type="hidden" name="rows[${rowIndex}][po_number]" value="${poNumber}">
-                        <input type="hidden" name="rows[${rowIndex}][product_combination_id]" value="${combination.combination_id}">
-                        ${poNumber}
-                    </td>
-                    <td>${combination.style}</td>
-                    <td>${combination.color}</td>
-                `;
+            for (const poNumber in data) {
+                data[poNumber].forEach(combination => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <input type="hidden" name="rows[${rowIndex}][po_number]" value="${poNumber}">
+                            <input type="hidden" name="rows[${rowIndex}][product_combination_id]" value="${combination.combination_id}">
+                            ${poNumber}
+                        </td>
+                        <td>${combination.style}</td>
+                        <td>${combination.color}</td>
+                    `;
 
-                                let totalCutQty = 0;
-                                let totalWasteQty = 0;
-
-                                @foreach ($allSizes as $size)
-                                    {
-                                        const sizeId = "{{ $size->id }}";
-                                        const sizeName = "{{ $size->name }}";
-                                        const sizeNameLower = sizeName.toLowerCase();
-                                        const availableQty = combination.available_quantities[
-                                            sizeNameLower] || 0;
-
-                                        console.log(`Size: ${sizeName}, Available: ${availableQty}`);
-
-                                        const cell = document.createElement('td');
-                                        cell.innerHTML = `
+                    // Dynamically create a cell for each size
+                    @foreach ($allSizes as $size)
+                        {
+                            const sizeId = "{{ $size->id }}";
+                            const sizeNameLower = "{{ strtolower($size->name) }}";
+                            // The availableQty will be a property of the combination.available_quantities object
+                            const availableQty = combination.available_quantities[sizeNameLower] || 0;
+                            
+                            const cell = document.createElement('td');
+                            cell.innerHTML = `
                                 <div class="input-group">
                                     <input type="number" 
                                         name="rows[${rowIndex}][cut_quantities][${sizeId}]" 
                                         class="form-control form-control-sm cut-qty-input"
                                         min="0" 
-                                        max="${availableQty}" 
-                                        placeholder="${availableQty}">
+                                        max="${availableQty}"
+                                        placeholder="Av: ${availableQty}">
                                     <input type="number" 
                                         name="rows[${rowIndex}][waste_quantities][${sizeId}]" 
                                         class="form-control form-control-sm waste-qty-input"
                                         min="0" 
-                                        placeholder="0">
+                                        placeholder="W: 0">
                                 </div>
                             `;
-                                        row.appendChild(cell);
-                                    }
-                                @endforeach
-
-                                row.innerHTML += `
-                    <td><span class="total-cut-qty-span">0</span></td>
-                    <td><span class="total-waste-qty-span">0</span></td>
-                `;
-
-                                cuttingDataBody.appendChild(row);
-                                rowIndex++;
-                            });
+                            row.appendChild(cell);
                         }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        cuttingDataBody.innerHTML =
-                            '<tr><td colspan="100%">Error loading data. Please try again.</td></tr>';
-                    });
-            }
+                    @endforeach
+                    
+                    row.innerHTML += `
+                        <td><span class="total-cut-qty-span">0</span></td>
+                        <td><span class="total-waste-qty-span">0</span></td>
+                    `;
 
-            // Recalculate totals on input change
+                    cuttingDataBody.appendChild(row);
+                    rowIndex++;
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+            cuttingDataBody.innerHTML = '<tr><td colspan="100%">Error loading data. Please try again.</td></tr>';
+        });
+}
+            // Listen for input changes to recalculate totals
             cuttingDataBody.addEventListener('input', function(e) {
-                if (e.target.classList.contains('cut-qty-input') || e.target.classList.contains(
-                        'waste-qty-input')) {
-                    const row = e.target.closest('tr');
+                const target = e.target;
+                if (target.classList.contains('cut-qty-input') || target.classList.contains('waste-qty-input')) {
+                    const row = target.closest('tr');
                     let totalCut = 0;
                     let totalWaste = 0;
-
+                    
                     row.querySelectorAll('.cut-qty-input').forEach(input => {
                         totalCut += parseInt(input.value) || 0;
                     });
-
+                    
                     row.querySelectorAll('.waste-qty-input').forEach(input => {
                         totalWaste += parseInt(input.value) || 0;
                     });
-
+                    
                     row.querySelector('.total-cut-qty-span').textContent = totalCut;
                     row.querySelector('.total-waste-qty-span').textContent = totalWaste;
                 }

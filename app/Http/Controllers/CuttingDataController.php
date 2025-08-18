@@ -51,92 +51,87 @@ class CuttingDataController extends Controller
         $request->validate([
             'date' => 'required|date',
             'rows' => 'required|array',
+            'rows.*.po_number' => 'required|string',
+            'rows.*.product_combination_id' => 'required|integer',
+            'rows.*.cut_quantities' => 'nullable|array',
+            'rows.*.waste_quantities' => 'nullable|array',
+            'rows.*.cut_quantities.*' => 'nullable|integer|min:0',
+            'rows.*.waste_quantities.*' => 'nullable|integer|min:0',
         ]);
 
-        $date = $request->date;
-        $rows = $request->rows;
-
-        foreach ($rows as $row) {
+        foreach ($request->rows as $row) {
             $poNumber = $row['po_number'];
             $productCombinationId = $row['product_combination_id'];
-            $cutQuantities = $row['cut_quantities'] ?? [];
-            $wasteQuantities = $row['waste_quantities'] ?? [];
+            $cutQuantities = array_filter($row['cut_quantities'] ?? []);
+            $wasteQuantities = array_filter($row['waste_quantities'] ?? []);
 
-            // Fetch Order Data for this PO and combination
+            // Skip saving the row if no quantities are entered
+            if (empty($cutQuantities) && empty($wasteQuantities)) {
+                continue;
+            }
+
+            // Fetch total order quantities for the combination
             $orderData = OrderData::where('po_number', $poNumber)
                 ->where('product_combination_id', $productCombinationId)
-                ->get();
+                ->first();
 
-            if ($orderData->isEmpty()) {
+            if (!$orderData) {
                 throw ValidationException::withMessages([
-                    'po_number' => "Order data not found for PO: $poNumber and combination ID: $productCombinationId"
+                    "rows" => "Order data not found for PO: {$poNumber} and combination ID: {$productCombinationId}"
                 ]);
             }
+            $orderQuantities = $orderData->order_quantities;
 
-            // Aggregate total order quantities
-            $totalOrderQuantities = [];
-            foreach ($orderData as $order) {
-                $orderQuantities = $order->order_quantities;
-                foreach ($orderQuantities as $sizeName => $quantity) {
-                    $sizeNameLower = strtolower($sizeName);
-                    $totalOrderQuantities[$sizeNameLower] =
-                        ($totalOrderQuantities[$sizeNameLower] ?? 0) + $quantity;
-                }
-            }
-
-            // Fetch existing cutting data for this PO and combination
+            // Fetch existing cutting quantities for this combination
             $existingCuttingData = CuttingData::where('po_number', $poNumber)
                 ->where('product_combination_id', $productCombinationId)
                 ->get();
 
-            // Aggregate existing cutting quantities
             $totalExistingCutQuantities = [];
             foreach ($existingCuttingData as $cutting) {
-                $cuttingQuantities = $cutting->cut_quantities;
-                foreach ($cuttingQuantities as $sizeName => $quantity) {
-                    $sizeNameLower = strtolower($sizeName);
-                    $totalExistingCutQuantities[$sizeNameLower] =
-                        ($totalExistingCutQuantities[$sizeNameLower] ?? 0) + $quantity;
+                foreach ($cutting->cut_quantities as $sizeName => $quantity) {
+                    $totalExistingCutQuantities[strtolower($sizeName)] =
+                        ($totalExistingCutQuantities[strtolower($sizeName)] ?? 0) + $quantity;
                 }
             }
 
+            // Get all sizes to map ID to name
+            $allSizes = Size::where('is_active', 1)->get()->keyBy('id');
+
+            // Final quantities to save
             $newCutQuantities = [];
             $newWasteQuantities = [];
             $totalCutQty = 0;
             $totalWasteQty = 0;
 
-            $allSizes = Size::where('is_active', 1)->get();
-            foreach ($allSizes as $size) {
-                $sizeName = $size->name;
-                $sizeNameLower = strtolower($sizeName);
-                $sizeId = $size->id;
-
-                $newCutQty = (int)($cutQuantities[$sizeId] ?? 0);
-                $newWasteQty = (int)($wasteQuantities[$sizeId] ?? 0);
-
-                $existingCutQty = $totalExistingCutQuantities[$sizeNameLower] ?? 0;
-                $orderQty = $totalOrderQuantities[$sizeNameLower] ?? 0;
-                $availableQty = $orderQty - $existingCutQty;
-
-                if ($newCutQty > $availableQty) {
-                    throw ValidationException::withMessages([
-                        'cut_quantities' => "Cut quantity for size '$sizeName' exceeds available quantity ($availableQty) for PO: $poNumber"
-                    ]);
-                }
-
+            foreach ($cutQuantities as $sizeId => $newCutQty) {
                 if ($newCutQty > 0) {
+                    $sizeName = $allSizes[$sizeId]->name;
+                    $existingCutQty = $totalExistingCutQuantities[strtolower($sizeName)] ?? 0;
+                    $orderQty = $orderQuantities[$sizeName] ?? 0;
+
+                    // Validation: Check if the new cut exceeds the total order quantity
+                    if (($existingCutQty + $newCutQty) > $orderQty) {
+                        throw ValidationException::withMessages([
+                            "rows.{$productCombinationId}.cut_quantities.{$sizeId}" => "Cut quantity for size '{$sizeName}' exceeds available quantity."
+                        ]);
+                    }
                     $newCutQuantities[$sizeName] = $newCutQty;
                     $totalCutQty += $newCutQty;
                 }
+            }
+
+            foreach ($wasteQuantities as $sizeId => $newWasteQty) {
                 if ($newWasteQty > 0) {
+                    $sizeName = $allSizes[$sizeId]->name;
                     $newWasteQuantities[$sizeName] = $newWasteQty;
                     $totalWasteQty += $newWasteQty;
                 }
             }
 
-            if ($totalCutQty > 0) {
+            if ($totalCutQty > 0 || $totalWasteQty > 0) {
                 CuttingData::create([
-                    'date' => $date,
+                    'date' => $request->date,
                     'po_number' => $poNumber,
                     'product_combination_id' => $productCombinationId,
                     'cut_quantities' => $newCutQuantities,
@@ -147,19 +142,21 @@ class CuttingDataController extends Controller
             }
         }
 
-        return redirect()->route('cutting_data.index')->with('success', 'Cutting data added successfully.');
+        return redirect()->route('cutting_data.index')->with('success', 'Cutting data saved successfully.');
     }
 
-    public function cutting_data_find(Request $request)
+
+    public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
 
-        // Create size ID to name mapping
-        $sizes = Size::all();
-        $sizeMap = [];
-        foreach ($sizes as $size) {
-            $sizeMap[$size->id] = strtolower($size->name);
+        if (empty($poNumbers)) {
+            return response()->json([]);
         }
+
+        // Get all sizes to create a map for ID to name
+        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => strtolower($size->name));
 
         // Fetch all related order data and existing cutting data
         $orderData = OrderData::whereIn('po_number', $poNumbers)
@@ -169,66 +166,61 @@ class CuttingDataController extends Controller
         $existingCuttingData = CuttingData::whereIn('po_number', $poNumbers)->get();
 
         $response = [];
-        $groupedData = $orderData->groupBy('po_number');
+        $aggregatedData = [];
 
-        foreach ($groupedData as $poNumber => $orders) {
-            $poData = [];
-            foreach ($orders as $order) {
-                $combinationId = $order->product_combination_id;
+        // Step 1: Aggregate order quantities
+        foreach ($orderData as $order) {
+            $poNumber = $order->po_number;
+            $combinationId = $order->product_combination_id;
+            $key = $poNumber . '-' . $combinationId;
 
-                if (!isset($poData[$combinationId])) {
-                    $poData[$combinationId] = [
-                        'combination_id' => $combinationId,
-                        'style' => $order->productCombination->style->name,
-                        'color' => $order->productCombination->color->name,
-                        'order_quantities' => [],
-                        'cut_quantities' => [],
-                    ];
-                }
-
-                // Process order quantities using size map
-                $orderQuantities = $order->order_quantities;
-                foreach ($orderQuantities as $sizeId => $quantity) {
-                    // Convert size ID to integer for mapping
-                    $sizeId = (int)$sizeId;
-                    $sizeName = $sizeMap[$sizeId] ?? 'unknown';
-                    $poData[$combinationId]['order_quantities'][$sizeName] =
-                        ($poData[$combinationId]['order_quantities'][$sizeName] ?? 0) + $quantity;
-                }
-            }
-
-            // Process existing cutting quantities
-            foreach ($existingCuttingData as $cut) {
-                if ($cut->po_number === $poNumber) {
-                    $combinationId = $cut->product_combination_id;
-                    if (isset($poData[$combinationId])) {
-                        $cutQuantities = $cut->cut_quantities;
-                        foreach ($cutQuantities as $sizeName => $quantity) {
-                            $sizeNameLower = strtolower($sizeName);
-                            $poData[$combinationId]['cut_quantities'][$sizeNameLower] =
-                                ($poData[$combinationId]['cut_quantities'][$sizeNameLower] ?? 0) + $quantity;
-                        }
-                    }
-                }
-            }
-
-            // Prepare final response
-            $finalData = [];
-            foreach ($poData as $combinationId => $data) {
-                $availableQuantities = [];
-                foreach ($data['order_quantities'] as $sizeName => $orderQty) {
-                    $cutQty = $data['cut_quantities'][$sizeName] ?? 0;
-                    $availableQuantities[$sizeName] = $orderQty - $cutQty;
-                }
-
-                $finalData[] = [
+            if (!isset($aggregatedData[$key])) {
+                $aggregatedData[$key] = [
+                    'po_number' => $poNumber,
                     'combination_id' => $combinationId,
-                    'style' => $data['style'],
-                    'color' => $data['color'],
-                    'available_quantities' => $availableQuantities,
+                    'style' => $order->productCombination->style->name,
+                    'color' => $order->productCombination->color->name,
+                    'order_quantities' => [],
+                    'cut_quantities' => [],
                 ];
             }
-            $response[$poNumber] = $finalData;
+
+            foreach ($order->order_quantities as $sizeId => $quantity) {
+                $sizeNameLower = $sizeIdToNameMap[(int)$sizeId] ?? 'unknown';
+                $aggregatedData[$key]['order_quantities'][$sizeNameLower] =
+                    ($aggregatedData[$key]['order_quantities'][$sizeNameLower] ?? 0) + (int)$quantity;
+            }
+        }
+
+        // Step 2: Aggregate existing cutting quantities
+        foreach ($existingCuttingData as $cut) {
+            $poNumber = $cut->po_number;
+            $combinationId = $cut->product_combination_id;
+            $key = $poNumber . '-' . $combinationId;
+
+            if (isset($aggregatedData[$key])) {
+                foreach ($cut->cut_quantities as $sizeName => $quantity) {
+                    $sizeNameLower = strtolower($sizeName);
+                    $aggregatedData[$key]['cut_quantities'][$sizeNameLower] =
+                        ($aggregatedData[$key]['cut_quantities'][$sizeNameLower] ?? 0) + (int)$quantity;
+                }
+            }
+        }
+
+        // Step 3: Calculate available quantities and format the final response
+        foreach ($aggregatedData as $data) {
+            $availableQuantities = [];
+            foreach ($data['order_quantities'] as $sizeNameLower => $orderQty) {
+                $cutQty = $data['cut_quantities'][$sizeNameLower] ?? 0;
+                $availableQuantities[$sizeNameLower] = max(0, $orderQty - $cutQty);
+            }
+
+            $response[$data['po_number']][] = [
+                'combination_id' => $data['combination_id'],
+                'style' => $data['style'],
+                'color' => $data['color'],
+                'available_quantities' => $availableQuantities,
+            ];
         }
 
         return response()->json($response);

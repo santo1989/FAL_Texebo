@@ -18,11 +18,17 @@ class PrintSendData extends Model
     // ];
 
     protected $casts = [
-        'send_quantities' => 'array'
+        'send_quantities' => 'array',
+        'send_waste_quantities' => 'array'
     ];
 
     public function productCombination()
     {
         return $this->belongsTo(ProductCombination::class);
+    }
+
+    public function orderData()
+    {
+        return $this->belongsTo(OrderData::class, 'po_number', 'po_number');
     }
 }

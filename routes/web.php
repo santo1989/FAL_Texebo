@@ -153,6 +153,7 @@ Route::middleware('auth')->group(function () {
     // Cutting Data Routes
     Route::get('cutting_data_report', [CuttingDataController::class, 'cutting_data_report'])->name('cutting_data_report');
     Route::get('cutting_data/find', [CuttingDataController::class, 'find'])->name('cutting_data.find'); // Custom route first
+    Route::get('/get-order-and-cutting-quantities/{product_combination_id}', [CuttingDataController::class, 'getOrderAndCuttingQuantities'])->name('get.order.and.cutting.quantities');
     Route::resource('cutting_data', CuttingDataController::class); // Resource route last
 
     //sublimation print send routes
@@ -269,9 +270,6 @@ Route::get('/get-size-name/{sizeId}', function ($sizeId) {
 Route::get('/print_send_data/get-colors/{style_id}', [PrintSendDataController::class, 'getColors']);
 Route::get('/print_send_data/get-combination/{style_id}/{color_id}', [PrintSendDataController::class, 'getCombination']);
 Route::get('/print_send_data/available/{product_combination_id}', [PrintSendDataController::class, 'available']);
-
-
-Route::get('/get-order-and-cutting-quantities/{product_combination_id}', [CuttingDataController::class, 'getOrderAndCuttingQuantities'])->name('get.order.and.cutting.quantities');
 
 //create print_receive_data/available_quantities/{product_combination_id}
 Route::get('/print_receive_data/available_quantities/{product_combination_id}', [PrintReceiveDataController::class, 'getAvailableReceiveQuantities'])->name('print_receive_data.available_quantities');

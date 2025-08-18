@@ -12,11 +12,17 @@ class LineInputData extends Model
 
 
     protected $casts = [
-        'input_quantities' => 'array'
+        'input_quantities' => 'array',
+        'input_waste_quantities' => 'array'
     ];
 
     public function productCombination()
     {
         return $this->belongsTo(ProductCombination::class);
+    }
+
+    public function orderData()
+    {
+        return $this->belongsTo(OrderData::class, 'po_number', 'po_number');
     }
 }
