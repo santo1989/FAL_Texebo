@@ -152,6 +152,22 @@
                                 </div>
                                 <div class="col-3 pt-1 pb-1">
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
+                                        href="{{ route('sublimation_print_send_data.index') }}">
+                                        <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
+                                        Sublimation Print Sends
+                                    </a>
+
+                                </div>
+                                <div class="col-3 pt-1 pb-1">
+                                    <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
+                                        href="{{ route('sublimation_print_receive_data.index') }}">
+                                        <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
+                                        Sublimation Print Receives
+                                    </a>
+
+                                </div>
+                                <div class="col-3 pt-1 pb-1">
+                                    <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
                                         href="{{ route('print_send_data.index') }}">
                                         <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
                                         Print/Emb Send Data
@@ -291,6 +307,22 @@
                                     </a>
 
                                 </div>
+                                    <div class="col-3 pt-1 pb-1">
+                                    <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
+                                        href="{{ route('sublimation_print_send_data.index') }}">
+                                        <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
+                                        Sublimation Print Sends
+                                    </a>
+
+                                </div>
+                                <div class="col-3 pt-1 pb-1">
+                                    <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
+                                        href="{{ route('sublimation_print_receive_data.index') }}">
+                                        <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
+                                        Sublimation Print Receives
+                                    </a>
+
+                                </div>
                                 <div class="col-3 pt-1 pb-1">
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
                                         href="{{ route('print_send_data.index') }}">
@@ -366,6 +398,48 @@
                                         <a href="{{ route('cutting_data_report') }}"
                                             class="btn btn-outline-info btn-block mb-2">
                                             <i class="fas fa-chart-bar"></i> Cutting Report
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                             <!-- Sublimation Print/Send Reports -->
+                            <div class="col-md-3 mb-3">
+                                <div class="card border-primary">
+                                    <div class="card-header bg-primary text-white">
+                                        <i class="fas fa-paper-plane"></i> Sublimation Print/Send Reports
+                                    </div>
+                                    <div class="card-body">
+                                        <a href="{{ route('sublimation_print_send_data.report.total') }}"
+                                            class="btn btn-outline-primary btn-block mb-2">
+                                            Total Print/Emb Send
+                                        </a>
+                                        <a href="{{ route('sublimation_print_send_data.report.wip') }}"
+                                            class="btn btn-outline-primary btn-block mb-2">
+                                            WIP (Waiting)
+                                        </a>
+                                        <a href="{{ route('sublimation_print_send_data.report.ready') }}"
+                                            class="btn btn-outline-primary btn-block">
+                                            Ready to Input
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Print/Receive Reports -->
+                            <div class="col-md-3 mb-3">
+                                <div class="card border-primary">
+                                    <div class="card-header bg-primary text-white">
+                                        <i class="fas fa-truck-loading"></i> Sublimation Print/Receive Reports
+                                    </div>
+                                    <div class="card-body">
+                                        <a href="{{ route('sublimation_print_receive_data.report.total_receive') }}"
+                                            class="btn btn-outline-primary btn-block mb-2">
+                                            Total Print/Emb Receive
+                                        </a>
+                                        <a href="{{ route('sublimation_print_receive_data.report.balance_quantity') }}"
+                                            class="btn btn-outline-primary btn-block">
+                                            Print/Emb Balance
                                         </a>
                                     </div>
                                 </div>
