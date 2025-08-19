@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="TNA Management Software from NTG, MIS Department" />
-    <meta name="author" content="Md. Hasibul Islam Santo, MIS, NTG" />
-    <title>{{ $pageTitle ?? 'TIL' }}</title>
+    <meta name="description" content="Order Tracking Software from NTG, MIS Department" />
+    <meta name="author" content="Engr. Md. Hasibul Islam Santo, MIS, NTG" />
+    <title>{{ $pageTitle ?? 'FAL' }}</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" />
     
     <!-- jQuery -->
@@ -85,6 +85,7 @@
 </head>
 <body>
     <div class="container-fluid">
+        
         <div class="main-card">
             {!! $breadCrumb ?? '' !!}
             {{ $slot ?? '' }}

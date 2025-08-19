@@ -6,7 +6,7 @@
 </ol> --}}
 <div class="row justify-content-between">
     <div class="col-9 text-center">
-        <h1 class="mt-2 text-center">{{ $pageHeader }}</h1>
+        <h4 class="mt-1 text-center">{{ $pageHeader }}</h4>
     </div>
     <div class="col-3">
         <div class="">

@@ -33,14 +33,14 @@ class CuttingDataController extends Controller
         }
 
         $cuttingData = $query->orderBy('date', 'desc')->paginate(10);
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return view('backend.library.cutting_data.index', compact('cuttingData', 'allSizes'));
     }
 
     public function create()
     {
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $distinctPoNumbers = OrderData::where('po_status', 'running')->distinct()->pluck('po_number');
 
         return view('backend.library.cutting_data.create', compact('allSizes', 'distinctPoNumbers'));
@@ -138,7 +138,7 @@ class CuttingDataController extends Controller
             return response()->json([]);
         }
 
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         Log::info('Sizes:', $allSizes->toArray());
         $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
 
@@ -324,7 +324,7 @@ class CuttingDataController extends Controller
     public function show(CuttingData $cuttingDatum)
     {
         $cuttingDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return view('backend.library.cutting_data.show', compact('cuttingDatum', 'allSizes'));
     }
@@ -354,7 +354,7 @@ class CuttingDataController extends Controller
         }
 
         $cuttingData = $query->get();
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
 
         foreach ($cuttingData as $data) {
