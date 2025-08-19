@@ -5,144 +5,173 @@
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Cutting Data </x-slot>
+            <x-slot name="pageHeader"> Edit Cutting Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{{ route('cutting_data.index') }}">Cutting Data</a></li>
             <li class="breadcrumb-item active">Edit</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
 
-    <x-backend.layouts.elements.errors />
-
-    <form action="{{ route('cutting_data.update', $cuttingDatum) }}" method="POST">
-        @csrf
-        @method('PUT')
-        
-        <div class="row">
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="date">Date</label>
-                    <input type="date" name="date" id="date" class="form-control"
-                        value="{{ old('date', $cuttingDatum->date->format('Y-m-d')) }}" required>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="product_combination_id">Product Combination (Buyer - Style - Color)</label>
-                    <select name="product_combination_id" id="product_combination_id" class="form-control" required>
-                        <option value="">Select Product Combination</option>
-                        @foreach ($productCombinations as $combination)
-                            <option value="{{ $combination->id }}" 
-                                data-sizes="{{ json_encode($combination->size_ids) }}"
-                                {{ old('product_combination_id', $cuttingDatum->product_combination_id) == $combination->id ? 'selected' : '' }}>
-                                {{ $combination->buyer->name }} - {{ $combination->style->name }} - {{ $combination->color->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <div class="card mt-4" id="size-quantities-card" style="{{ $cuttingDatum->productCombination ? '' : 'display: none;' }}">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Cutting Quantities by Size</h5>
-                <div>
-                    <strong>Total Quantity: </strong> <span id="total-quantity">0</span>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row" id="size-quantity-inputs">
-                    @if($cuttingDatum->productCombination)
-                        @foreach($cuttingDatum->productCombination->sizes as $size)
-                            <div class="col-md-2 mb-3">
-                                <div class="form-group">
-                                    <label for="quantity_{{ $size->id }}">{{ strtoupper($size->name) }}</label>
-                                    <input type="number" name="quantities[{{ $size->id }}]" 
-                                           id="quantity_{{ $size->id }}" class="form-control quantity-input"
-                                           value="{{ $sizeQuantities[$size->id] ?? 0 }}" 
-                                           min="0" placeholder="0">
-                                </div>
-                            </div>
-                        @endforeach
-                    @endif
-                </div>
-            </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary mt-3">Update Cutting Data</button>
-    </form>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const productCombinationSelect = document.getElementById('product_combination_id');
-            const sizeQuantitiesCard = document.getElementById('size-quantities-card');
-            const sizeQuantityInputsContainer = document.getElementById('size-quantity-inputs');
-            const totalQuantitySpan = document.getElementById('total-quantity');
-            
-            // Create size mapping from PHP
-            const sizeMap = @json($sizes->mapWithKeys(fn($size) => [$size->id => $size->name]));
-            const existingSizeQuantities = @json($sizeQuantities);
-
-            // Calculate initial total quantity
-            function calculateTotal() {
-                let total = 0;
-                document.querySelectorAll('.quantity-input').forEach(input => {
-                    total += parseInt(input.value) || 0;
-                });
-                totalQuantitySpan.textContent = total;
-                return total;
-            }
-
-            // Initialize total on page load
-            calculateTotal();
-
-            // Update total when quantities change
-            document.addEventListener('input', function(e) {
-                if (e.target.classList.contains('quantity-input')) {
-                    calculateTotal();
-                }
-            });
-
-            // Load sizes for selected product combination
-            function loadSizeInputs(sizeIds) {
-                if (!sizeIds || sizeIds.length === 0) {
-                    sizeQuantitiesCard.style.display = 'none';
-                    sizeQuantityInputsContainer.innerHTML = '';
-                    totalQuantitySpan.textContent = '0';
-                    return;
-                }
-
-                sizeQuantitiesCard.style.display = 'block';
-                let inputsHTML = '';
-                
-                sizeIds.forEach(sizeId => {
-                    const sizeName = sizeMap[sizeId] || 'Unknown';
-                    const quantity = existingSizeQuantities[sizeId] || 0;
-                    
-                    inputsHTML += `
-                        <div class="col-md-2 mb-3">
-                            <div class="form-group">
-                                <label for="quantity_${sizeId}">${sizeName.toUpperCase()}</label>
-                                <input type="number" name="quantities[${sizeId}]" 
-                                       id="quantity_${sizeId}" class="form-control quantity-input"
-                                       value="${quantity}" min="0" placeholder="0">
-                            </div>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Editing Cutting Data for PO: <strong
+                                    class="text-primary">{{ $cuttingDatum->po_number }}</strong></h3>
                         </div>
-                    `;
-                });
+                        <div class="card-body">
+                            <form action="{{ route('cutting_data.update', $cuttingDatum) }}" method="POST">
+                                @csrf
+                                @method('PUT')
 
-                sizeQuantityInputsContainer.innerHTML = inputsHTML;
-                calculateTotal();
-            }
+                                @if ($errors->any())
+                                    <div class="alert alert-danger">
+                                        <ul>
+                                            @foreach ($errors->all() as $error)
+                                                <li>{{ $error }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
 
-            // Handle product combination change
-            productCombinationSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const sizeIds = selectedOption.dataset.sizes 
-                    ? JSON.parse(selectedOption.dataset.sizes) 
-                    : [];
-                loadSizeInputs(sizeIds);
-            });
-        });
-    </script>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="date">Date</label>
+                                        <input type="date" name="date" class="form-control"
+                                            value="{{ old('date', $cuttingDatum->date->format('Y-m-d')) }}" required>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label>Buyer</label>
+                                        <p class="form-control-plaintext">
+                                            <strong>{{ $cuttingDatum->productCombination->buyer->name ?? 'N/A' }}</strong>
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Style</label>
+                                        <p class="form-control-plaintext">
+                                            <strong>{{ $cuttingDatum->productCombination->style->name ?? 'N/A' }}</strong>
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label>Color</label>
+                                        <p class="form-control-plaintext">
+                                            <strong>{{ $cuttingDatum->productCombination->color->name ?? 'N/A' }}</strong>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <table class="table table-bordered table-hover mt-4">
+                                    <thead>
+                                        <tr>
+                                            <th>Size</th>
+                                            <th>Order Qty</th>
+                                            <th>Available Qty</th>
+                                            <th>Cut Quantity</th>
+                                            <th>Waste Quantity</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cutting-data-table-body">
+                                        @foreach ($orderQuantities as $sizeId => $orderQty)
+                                            @php
+                                                // Find the Size model for the current size ID
+                                                $size = $allSizes->firstWhere('id', $sizeId);
+                                                // Skip if for some reason the size isn't found
+                                                if (!$size) {
+                                                    continue;
+                                                }
+
+                                                // The correct available quantity is passed from the controller, which already
+                                                // excludes the current record's data.
+                                                $availableQty = $availableQuantities[$sizeId] ?? 0;
+                                                $currentCutQty = $cuttingDatum->cut_quantities[$sizeId] ?? 0;
+                                                $currentWasteQty = $cuttingDatum->cut_waste_quantities[$sizeId] ?? 0;
+                                            @endphp
+                                            <tr>
+                                                <td>{{ strtoupper($size->name) }}</td>
+                                                <td>{{ $orderQty }}</td>
+                                                <td class="available-qty"
+                                                    data-initial-available="{{ $availableQty }}"
+                                                    data-current-cut="{{ $currentCutQty }}"
+                                                    data-current-waste="{{ $currentWasteQty }}">
+                                                    {{ $availableQty + $currentCutQty + $currentWasteQty }}
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="cut_quantities[{{ $sizeId }}]"
+                                                        class="form-control form-control-sm cut-qty-input"
+                                                        value="{{ old('cut_quantities.' . $sizeId, $currentCutQty) }}"
+                                                        min="0">
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="waste_quantities[{{ $sizeId }}]"
+                                                        class="form-control form-control-sm waste-qty-input"
+                                                        value="{{ old('waste_quantities.' . $sizeId, $currentWasteQty) }}"
+                                                        min="0">
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+
+                                <div class="d-flex justify-content-end mt-4">
+                                    <!--back/cancel button-->
+                                    <a href="{{ route('cutting_data.index') }}" class="btn btn-lg btn-secondary me-2">Back</a>
+                                    <button type="submit" class="btn btn-lg btn-success">Update Data</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 </x-backend.layouts.master>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tableBody = document.getElementById('cutting-data-table-body');
+        if (!tableBody) return;
+
+        // Function to update the available quantity for a single row
+        function updateAvailableQuantity(row) {
+            const availableQtyCell = row.querySelector('.available-qty');
+            const cutQtyInput = row.querySelector('.cut-qty-input');
+            const wasteQtyInput = row.querySelector('.waste-qty-input');
+
+            // Get the initial values from the data attributes
+            const initialAvailable = parseInt(availableQtyCell.dataset.initialAvailable, 10);
+            const initialCut = parseInt(availableQtyCell.dataset.currentCut, 10);
+            const initialWaste = parseInt(availableQtyCell.dataset.currentWaste, 10);
+
+            // Get the current values from the input fields
+            const currentCut = parseInt(cutQtyInput.value) || 0;
+            const currentWaste = parseInt(wasteQtyInput.value) || 0;
+
+            // Calculate the new available quantity
+            const newAvailable = initialAvailable - (currentCut - initialCut) - (currentWaste - initialWaste);
+
+            // Update the cell text with the new value
+            availableQtyCell.textContent = newAvailable;
+        }
+
+        // Get all rows in the table body
+        const rows = tableBody.querySelectorAll('tr');
+
+        // Add event listeners to each row's input fields
+        rows.forEach(row => {
+            const cutQtyInput = row.querySelector('.cut-qty-input');
+            const wasteQtyInput = row.querySelector('.waste-qty-input');
+
+            if (cutQtyInput) {
+                cutQtyInput.addEventListener('input', () => updateAvailableQuantity(row));
+            }
+            if (wasteQtyInput) {
+                wasteQtyInput.addEventListener('input', () => updateAvailableQuantity(row));
+            }
+        });
+    });
+</script>

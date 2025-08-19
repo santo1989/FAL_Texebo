@@ -152,7 +152,7 @@ Route::middleware('auth')->group(function () {
 
     // Cutting Data Routes
     Route::get('cutting_data_report', [CuttingDataController::class, 'cutting_data_report'])->name('cutting_data_report');
-    Route::get('cutting_data/find', [CuttingDataController::class, 'find'])->name('cutting_data.find'); // Custom route first
+    Route::get('/cutting-data/find', [CuttingDataController::class, 'find'])->name('cutting_data.find');
     Route::get('/get-order-and-cutting-quantities/{product_combination_id}', [CuttingDataController::class, 'getOrderAndCuttingQuantities'])->name('get.order.and.cutting.quantities');
     Route::resource('cutting_data', CuttingDataController::class); // Resource route last
 

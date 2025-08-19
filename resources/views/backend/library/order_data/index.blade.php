@@ -1,4 +1,4 @@
-a<x-backend.layouts.master>
+<x-backend.layouts.master>
     <x-slot name="pageTitle">
         Order Data
     </x-slot>

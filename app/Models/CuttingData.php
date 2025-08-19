@@ -11,8 +11,12 @@ class CuttingData extends Model
     protected $fillable = [
         'date',
         'product_combination_id',
+        'po_number',
+        'old_order',
         'cut_quantities',
         'total_cut_quantity',
+        'cut_waste_quantities',
+        'total_cut_waste_quantity'
     ];
 
     protected $casts = [

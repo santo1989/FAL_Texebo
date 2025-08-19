@@ -45,25 +45,38 @@
                                         <th>Style</th>
                                         <th>Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ strtoupper($size->name) }}</th>
+                                            <th colspan="2" class="text-center">
+                                                {{ strtoupper($size->name) }}
+                                            </th>
                                         @endforeach
-                                        <th>Total</th>
+                                        <th colspan="2">Total Quantities</th>
                                         <th>Actions</th>
+                                    </tr>
+                                    <tr>
+                                        <th colspan="5"></th>
+                                        @foreach ($allSizes as $size)
+                                            <th>Cut Qty</th>
+                                            <th>Waste Qty</th>
+                                        @endforeach
+                                        <th>Cut</th>
+                                        <th>Waste</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse ($cuttingData as $data)
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
-                                            <td>{{ $data->date->format('d-M') }}</td>
+                                            <td>{{ $data->date->format('d-M-y') }}</td>
                                             <td>{{ $data->productCombination->buyer->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->style->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->color->name ?? 'N/A' }}</td>
-                                            {{-- MODIFIED: Access cut_quantities directly with $size->name, without strtolower() --}}
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data->cut_quantities[$size->name] ?? '' }}</td>
+                                                <td>{{ $data->cut_quantities[$size->id] ?? 0 }}</td>
+                                                <td>{{ $data->cut_waste_quantities[$size->id] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data->total_cut_quantity }}</td>
+                                            <td>{{ $data->total_cut_waste_quantity }}</td>
                                             <td>
                                                 <a href="{{ route('cutting_data.edit', $data->id) }}" class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-pencil"></i> Edit
@@ -79,7 +92,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 5 + count($allSizes) + 2 }}" class="text-center">No cutting data found</td>
+                                            <td colspan="{{ 5 + (count($allSizes) * 2) + 2 }}" class="text-center">No cutting data found</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
