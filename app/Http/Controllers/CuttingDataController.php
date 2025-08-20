@@ -337,6 +337,7 @@ class CuttingDataController extends Controller
 
     public function cutting_data_report(Request $request)
     {
+        $distinctPoNumbers = CuttingData::distinct()->pluck('po_number');
         $query = CuttingData::with('productCombination.style', 'productCombination.color');
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
@@ -352,34 +353,76 @@ class CuttingDataController extends Controller
                 $q->where('color_id', $request->color_id);
             });
         }
+        if ($request->filled('po_number')) {
+            $query->where('po_number', $request->po_number);
+        }
 
         $cuttingData = $query->get();
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
 
+        // Get order data for comparison
+        $poNumbers = $cuttingData->pluck('po_number')->unique();
+        $productCombinationIds = $cuttingData->pluck('product_combination_id')->unique();
+
+        $orderData = OrderData::whereIn('po_number', $poNumbers)
+            ->whereIn('product_combination_id', $productCombinationIds)
+            ->get()
+            ->groupBy(['po_number', 'product_combination_id']);
+
+        $sizeIdToNameMap = $allSizes->keyBy('id')->map(function ($size) {
+            return $size->name;
+        });
+
         foreach ($cuttingData as $data) {
             $styleName = $data->productCombination->style->name;
             $colorName = $data->productCombination->color->name;
-            $key = $styleName . '-' . $colorName;
+            $key = $styleName . '-' . $colorName . '-' . $data->po_number;
 
             if (!isset($reportData[$key])) {
                 $reportData[$key] = [
                     'style' => $styleName,
                     'color' => $colorName,
-                    'sizes' => [],
-                    'total' => 0,
+                    'po_number' => $data->po_number,
+                    'cut_sizes' => [],
+                    'waste_sizes' => [],
+                    'order_sizes' => [],
+                    'total_cut' => 0,
+                    'total_waste' => 0,
+                    'total_order' => 0,
                 ];
+
                 foreach ($allSizes as $size) {
-                    $reportData[$key]['sizes'][$size->name] = 0;
+                    $reportData[$key]['cut_sizes'][$size->id] = 0;
+                    $reportData[$key]['waste_sizes'][$size->id] = 0;
+                    $reportData[$key]['order_sizes'][$size->id] = 0;
+                }
+
+                // Add order quantities if available
+                if (isset($orderData[$data->po_number][$data->product_combination_id])) {
+                    $order = $orderData[$data->po_number][$data->product_combination_id]->first();
+                    foreach ($order->order_quantities as $sizeId => $quantity) {
+                        $reportData[$key]['order_sizes'][$sizeId] = $quantity;
+                        $reportData[$key]['total_order'] += $quantity;
+                    }
                 }
             }
 
-            foreach ($data->cut_quantities as $sizeName => $quantity) {
-                if (array_key_exists($sizeName, $reportData[$key]['sizes'])) {
-                    $reportData[$key]['sizes'][$sizeName] += $quantity;
+            // Add cutting quantities
+            foreach ($data->cut_quantities as $sizeId => $quantity) {
+                if (array_key_exists($sizeId, $reportData[$key]['cut_sizes'])) {
+                    $reportData[$key]['cut_sizes'][$sizeId] += $quantity;
+                    $reportData[$key]['total_cut'] += $quantity;
                 }
             }
-            $reportData[$key]['total'] += $data->total_cut_quantity;
+
+            // Add waste quantities
+            foreach ($data->cut_waste_quantities as $sizeId => $quantity) {
+                if (array_key_exists($sizeId, $reportData[$key]['waste_sizes'])) {
+                    $reportData[$key]['waste_sizes'][$sizeId] += $quantity;
+                    $reportData[$key]['total_waste'] += $quantity;
+                }
+            }
         }
 
         $reportData = array_values($reportData);
@@ -391,39 +434,8 @@ class CuttingDataController extends Controller
             'reportData',
             'allSizes',
             'styles',
-            'colors'
+            'colors',
+            'distinctPoNumbers'
         ));
     }
-
-    // public function getOrderAndCuttingQuantities($productCombinationId)
-    // {
-    //     try {
-    //         $orderData = OrderData::where('product_combination_id', $productCombinationId)->get();
-    //         $totalOrderQuantities = [];
-    //         foreach ($orderData as $data) {
-    //             foreach ($data->order_quantities as $size => $quantity) {
-    //                 $totalOrderQuantities[$size] = ($totalOrderQuantities[$size] ?? 0) + (int)$quantity;
-    //             }
-    //         }
-
-    //         $cuttingData = CuttingData::where('product_combination_id', $productCombinationId)->get();
-    //         $totalCuttingQuantities = [];
-    //         foreach ($cuttingData as $data) {
-    //             foreach ($data->cut_quantities as $size => $quantity) {
-    //                 $totalCuttingQuantities[$size] = ($totalCuttingQuantities[$size] ?? 0) + (int)$quantity;
-    //             }
-    //         }
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'order_quantities' => $totalOrderQuantities,
-    //             'cutting_quantities' => $totalCuttingQuantities,
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Error fetching quantities',
-    //         ], 500);
-    //     }
-    // }
 }
