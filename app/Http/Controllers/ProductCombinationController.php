@@ -36,7 +36,7 @@ class ProductCombinationController extends Controller
     public function create()
     {
         $buyers = Buyer::where('is_active', 0)->get();
-        $styles = Style::where('is_active', 0)->get();
+        $styles = Style::where('is_active', 1)->get();
         $colors = Color::where('is_active', 0)->get();
         $sizes = Size::where('is_active', 1)->get();
         return view('backend.library.product_combinations.create', compact('buyers', 'styles', 'colors', 'sizes'));
