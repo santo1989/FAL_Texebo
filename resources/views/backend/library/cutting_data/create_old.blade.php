@@ -1,13 +1,13 @@
-<x-backend.layouts.master>
+ <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Add Sublimation Print/Send Data
+        Add Cutting Data
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Sublimation Print/Send Data </x-slot>
+            <x-slot name="pageHeader"> Cutting Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('sublimation_print_send_data.index') }}">Sublimation Print/Send Data</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('cutting_data.index') }}">Cutting Data</a></li>
             <li class="breadcrumb-item active">Add</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
@@ -15,7 +15,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <x-backend.layouts.elements.errors />
-    <form action="{{ route('sublimation_print_send_data.store') }}" method="post">
+    <form action="{{ route('cutting_data.store') }}" method="post">
         @csrf
         <div class="row">
             <div class="col-md-3">
@@ -59,47 +59,54 @@
                         <th>
                             {{ $size->name }}
                             <br>
-                            <small>Send Qty / Waste Qty</small>
+                            <small>Cut Qty / Waste Qty</small>
                         </th>
                     @endforeach
-                    <th>Total Send Qty</th>
+                    <th>Total Cut Qty</th>
                     <th>Total Waste Qty</th>
                 </tr>
             </thead>
-            <tbody id="sublimation-print-send-data-body">
+            <tbody id="cutting-data-body">
                 <!-- Dynamic rows will be injected here by JavaScript -->
             </tbody>
         </table>
 
-        <a href="{{ route('sublimation_print_send_data.index') }}" class="btn btn-secondary mt-3">Back</a>
-        <button type="submit" class="btn btn-primary mt-3">Save Sublimation Print/Send Data</button>
+        <a href="{{ route('cutting_data.index') }}" class="btn btn-secondary mt-3">Back</a>
+        <button type="submit" class="btn btn-primary mt-3">Save Cutting Data</button>
     </form>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Select2
+            // $('#po_number').select2({
+            //     placeholder: 'Select PO Number(s)',
+            //     allowClear: true,
+            //     width: '100%'
+            // });
+
             const poNumberSelect = document.getElementById('po_number');
-            const sublimationPrintSendDataBody = document.getElementById('sublimation-print-send-data-body');
+            const cuttingDataBody = document.getElementById('cutting-data-body');
             let savedInputs = {}; // Persist input values
 
             // Load initial data if any PO numbers are selected
             const initialPoNumbers = Array.from(poNumberSelect.selectedOptions).map(option => option.value);
             if (initialPoNumbers.length > 0) {
-                updateSublimationPrintSendDataRows(initialPoNumbers);
+                updateCuttingDataRows(initialPoNumbers);
             }
 
             // Listen for changes in the PO number selection
             poNumberSelect.addEventListener('change', function() {
                 const selectedPoNumbers = Array.from(poNumberSelect.selectedOptions).map(option => option.value);
                 if (selectedPoNumbers.length > 0) {
-                    updateSublimationPrintSendDataRows(selectedPoNumbers);
+                    updateCuttingDataRows(selectedPoNumbers);
                 } else {
-                    sublimationPrintSendDataBody.innerHTML = '';
+                    cuttingDataBody.innerHTML = '';
                     savedInputs = {}; // Clear saved inputs when no POs selected
                 }
             });
 
-            function updateSublimationPrintSendDataRows(poNumbers) {
-                const url = '{{ route('sublimation_print_send_data.find') }}?po_numbers[]=' + poNumbers.join('&po_numbers[]=');
+            function updateCuttingDataRows(poNumbers) {
+                const url = '{{ route('cutting_data.find') }}?po_numbers[]=' + poNumbers.join('&po_numbers[]=');
                 console.log('Fetching URL:', url);
 
                 fetch(url, {
@@ -116,12 +123,12 @@
                     })
                     .then(data => {
                         console.log('Raw response data:', JSON.stringify(data, null, 2));
-                        sublimationPrintSendDataBody.innerHTML = '';
+                        cuttingDataBody.innerHTML = '';
                         let rowIndex = 0;
 
                         if (!data || Object.keys(data).length === 0) {
                             console.log('No data returned from server');
-                            sublimationPrintSendDataBody.innerHTML = '<tr><td colspan="100%">No data found for selected PO numbers.</td></tr>';
+                            cuttingDataBody.innerHTML = '<tr><td colspan="100%">No data found for selected PO numbers.</td></tr>';
                             return;
                         }
 
@@ -140,6 +147,7 @@
                                 row.dataset.key = key;
                                 row.innerHTML = `
                                     <td class="text-center">
+                                        <input type="hidden" name="rows[${rowIndex}][po_number]" value="${poNumber}">
                                         <input type="hidden" name="rows[${rowIndex}][product_combination_id]" value="${combination.combination_id}">
                                         ${poNumber}
                                     </td>
@@ -155,7 +163,7 @@
                                         const sizeId = "{{ $size->id }}";
                                         const sizeName = "{{ $size->name }}";
                                         const availableQty = combination.available_quantities[sizeName] || 0;
-                                        const savedSend = (savedInputs[key] && savedInputs[key].send && savedInputs[key].send[sizeId]) || 0;
+                                        const savedCut = (savedInputs[key] && savedInputs[key].cut && savedInputs[key].cut[sizeId]) || 0;
                                         const savedWaste = (savedInputs[key] && savedInputs[key].waste && savedInputs[key].waste[sizeId]) || 0;
                                         const isSizeAvailable = availableSizeIds.includes(sizeId);
 
@@ -163,15 +171,16 @@
                                         if (isSizeAvailable && availableQty > 0) {
                                             cell.innerHTML = ` <label>Max = ${availableQty} Pcs </label> <br>
                                                 <div class="input-group input-group-sm">
+                                                   
                                                     <input type="number" 
-                                                           name="rows[${rowIndex}][sublimation_print_send_quantities][${sizeId}]" 
-                                                           class="form-control send-qty-input"
+                                                           name="rows[${rowIndex}][cut_quantities][${sizeId}]" 
+                                                           class="form-control cut-qty-input"
                                                            min="0" 
                                                            max="${availableQty}"
-                                                           value="${savedSend}"
+                                                           value="${savedCut}"
                                                            placeholder="Av: ${availableQty}">
                                                     <input type="number" 
-                                                           name="rows[${rowIndex}][sublimation_print_send_waste_quantities][${sizeId}]" 
+                                                           name="rows[${rowIndex}][waste_quantities][${sizeId}]" 
                                                            class="form-control waste-qty-input"
                                                            min="0" 
                                                            value="${savedWaste}"
@@ -187,23 +196,23 @@
                                 @endforeach
 
                                 row.innerHTML += `
-                                    <td><span class="total-send-qty-span">0</span></td>
+                                    <td><span class="total-cut-qty-span">0</span></td>
                                     <td><span class="total-waste-qty-span">0</span></td>
                                 `;
 
-                                sublimationPrintSendDataBody.appendChild(row);
+                                cuttingDataBody.appendChild(row);
                                 rowIndex++;
                             });
                         }
 
                         // Trigger input event to calculate initial totals
-                        sublimationPrintSendDataBody.querySelectorAll('.send-qty-input, .waste-qty-input').forEach(input => {
+                        cuttingDataBody.querySelectorAll('.cut-qty-input, .waste-qty-input').forEach(input => {
                             input.dispatchEvent(new Event('input'));
                         });
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);
-                        sublimationPrintSendDataBody.innerHTML = '<tr><td colspan="100%">Error loading data. Please try again.</td></tr>';
+                        cuttingDataBody.innerHTML = '<tr><td colspan="100%">Error loading data. Please try again.</td></tr>';
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
@@ -213,24 +222,24 @@
             }
 
             // Calculate totals and persist input values
-            sublimationPrintSendDataBody.addEventListener('input', function(e) {
+            cuttingDataBody.addEventListener('input', function(e) {
                 const target = e.target;
                 const row = target.closest('tr');
                 const key = row.dataset.key;
 
                 if (!savedInputs[key]) {
-                    savedInputs[key] = { send: {}, waste: {} };
+                    savedInputs[key] = { cut: {}, waste: {} };
                 }
 
-                let isSend = target.classList.contains('send-qty-input');
+                let isCut = target.classList.contains('cut-qty-input');
                 let isWaste = target.classList.contains('waste-qty-input');
 
-                if (isSend || isWaste) {
+                if (isCut || isWaste) {
                     const name = target.name;
-                    const sizeId = name.match(/\[(sublimation_print_send_quantities|sublimation_print_send_waste_quantities)\]\[(\d+)\]/)[2];
+                    const sizeId = name.match(/\[(cut|waste)_quantities\]\[(\d+)\]/)[2];
                     let value = parseInt(target.value) || 0;
 
-                    if (isSend) {
+                    if (isCut) {
                         const max = parseInt(target.getAttribute('max')) || 0;
                         if (value > max) {
                             value = max;
@@ -238,34 +247,34 @@
                             Swal.fire({
                                 icon: 'warning',
                                 title: 'Invalid Input',
-                                text: `Send quantity cannot exceed available quantity (${max}).`,
+                                text: `Cut quantity cannot exceed available quantity (${max}).`,
                             });
                         }
                     }
 
                     // Save the updated value
-                    if (isSend) {
-                        savedInputs[key].send[sizeId] = value;
+                    if (isCut) {
+                        savedInputs[key].cut[sizeId] = value;
                     } else if (isWaste) {
                         savedInputs[key].waste[sizeId] = value;
                     }
 
                     // Recalculate totals
-                    let totalSend = 0;
+                    let totalCut = 0;
                     let totalWaste = 0;
 
-                    row.querySelectorAll('.send-qty-input').forEach(input => {
-                        totalSend += parseInt(input.value) || 0;
+                    row.querySelectorAll('.cut-qty-input').forEach(input => {
+                        totalCut += parseInt(input.value) || 0;
                     });
 
                     row.querySelectorAll('.waste-qty-input').forEach(input => {
                         totalWaste += parseInt(input.value) || 0;
                     });
 
-                    row.querySelector('.total-send-qty-span').textContent = totalSend;
+                    row.querySelector('.total-cut-qty-span').textContent = totalCut;
                     row.querySelector('.total-waste-qty-span').textContent = totalWaste;
                 }
             });
         });
     </script>
-</x-backend.layouts.master>
+</x-backend.layouts.master> 

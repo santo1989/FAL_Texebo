@@ -156,8 +156,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/get-order-and-cutting-quantities/{product_combination_id}', [CuttingDataController::class, 'getOrderAndCuttingQuantities'])->name('get.order.and.cutting.quantities');
     Route::resource('cutting_data', CuttingDataController::class); // Resource route last
 
-    //sublimation print send routes
+    Route::get('cutting-waste/create', [CuttingDataController::class, 'createWaste'])->name('cutting_data.create_waste');
+    Route::post('cutting-waste/store', [CuttingDataController::class, 'storeWaste'])->name('cutting_data.store_waste');
+    Route::get('cutting-waste/find', [CuttingDataController::class, 'findWaste'])->name('cutting_data.find_waste');
+
+    //sublimation print send routes 
+    Route::get('sublimation_print_send_data/find', [SublimationPrintSendController::class, 'find'])->name('sublimation_print_send_data.find');
     Route::resource('sublimation_print_send_data', SublimationPrintSendController::class);
+   
 
     // Sublimation Print Send Report Routes
     Route::get('/sublimation_print_send_data/reports/total', [SublimationPrintSendController::class, 'totalPrintEmbSendReport'])->name('sublimation_print_send_data.report.total');

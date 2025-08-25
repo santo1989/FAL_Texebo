@@ -16,23 +16,29 @@
             <div class="row">
                 <div class="col-12">
                     <div class="card" style="overflow-x: auto;">
-                        <div class="card-header">
-                            <a href="{{ route('home') }}" class="btn btn-sm btn-outline-danger">
-                                <i class="fas fa-arrow-left"></i> Close
-                            </a>
-                            <a href="{{ route('cutting_data.create') }}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-plus"></i> Add Cutting Data
-                            </a>
-                            <a href="{{ route('cutting_data_report') }}" class="btn btn-sm btn-outline-info">
-                                <i class="fas fa-chart-bar"></i> Cutting Report
-                            </a>
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="{{ route('home') }}" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-arrow-left"></i> Close
+                                </a>
+                                <a href="{{ route('cutting_data.create') }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-plus"></i> Add Cutting Data
+                                </a>
+                                <a href="{{ route('cutting_data.create_waste') }}" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-plus"></i> Add Cutting Waste Data
+                                </a>
+                                <a href="{{ route('cutting_data_report') }}" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-chart-bar"></i> Cutting Report
+                                </a>
+                            </div>
 
-                            <form class="d-flex float-right" action="{{ route('cutting_data.index') }}" method="GET">
-                                <input class="form-control me-2" type="search" name="search"
+                            <form class="d-flex flex-wrap gap-2" action="{{ route('cutting_data.index') }}"
+                                method="GET">
+                                <input class="form-control" type="search" name="search"
                                     placeholder="Search by Style/Color/PO" value="{{ request('search') }}">
-                                <input class="form-control me-2" type="date" name="date"
-                                    value="{{ request('date') }}">
+                                <input class="form-control" type="date" name="date" value="{{ request('date') }}">
                                 <button class="btn btn-outline-success" type="submit">Search</button>
+                                <button class="btn btn-outline-danger" type="reset">Reset</button>
                             </form>
                         </div>
                         <div class="card-body">
@@ -53,7 +59,7 @@
                                         <th rowspan="2">Actions</th>
                                     </tr>
                                     <tr>
-                                        
+
                                         @foreach ($allSizes as $size)
                                             <th>Cut Qty</th>
                                             <th>Waste Qty</th>
@@ -77,10 +83,12 @@
                                             <td>{{ $data->total_cut_quantity }}</td>
                                             <td>{{ $data->total_cut_waste_quantity }}</td>
                                             <td>
-                                                <a href="{{ route('cutting_data.edit', $data->id) }}" class="btn btn-sm btn-outline-primary">
+                                                <a href="{{ route('cutting_data.edit', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-pencil"></i> Edit
                                                 </a>
-                                                <a href="{{ route('cutting_data.show', $data->id) }}" class="btn btn-sm btn-outline-info">
+                                                <a href="{{ route('cutting_data.show', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-info-circle"></i> Show
                                                 </a>
                                                 <button class="btn btn-sm btn-outline-danger"
@@ -91,7 +99,8 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 5 + (count($allSizes) * 2) + 2 }}" class="text-center">No cutting data found</td>
+                                            <td colspan="{{ 5 + count($allSizes) * 2 + 2 }}" class="text-center">No
+                                                cutting data found</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -128,5 +137,11 @@
                 }
             });
         }
+
+        // Reset form and reload page
+        document.querySelector('button[type="reset"]').addEventListener('click', function() {
+            window.location.href = "{{ route('cutting_data.index') }}";
+        });
+
     </script>
 </x-backend.layouts.master>
