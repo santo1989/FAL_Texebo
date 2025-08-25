@@ -1,71 +1,89 @@
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Print/Embroidery Send Details
+        View Sublimation Print/Send Data
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Print/Emb Send Data </x-slot>
+            <x-slot name="pageHeader"> Sublimation Print/Send Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('print_send_data.index') }}">Print/Emb Send</a></li>
-            <li class="breadcrumb-item active">Details</li>
+            <li class="breadcrumb-item"><a href="{{ route('sublimation_print_send_data.index') }}">Sublimation Print/Send Data</a></li>
+            <li class="breadcrumb-item active">View</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
 
-    <section class="content">
-        <div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Sublimation Print/Send Details</h3>
+        </div>
+        <div class="card-body">
             <div class="row">
+                <div class="col-md-4">
+                    <strong>Date:</strong> {{ $sublimationPrintSendDatum->date }}
+                </div>
+                <div class="col-md-4">
+                    <strong>PO Number:</strong> {{ $sublimationPrintSendDatum->po_number }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Old Order:</strong> {{ $sublimationPrintSendDatum->old_order }}
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <strong>Buyer:</strong> {{ $sublimationPrintSendDatum->productCombination->buyer->name ?? 'N/A' }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Style:</strong> {{ $sublimationPrintSendDatum->productCombination->style->name ?? 'N/A' }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Color:</strong> {{ $sublimationPrintSendDatum->productCombination->color->name ?? 'N/A' }}
+                </div>
+            </div>
+            
+            <div class="row mt-4">
                 <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Print/Embroidery Send Details</h3>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-bordered">
+                    <h4>Size-wise Quantities</h4>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Size</th>
+                                <th>Send Quantity</th>
+                                <th>Waste Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($allSizes as $size)
+                                @php
+                                    $sizeName = $size->name;
+                                    $sizeId = $size->id;
+                                    // Ensure we're working with arrays, not objects
+                                    $sendQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_quantities;
+                                    $wasteQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_waste_quantities;
+                                    $sendQty = $sendQuantities[$sizeId] ?? 0;
+                                    $wasteQty = $wasteQuantities[$sizeId] ?? 0;
+                                @endphp
                                 <tr>
-                                    <th>Date</th>
-                                    <td>{{ $printSendDatum->date }}</td>
+                                    <td>{{ $sizeName }}</td>
+                                    <td>{{ $sendQty }}</td>
+                                    <td>{{ $wasteQty }}</td>
                                 </tr>
-                                <tr>
-                                    <th>Buyer</th>
-                                    <td>{{ $printSendDatum->productCombination->buyer->name ?? 'N/A' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Style</th>
-                                    <td>{{ $printSendDatum->productCombination->style->name ?? 'N/A' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Color</th>
-                                    <td>{{ $printSendDatum->productCombination->color->name ?? 'N/A' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Sizes & Quantities</th>
-                                    <td>
-                                        <ul>
-                                            @foreach ($printSendDatum->send_quantities as $size => $quantity)
-                                                <li><strong>{{ strtoupper($size) }}:</strong> {{ $quantity }}</li>
-                                            @endforeach
-                                        </ul>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Total Send Quantity</th>
-                                    <td>{{ $printSendDatum->total_send_quantity }}</td>
-                                </tr>
-                            </table>
-                            <div class="mt-3">
-                                <a href="{{ route('print_send_data.edit', $printSendDatum->id) }}" class="btn btn-primary">Edit</a>
-                                <a href="{{ route('print_send_data.index') }}" class="btn btn-secondary">Back to List</a>
-                                <form action="{{ route('print_send_data.destroy', $printSendDatum->id) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this record?');">Delete</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td><strong>Total</strong></td>
+                                <td><strong>{{ $sublimationPrintSendDatum->total_sublimation_print_send_quantity }}</strong></td>
+                                <td><strong>{{ $sublimationPrintSendDatum->total_sublimation_print_send_waste_quantity }}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             </div>
         </div>
-    </section>
+        <div class="card-footer">
+            <a href="{{ route('sublimation_print_send_data.index') }}" class="btn btn-secondary">Back</a>
+            <a href="{{ route('sublimation_print_send_data.edit', $sublimationPrintSendDatum->id) }}" class="btn btn-primary">Edit</a>
+        </div>
+    </div>
 </x-backend.layouts.master>

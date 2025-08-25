@@ -1,4 +1,4 @@
-<!-- resources/views/backend/library/print_send_data/reports/ready.blade.php -->
+<!-- resources/views/backend/library/sublimation_print_send_data/reports/ready.blade.php -->
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
         Ready to Input Report
@@ -19,10 +19,11 @@
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title text-center">Ready to Input for Finishing Report</h3>
-                            <a href="{{ route('print_send_data.index') }}" class="btn btn-lg btn-outline-danger float-right">
+                            <a href="{{ route('sublimation_print_send_data.index') }}"
+                                class="btn btn-lg btn-outline-danger float-right">
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
-                            
+
                         </div>
                         <div class="card-body">
                             <table class="table table-bordered table-hover">
@@ -46,7 +47,8 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="text-center">No data found for ready to input.</td>
+                                            <td colspan="5" class="text-center">No data found for ready to input.
+                                            </td>
                                         </tr>
                                     @endforelse
                                 </tbody>

@@ -1,11 +1,11 @@
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Print/Embroidery Receive Data
+        Sublimation Print/Embroidery Receive Data
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Print/Embroidery Receive Data </x-slot>
+            <x-slot name="pageHeader"> Sublimation Print/Embroidery Receive Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
             <li class="breadcrumb-item active">Print/Emb Receive</li>
         </x-backend.layouts.elements.breadcrumb>
@@ -20,16 +20,22 @@
                             <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
-                            <a href="{{ route('print_receive_data.create') }}" class="btn btn-lg btn-outline-primary">
+                            <a href="{{ route('sublimation_print_receive_data.create') }}"
+                                class="btn btn-lg btn-outline-primary">
                                 <i class="fas fa-plus"></i> Add Print/Emb Receive
                             </a>
                             <div class="btn-group ml-2">
                                 <h4 class="btn btn-lg text-center">Reports</h4>
-                                <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_receive_data.report.total_receive') }}'">Total Print/Emb Receive</button>
-                                <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_receive_data.report.balance_quantity') }}'">Print/Emb Balance</button>
+                                <button class="btn btn-lg btn-outline-primary"
+                                    onclick="location.href='{{ route('sublimation_print_receive_data.report.total_receive') }}'">Total
+                                    Print/Emb Receive</button>
+                                <button class="btn btn-lg btn-outline-primary"
+                                    onclick="location.href='{{ route('sublimation_print_receive_data.report.balance_quantity') }}'">Print/Emb
+                                    Balance</button>
                             </div>
 
-                            <form class="d-flex float-right" action="{{ route('print_receive_data.index') }}" method="GET">
+                            <form class="d-flex float-right"
+                                action="{{ route('sublimation_print_receive_data.index') }}" method="GET">
                                 <input class="form-control me-2" type="search" name="search"
                                     placeholder="Search by Style/Color" value="{{ request('search') }}">
                                 <input class="form-control me-2" type="date" name="date"
@@ -66,21 +72,24 @@
                                             @endforeach
                                             <td>{{ $data->total_receive_quantity }}</td>
                                             <td>
-                                                <a href="{{ route('print_receive_data.edit', $data->id) }}" class="btn btn-sm btn-outline-primary">
+                                                <a href="{{ route('sublimation_print_receive_data.edit', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-pencil"></i> Edit
                                                 </a>
-                                                <a href="{{ route('print_receive_data.show', $data->id) }}" class="btn btn-sm btn-outline-info">
+                                                <a href="{{ route('sublimation_print_receive_data.show', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-info-circle"></i> Show
                                                 </a>
                                                 <button class="btn btn-sm btn-outline-danger"
-                                                    onclick="confirmDelete('{{ route('print_receive_data.destroy', $data->id) }}')">
+                                                    onclick="confirmDelete('{{ route('sublimation_print_receive_data.destroy', $data->id) }}')">
                                                     <i class="bi bi-trash"></i> Delete
                                                 </button>
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 6 + count($allSizes) }}" class="text-center">No print/emb receive data found</td>
+                                            <td colspan="{{ 6 + count($allSizes) }}" class="text-center">No print/emb
+                                                receive data found</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

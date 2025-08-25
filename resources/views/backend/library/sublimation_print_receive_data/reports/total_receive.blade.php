@@ -7,7 +7,9 @@
         <x-backend.layouts.elements.breadcrumb>
             <x-slot name="pageHeader"> Total Print/Embroidery Receive Report </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('print_receive_data.index') }}">Print/Emb Receive</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('sublimation_print_receive_data.index') }}">Print/Emb
+                    Receive</a>
+            </li>
             <li class="breadcrumb-item active">Total Receive Report</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
@@ -19,10 +21,12 @@
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title">Total Print/Embroidery Received Quantities</h3>
-                            <a href="{{ route('print_receive_data.index') }}" class="btn btn-primary float-right">Back
+                            <a href="{{ route('sublimation_print_receive_data.index') }}"
+                                class="btn btn-primary float-right">Back
                                 to List</a>
                             <form class="d-flex float-right"
-                                action="{{ route('print_receive_data.report.total_receive') }}" method="GET">
+                                action="{{ route('sublimation_print_receive_data.report.total_receive') }}"
+                                method="GET">
                                 <input class="form-control me-2" type="date" name="start_date"
                                     value="{{ request('start_date') }}">
                                 <input class="form-control me-2" type="date" name="end_date"

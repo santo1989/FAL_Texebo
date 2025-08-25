@@ -1,13 +1,13 @@
 {{-- <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Add Print/Embroidery Receive Data
+        Add Sublimation Print/Embroidery Receive Data
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Add Print/Embroidery Receive Data </x-slot>
+            <x-slot name="pageHeader"> Add Sublimation Print/Embroidery Receive Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('print_receive_data.index') }}">Print/Emb Receive</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('sublimation_print_receive_data.index') }}">Print/Emb Receive</a></li>
             <li class="breadcrumb-item active">Add New</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
@@ -18,9 +18,9 @@
                 <div class="col-md-12">
                     <div class="card card-primary">
                         <div class="card-header">
-                            <h3 class="card-title">Add Print/Embroidery Receive Data</h3>
+                            <h3 class="card-title">Add Sublimation Print/Embroidery Receive Data</h3>
                         </div>
-                        <form action="{{ route('print_receive_data.store') }}" method="POST">
+                        <form action="{{ route('sublimation_print_receive_data.store') }}" method="POST">
                             @csrf
                             <div class="card-body">
                                 <div class="form-group">
@@ -67,7 +67,7 @@
                             </div>
                             <div class="card-footer">
                                 <button type="submit" class="btn btn-primary">Submit</button>
-                                <a href="{{ route('print_receive_data.index') }}" class="btn btn-danger">Cancel</a>
+                                <a href="{{ route('sublimation_print_receive_data.index') }}" class="btn btn-danger">Cancel</a>
                             </div>
                         </form>
                     </div>
@@ -79,14 +79,16 @@
 
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Add Print/Embroidery Receive Data
+        Add Sublimation Print/Embroidery Receive Data
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Add Print/Embroidery Receive Data </x-slot>
+            <x-slot name="pageHeader"> Add Sublimation Print/Embroidery Receive Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('print_receive_data.index') }}">Print/Emb Receive</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('sublimation_print_receive_data.index') }}">Print/Emb
+                    Receive</a>
+            </li>
             <li class="breadcrumb-item active">Add New</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
@@ -97,14 +99,15 @@
                 <div class="col-md-12">
                     <div class="card card-primary">
                         <div class="card-header">
-                            <h3 class="card-title">Add Print/Embroidery Receive Data</h3>
+                            <h3 class="card-title">Add Sublimation Print/Embroidery Receive Data</h3>
                         </div>
-                        <form action="{{ route('print_receive_data.store') }}" method="POST">
+                        <form action="{{ route('sublimation_print_receive_data.store') }}" method="POST">
                             @csrf
                             <div class="card-body">
                                 <div class="form-group">
                                     <label for="date">Date</label>
-                                    <input type="date" name="date" class="form-control" id="date" value="{{ old('date', date('Y-m-d')) }}" required>
+                                    <input type="date" name="date" class="form-control" id="date"
+                                        value="{{ old('date', date('Y-m-d')) }}" required>
                                     @error('date')
                                         <div class="text-danger">{{ $message }}</div>
                                     @enderror
@@ -112,10 +115,12 @@
 
                                 <div class="form-group">
                                     <label for="product_combination_id">Product Combination (Style - Color)</label>
-                                    <select name="product_combination_id" id="product_combination_id" class="form-control" required>
+                                    <select name="product_combination_id" id="product_combination_id"
+                                        class="form-control" required>
                                         <option value="">Select Product Combination</option>
                                         @foreach ($productCombinations as $pc)
-                                            <option value="{{ $pc->id }}" {{ old('product_combination_id') == $pc->id ? 'selected' : '' }}>
+                                            <option value="{{ $pc->id }}"
+                                                {{ old('product_combination_id') == $pc->id ? 'selected' : '' }}>
                                                 {{ $pc->style->name }} - {{ $pc->color->name }}
                                             </option>
                                         @endforeach
@@ -127,13 +132,15 @@
 
                                 <div id="sizeInputs">
                                     <div class="text-center mt-4">
-                                        <p class="text-muted">Select a product combination to see available quantities</p>
+                                        <p class="text-muted">Select a product combination to see available quantities
+                                        </p>
                                     </div>
                                 </div>
                             </div>
                             <div class="card-footer">
                                 <button type="submit" class="btn btn-primary">Submit</button>
-                                <a href="{{ route('print_receive_data.index') }}" class="btn btn-danger">Cancel</a>
+                                <a href="{{ route('sublimation_print_receive_data.index') }}"
+                                    class="btn btn-danger">Cancel</a>
                             </div>
                         </form>
                     </div>
@@ -151,18 +158,21 @@
                 const combinationId = this.value;
 
                 if (!combinationId) {
-                    sizeInputsContainer.innerHTML = '<div class="text-center mt-4"><p class="text-muted">Select a product combination to see available quantities</p></div>';
+                    sizeInputsContainer.innerHTML =
+                        '<div class="text-center mt-4"><p class="text-muted">Select a product combination to see available quantities</p></div>';
                     return;
                 }
 
-                sizeInputsContainer.innerHTML = '<div class="text-center mt-4"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div><p class="mt-2">Loading available quantities...</p></div>';
+                sizeInputsContainer.innerHTML =
+                    '<div class="text-center mt-4"><div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div><p class="mt-2">Loading available quantities...</p></div>';
 
-                fetch(`/print_receive_data/available_quantities/${combinationId}`)
+                fetch(`/sublimation_print_receive_data/available_quantities/${combinationId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.availableQuantities) {
                             console.log(data.availableQuantities);
-                            let html = '<div class="form-group"><label>Receive Quantities by Size</label><div class="row">';
+                            let html =
+                                '<div class="form-group"><label>Receive Quantities by Size</label><div class="row">';
                             data.sizes.forEach(size => {
                                 const sizeName = size.name.toLowerCase();
                                 const availableQty = data.availableQuantities[sizeName] || 0;
@@ -187,24 +197,32 @@
                                 input.addEventListener('input', function() {
                                     const max = parseInt(this.max);
                                     const value = parseInt(this.value) || 0;
-                                    const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0;
-                                    const progressBar = this.nextElementSibling.nextElementSibling.querySelector('.progress-bar');
+                                    const percent = max > 0 ? Math.min(100, (value /
+                                        max) * 100) : 0;
+                                    const progressBar = this.nextElementSibling
+                                        .nextElementSibling.querySelector(
+                                            '.progress-bar');
                                     progressBar.style.width = `${percent}%`;
                                     if (value > max) {
                                         this.classList.add('is-invalid');
-                                        this.nextElementSibling.nextElementSibling.nextElementSibling.textContent = `Cannot exceed ${max}`;
+                                        this.nextElementSibling.nextElementSibling
+                                            .nextElementSibling.textContent =
+                                            `Cannot exceed ${max}`;
                                     } else {
                                         this.classList.remove('is-invalid');
-                                        this.nextElementSibling.nextElementSibling.nextElementSibling.textContent = '';
+                                        this.nextElementSibling.nextElementSibling
+                                            .nextElementSibling.textContent = '';
                                     }
                                 });
                             });
                         } else {
-                            sizeInputsContainer.innerHTML = '<div class="alert alert-danger">Error loading available quantities.</div>';
+                            sizeInputsContainer.innerHTML =
+                                '<div class="alert alert-danger">Error loading available quantities.</div>';
                         }
                     })
                     .catch(error => {
-                        sizeInputsContainer.innerHTML = '<div class="alert alert-danger">Error loading available quantities: ${error.message}</div>';
+                        sizeInputsContainer.innerHTML =
+                            '<div class="alert alert-danger">Error loading available quantities: ${error.message}</div>';
                     });
             });
 
@@ -215,7 +233,13 @@
     </script>
 
     <style>
-        .progress { background-color: #e9ecef; }
-        .progress-bar { background-color: #28a745; transition: width 0.3s ease; }
+        .progress {
+            background-color: #e9ecef;
+        }
+
+        .progress-bar {
+            background-color: #28a745;
+            transition: width 0.3s ease;
+        }
     </style>
 </x-backend.layouts.master>

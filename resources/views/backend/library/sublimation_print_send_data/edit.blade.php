@@ -1,133 +1,155 @@
-<!-- resources/views/backend/library/print_send_data/edit.blade.php -->
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Edit Print/Embroidery Send Data
+        Edit Sublimation Print/Send Data
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Print/Emb Send Data </x-slot>
+            <x-slot name="pageHeader"> Sublimation Print/Send Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('print_send_data.index') }}">Print/Emb Send</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('sublimation_print_send_data.index') }}">Sublimation Print/Send Data</a></li>
             <li class="breadcrumb-item active">Edit</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
 
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
     <x-backend.layouts.elements.errors />
-    <form action="{{ route('print_send_data.update', $printSendDatum->id) }}" method="post">
+    <form action="{{ route('sublimation_print_send_data.update', $sublimationPrintSendDatum->id) }}" method="post">
         @csrf
         @method('PUT')
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <div class="form-group">
                     <label for="date">Date</label>
-                    <input type="date" name="date" id="date" class="form-control" 
-                        value="{{ old('date', $printSendDatum->date) }}" required>
+                    <input type="date" name="date" id="date" class="form-control"
+                        value="{{ old('date', $sublimationPrintSendDatum->date) }}" required>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="form-group">
-                    <label>Product Combination</label>
-                    <input type="text" class="form-control" 
-                        value="{{ $printSendDatum->productCombination->buyer->name }} - 
-                               {{ $printSendDatum->productCombination->style->name }} - 
-                               {{ $printSendDatum->productCombination->color->name }}" readonly>
-                    <input type="hidden" name="product_combination_id" value="{{ $printSendDatum->product_combination_id }}">
+                    <label for="po_number">PO Number</label>
+                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->po_number }}" readonly>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="old_order">Old Order</label>
+                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->old_order }}" readonly>
                 </div>
             </div>
         </div>
 
-        <div class="alert alert-info">
-            <strong>Total Available: </strong> <span id="available-quantity">{{ $available + $printSendDatum->total_send_quantity }}</span>
-            (Including current record: {{ $printSendDatum->total_send_quantity }})
-        </div>
-
-        <div class="row mb-3">
-            @foreach ($sizes as $size)
-                <div class="col-md-3 mb-2">
-                    <div class="card">
-                        <div class="card-body p-2">
-                            <strong>{{ strtoupper($size['name']) }}</strong><br>
-                            Cut: {{ $size['cut'] }} | Sent: {{ $size['sent'] }}<br>
-                            Available: {{ $size['available'] }}
-                        </div>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-
-        <div class="card mt-4">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Send Quantities by Size</h5>
-                <div>
-                    <strong>Total Quantity: </strong> <span id="total-quantity">{{ $printSendDatum->total_send_quantity }}</span>
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="buyer">Buyer</label>
+                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->productCombination->buyer->name ?? 'N/A' }}" readonly>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    @foreach ($sizes as $size)
-                        <div class="col-md-3 mb-3">
-                            <div class="form-group">
-                                <label for="quantity_{{ $size['id'] }}">{{ $size['name'] }}</label>
-                                <input type="number" 
-                                    name="quantities[{{ $size['id'] }}]" 
-                                    id="quantity_{{ $size['id'] }}" 
-                                    class="form-control quantity-input"
-                                    value="{{ old("quantities.{$size['id']}", $size['current_quantity']) }}"
-                                    min="0"
-                                    max="{{ $size['available'] + $size['current_quantity'] }}"
-                                    placeholder="Enter quantity">
-                                <small class="text-muted">
-                                    Max: {{ $size['available'] + $size['current_quantity'] }}
-                                </small>
-                            </div>
-                        </div>
-                    @endforeach
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="style">Style</label>
+                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->productCombination->style->name ?? 'N/A' }}" readonly>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="color">Color</label>
+                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->productCombination->color->name ?? 'N/A' }}" readonly>
                 </div>
             </div>
         </div>
 
-        <div class="mt-3">
-            <button type="submit" class="btn btn-primary">Update</button>
-            <a href="{{ route('print_send_data.index') }}" class="btn btn-secondary">Cancel</a>
-            <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete</button>
-        </div>
-    </form>
+        <table class="table table-bordered mt-4 text-center">
+            <thead>
+                <tr>
+                    <th>Size</th>
+                    <th>Available Quantity</th>
+                    <th>Send Quantity</th>
+                    <th>Waste Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($allSizes as $size)
+                    @php
+                        $sizeName = $size->name;
+                        $sizeId = $size->id;
+                        $availableQty = $availableQuantities[$sizeName] ?? 0;
+                        $currentSendQty = $sendQuantities[$sizeId] ?? 0;
+                        $currentWasteQty = $wasteQuantities[$sizeId] ?? 0;
+                        $maxAllowed = $availableQty + $currentSendQty;
+                    @endphp
+                    <tr>
+                        <td>{{ $sizeName }}</td>
+                        <td>{{ $availableQty }}</td>
+                        <td>
+                            <input type="number" 
+                                   name="sublimation_print_send_quantities[{{ $sizeName }}]" 
+                                   class="form-control send-qty-input"
+                                   min="0" 
+                                   max="{{ $maxAllowed }}"
+                                   value="{{ old('sublimation_print_send_quantities.'.$sizeName, $currentSendQty) }}"
+                                   placeholder="Send Qty">
+                        </td>
+                        <td>
+                            <input type="number" 
+                                   name="sublimation_print_send_waste_quantities[{{ $sizeName }}]" 
+                                   class="form-control waste-qty-input"
+                                   min="0" 
+                                   value="{{ old('sublimation_print_send_waste_quantities.'.$sizeName, $currentWasteQty) }}"
+                                   placeholder="Waste Qty">
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="2"><strong>Totals</strong></td>
+                    <td><span id="total-send-qty">{{ $sublimationPrintSendDatum->total_sublimation_print_send_quantity }}</span></td>
+                    <td><span id="total-waste-qty">{{ $sublimationPrintSendDatum->total_sublimation_print_send_waste_quantity }}</span></td>
+                </tr>
+            </tfoot>
+        </table>
 
-    <form id="delete-form" action="{{ route('print_send_data.destroy', $printSendDatum->id) }}" method="POST" class="d-none">
-        @csrf
-        @method('DELETE')
+        <a href="{{ route('sublimation_print_send_data.index') }}" class="btn btn-secondary mt-3">Back</a>
+        <button type="submit" class="btn btn-primary mt-3">Update Sublimation Print/Send Data</button>
     </form>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const quantityInputs = document.querySelectorAll('.quantity-input');
-            const totalQuantitySpan = document.getElementById('total-quantity');
-            const availableQuantity = {{ $available + $printSendDatum->total_send_quantity }};
-            
-            function calculateTotalQuantity() {
-                let total = 0;
-                quantityInputs.forEach(input => {
-                    total += parseInt(input.value) || 0;
-                });
-                totalQuantitySpan.textContent = total;
-                
-                if (total > availableQuantity) {
-                    totalQuantitySpan.parentElement.classList.add('text-danger');
-                } else {
-                    totalQuantitySpan.parentElement.classList.remove('text-danger');
-                }
-            }
-            
-            quantityInputs.forEach(input => {
-                input.addEventListener('input', calculateTotalQuantity);
-            });
-        });
+            const sendInputs = document.querySelectorAll('.send-qty-input');
+            const wasteInputs = document.querySelectorAll('.waste-qty-input');
+            const totalSendSpan = document.getElementById('total-send-qty');
+            const totalWasteSpan = document.getElementById('total-waste-qty');
 
-        function confirmDelete() {
-            if (confirm('Are you sure you want to delete this record?')) {
-                document.getElementById('delete-form').submit();
+            function calculateTotals() {
+                let totalSend = 0;
+                let totalWaste = 0;
+
+                sendInputs.forEach(input => {
+                    totalSend += parseInt(input.value) || 0;
+                });
+
+                wasteInputs.forEach(input => {
+                    totalWaste += parseInt(input.value) || 0;
+                });
+
+                totalSendSpan.textContent = totalSend;
+                totalWasteSpan.textContent = totalWaste;
             }
-        }
+
+            // Add event listeners to all quantity inputs
+            sendInputs.forEach(input => {
+                input.addEventListener('input', calculateTotals);
+            });
+
+            wasteInputs.forEach(input => {
+                input.addEventListener('input', calculateTotals);
+            });
+
+            // Initial calculation
+            calculateTotals();
+        });
     </script>
 </x-backend.layouts.master>

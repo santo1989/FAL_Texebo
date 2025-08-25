@@ -161,7 +161,7 @@ Route::middleware('auth')->group(function () {
     Route::get('cutting-waste/find', [CuttingDataController::class, 'findWaste'])->name('cutting_data.find_waste');
 
     //sublimation print send routes 
-    Route::get('sublimation_print_send_data/find', [SublimationPrintSendController::class, 'find'])->name('sublimation_print_send_data.find');
+    Route::get('sublimation_print_send_data/find', [SublimationPrintSendController::class, 'find'])->name('sublimation_print_send_data_find');
     Route::resource('sublimation_print_send_data', SublimationPrintSendController::class);
    
 

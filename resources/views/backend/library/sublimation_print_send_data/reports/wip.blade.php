@@ -1,7 +1,7 @@
-<!-- resources/views/backend/library/print_send_data/reports/wip.blade.php -->
+<!-- resources/views/backend/library/sublimation_print_send_data/reports/wip.blade.php -->
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Print/Embroidery WIP Report
+        Sublimation Print/Embroidery WIP Report
     </x-slot>
 
     <x-slot name='breadCrumb'>
@@ -18,8 +18,9 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title text-center">Print/Embroidery Work-in-Progress Report</h3>
-                            <a href="{{ route('print_send_data.index') }}" class="btn btn-lg btn-outline-danger float-right">
+                            <h3 class="card-title text-center">Sublimation Print/Embroidery Work-in-Progress Report</h3>
+                            <a href="{{ route('sublimation_print_send_data.index') }}"
+                                class="btn btn-lg btn-outline-danger float-right">
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
                         </div>
@@ -60,7 +61,8 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 2 + (count($allSizes) * 3) + 3 }}" class="text-center">No WIP data found.</td>
+                                            <td colspan="{{ 2 + count($allSizes) * 3 + 3 }}" class="text-center">No
+                                                WIP data found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

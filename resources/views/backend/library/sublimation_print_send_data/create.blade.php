@@ -99,7 +99,7 @@
             });
 
             function updateSublimationPrintSendDataRows(poNumbers) {
-                const url = '{{ route('sublimation_print_send_data.find') }}?po_numbers[]=' + poNumbers.join('&po_numbers[]=');
+                const url = '{{ route('sublimation_print_send_data_find') }}?po_numbers[]=' + poNumbers.join('&po_numbers[]=');
                 console.log('Fetching URL:', url);
 
                 fetch(url, {

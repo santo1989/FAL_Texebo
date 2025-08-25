@@ -15,7 +15,7 @@ class SublimationPrintSendController extends Controller
 {
     public function index(Request $request)
     {
-        $query = SublimationPrintSend::with('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+        $query = SublimationPrintSend::with('productCombination.buyer', 'productCombination.style', 'productCombination.color', 'productCombination.size');
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -73,11 +73,17 @@ class SublimationPrintSendController extends Controller
                 $totalSendQuantity = 0;
                 $totalWasteQuantity = 0;
 
+                // if any row has no send or waste quantities, skip it and if any size has zero quantity, skip that size
+                if (empty(array_filter($row['sublimation_print_send_quantities'])) &&
+                    empty(array_filter($row['sublimation_print_send_waste_quantities']))) {
+                    continue;
+                }
+
                 // Process send quantities
                 foreach ($row['sublimation_print_send_quantities'] as $sizeId => $quantity) {
                     if ($quantity > 0) {
                         $size = Size::find($sizeId);
-                        $sendQuantities[$size->name] = (int)$quantity;
+                        $sendQuantities[$size->id] = (int)$quantity;
                         $totalSendQuantity += (int)$quantity;
                     }
                 }
@@ -86,7 +92,7 @@ class SublimationPrintSendController extends Controller
                 foreach ($row['sublimation_print_send_waste_quantities'] as $sizeId => $quantity) {
                     if ($quantity > 0) {
                         $size = Size::find($sizeId);
-                        $wasteQuantities[$size->name] = (int)$quantity;
+                        $wasteQuantities[$size->id] = (int)$quantity;
                         $totalWasteQuantity += (int)$quantity;
                     }
                 }
@@ -118,17 +124,39 @@ class SublimationPrintSendController extends Controller
     public function show(SublimationPrintSend $sublimationPrintSendDatum)
     {
         $sublimationPrintSendDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return view('backend.library.sublimation_print_send_data.show', compact('sublimationPrintSendDatum', 'allSizes'));
     }
 
     public function edit(SublimationPrintSend $sublimationPrintSendDatum)
     {
-        $sublimationPrintSendDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $sublimationPrintSendDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color', 'productCombination.size');
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        return view('backend.library.sublimation_print_send_data.edit', compact('sublimationPrintSendDatum', 'allSizes'));
+        
+
+        // Get available quantities for this product combination
+        $availableQuantitiesResponse = $this->getAvailableSendQuantities($sublimationPrintSendDatum->productCombination);
+        $availableQuantities = (array) $availableQuantitiesResponse->getData()->availableQuantities;
+        $availableQuantities = array_filter($availableQuantities);
+
+        //filter the available quantities to remove zero quantities from allSizes
+        $allSizes = $allSizes->filter(function ($size) use ($availableQuantities) {
+            return isset($availableQuantities[$size->name]);
+        });
+
+        // Ensure the quantities are arrays, not objects
+        $sendQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_quantities;
+        $wasteQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_waste_quantities;
+
+        return view('backend.library.sublimation_print_send_data.edit', [
+            'sublimationPrintSendDatum' => $sublimationPrintSendDatum,
+            'allSizes' => $allSizes,
+            'availableQuantities' => $availableQuantities,
+            'sendQuantities' => $sendQuantities,
+            'wasteQuantities' => $wasteQuantities
+        ]);
     }
 
     public function update(Request $request, SublimationPrintSend $sublimationPrintSendDatum)
@@ -140,25 +168,48 @@ class SublimationPrintSendController extends Controller
         ]);
 
         try {
+            $productCombination = $sublimationPrintSendDatum->productCombination;
+            $availableQuantitiesResponse = $this->getAvailableSendQuantities($productCombination);
+            $availableQuantities = (array) $availableQuantitiesResponse->getData()->availableQuantities;
+
+            // Ensure send and waste quantities are arrays
             $sendQuantities = [];
             $wasteQuantities = [];
             $totalSendQuantity = 0;
             $totalWasteQuantity = 0;
+            $errors = [];
 
-            // Process send quantities
+            // Process send quantities with validation
             foreach ($request->sublimation_print_send_quantities as $sizeName => $quantity) {
+                $quantity = (int)$quantity;
                 if ($quantity > 0) {
-                    $sendQuantities[$sizeName] = (int)$quantity;
-                    $totalSendQuantity += (int)$quantity;
+                    // Calculate max allowed (available + current quantity in this record)
+                    $currentSendQty = isset($sublimationPrintSendDatum->sublimation_print_send_quantities[$sizeName])
+                        ? (int)$sublimationPrintSendDatum->sublimation_print_send_quantities[$sizeName]
+                        : 0;
+
+                    $maxAllowed = ($availableQuantities[$sizeName] ?? 0) + $currentSendQty;
+
+                    if ($quantity > $maxAllowed) {
+                        $errors["sublimation_print_send_quantities.$sizeName"] = "Quantity for $sizeName exceeds available ($maxAllowed)";
+                    } else {
+                        $sendQuantities[$sizeName] = $quantity;
+                        $totalSendQuantity += $quantity;
+                    }
                 }
             }
 
             // Process waste quantities
             foreach ($request->sublimation_print_send_waste_quantities as $sizeName => $quantity) {
+                $quantity = (int)$quantity;
                 if ($quantity > 0) {
-                    $wasteQuantities[$sizeName] = (int)$quantity;
-                    $totalWasteQuantity += (int)$quantity;
+                    $wasteQuantities[$sizeName] = $quantity;
+                    $totalWasteQuantity += $quantity;
                 }
+            }
+
+            if (!empty($errors)) {
+                return redirect()->back()->withErrors($errors)->withInput();
             }
 
             $sublimationPrintSendDatum->update([
@@ -190,13 +241,17 @@ class SublimationPrintSendController extends Controller
     {
         $poNumbers = $request->input('po_numbers', []);
 
+        if (empty($poNumbers)) {
+            return response()->json([]);
+        }
+
         // Get product combinations with sublimation_print = true
-        $sublimationProductIds = ProductCombination::where('sublimation_print', true)->get()->pluck('id');
+        $sublimationProductIds = ProductCombination::where('sublimation_print', true)->pluck('id');
 
         // Get cutting data for the selected PO numbers and sublimation products
         $cuttingData = CuttingData::whereIn('po_number', $poNumbers)
             ->whereIn('product_combination_id', $sublimationProductIds)
-            ->with('productCombination.style', 'productCombination.color')
+            ->with(['productCombination.style', 'productCombination.color', 'productCombination.size'])
             ->get()
             ->groupBy('po_number');
 
@@ -205,8 +260,12 @@ class SublimationPrintSendController extends Controller
         foreach ($cuttingData as $poNumber => $cuttingRecords) {
             $result[$poNumber] = [];
 
-            foreach ($cuttingRecords as $cuttingRecord) {
-                $productCombination = $cuttingRecord->productCombination;
+            // Group cutting records by product_combination_id
+            $groupedByCombination = $cuttingRecords->groupBy('product_combination_id');
+
+            foreach ($groupedByCombination as $combinationId => $records) {
+                // Get the product combination from the first record
+                $productCombination = $records->first()->productCombination;
 
                 if (!$productCombination) {
                     continue;
@@ -232,13 +291,24 @@ class SublimationPrintSendController extends Controller
         $sizes = Size::where('is_active', 1)->get();
         $availableQuantities = [];
 
+        // Create a mapping of size IDs to size names
+        $sizeIdToName = [];
+        foreach ($sizes as $size) {
+            $sizeIdToName[$size->id] = $size->name;
+        }
+
         // Sum cut quantities per size using original case
         $cutQuantities = CuttingData::where('product_combination_id', $productCombination->id)
             ->get()
             ->pluck('cut_quantities')
-            ->reduce(function ($carry, $quantities) {
-                foreach ($quantities as $size => $qty) {
-                    $carry[$size] = ($carry[$size] ?? 0) + $qty;
+            ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+                foreach ($quantities as $key => $qty) {
+                    // Handle both numeric keys (size IDs) and string keys (size names)
+                    $sizeName = is_numeric($key) ? ($sizeIdToName[$key] ?? null) : $key;
+
+                    if ($sizeName && $qty > 0) {
+                        $carry[$sizeName] = ($carry[$sizeName] ?? 0) + $qty;
+                    }
                 }
                 return $carry;
             }, []);
@@ -247,13 +317,19 @@ class SublimationPrintSendController extends Controller
         $sentQuantities = SublimationPrintSend::where('product_combination_id', $productCombination->id)
             ->get()
             ->pluck('sublimation_print_send_quantities')
-            ->reduce(function ($carry, $quantities) {
-                foreach ($quantities as $size => $qty) {
-                    $carry[$size] = ($carry[$size] ?? 0) + $qty;
+            ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+                foreach ($quantities as $key => $qty) {
+                    // Handle both numeric keys (size IDs) and string keys (size names)
+                    $sizeName = is_numeric($key) ? ($sizeIdToName[$key] ?? null) : $key;
+
+                    if ($sizeName && $qty > 0) {
+                        $carry[$sizeName] = ($carry[$sizeName] ?? 0) + $qty;
+                    }
                 }
                 return $carry;
             }, []);
 
+        // Calculate available quantities
         foreach ($sizes as $size) {
             $sizeName = $size->name;
             $cut = $cutQuantities[$sizeName] ?? 0;
@@ -265,6 +341,13 @@ class SublimationPrintSendController extends Controller
             'availableQuantities' => $availableQuantities,
             'sizes' => $sizes
         ]);
+    }
+
+    // Helper method to get size name by ID
+    private function getSizeNameById($sizeId)
+    {
+        $size = Size::find($sizeId);
+        return $size ? $size->name : null;
     }
 
     // Reports
