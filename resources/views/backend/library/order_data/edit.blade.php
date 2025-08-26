@@ -67,7 +67,7 @@
                                     <label>Order Quantities by Size</label>
                                     <div class="row">
                                         @php
-                                            $quantities = json_decode($orderDatum->order_quantities, true);
+                                            $quantities = $orderDatum->order_quantities;
                                         @endphp
                                         @foreach ($sizes as $size)
                                             <div class="col-md-3 mb-3">

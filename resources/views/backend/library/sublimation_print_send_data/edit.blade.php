@@ -7,10 +7,21 @@
         <x-backend.layouts.elements.breadcrumb>
             <x-slot name="pageHeader"> Sublimation Print/Send Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('sublimation_print_send_data.index') }}">Sublimation Print/Send Data</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('sublimation_print_send_data.index') }}">Sublimation Print/Send
+                    Data</a></li>
             <li class="breadcrumb-item active">Edit</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
+
+    @if (session('message'))
+        <div class="alert alert-success">
+            <span class="close" data-dismiss="alert">&times;</span>
+            <strong>{{ session('message') }}.</strong>
+        </div>
+    @endif
+
+    <x-backend.layouts.elements.errors />
+
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -29,13 +40,15 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="po_number">PO Number</label>
-                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->po_number }}" readonly>
+                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->po_number }}"
+                        readonly>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="form-group">
                     <label for="old_order">Old Order</label>
-                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->old_order }}" readonly>
+                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->old_order }}"
+                        readonly>
                 </div>
             </div>
         </div>
@@ -44,19 +57,22 @@
             <div class="col-md-4">
                 <div class="form-group">
                     <label for="buyer">Buyer</label>
-                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->productCombination->buyer->name ?? 'N/A' }}" readonly>
+                    <input type="text" class="form-control"
+                        value="{{ $sublimationPrintSendDatum->productCombination->buyer->name ?? 'N/A' }}" readonly>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="form-group">
                     <label for="style">Style</label>
-                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->productCombination->style->name ?? 'N/A' }}" readonly>
+                    <input type="text" class="form-control"
+                        value="{{ $sublimationPrintSendDatum->productCombination->style->name ?? 'N/A' }}" readonly>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="form-group">
                     <label for="color">Color</label>
-                    <input type="text" class="form-control" value="{{ $sublimationPrintSendDatum->productCombination->color->name ?? 'N/A' }}" readonly>
+                    <input type="text" class="form-control"
+                        value="{{ $sublimationPrintSendDatum->productCombination->color->name ?? 'N/A' }}" readonly>
                 </div>
             </div>
         </div>
@@ -84,21 +100,16 @@
                         <td>{{ $sizeName }}</td>
                         <td>{{ $availableQty }}</td>
                         <td>
-                            <input type="number" 
-                                   name="sublimation_print_send_quantities[{{ $sizeName }}]" 
-                                   class="form-control send-qty-input"
-                                   min="0" 
-                                   max="{{ $maxAllowed }}"
-                                   value="{{ old('sublimation_print_send_quantities.'.$sizeName, $currentSendQty) }}"
-                                   placeholder="Send Qty">
+                            <input type="number" name="sublimation_print_send_quantities[{{ $sizeName }}]"
+                                class="form-control send-qty-input" min="0" max="{{ $maxAllowed }}"
+                                value="{{ old('sublimation_print_send_quantities.' . $sizeName, $currentSendQty) }}"
+                                placeholder="Send Qty">
                         </td>
                         <td>
-                            <input type="number" 
-                                   name="sublimation_print_send_waste_quantities[{{ $sizeName }}]" 
-                                   class="form-control waste-qty-input"
-                                   min="0" 
-                                   value="{{ old('sublimation_print_send_waste_quantities.'.$sizeName, $currentWasteQty) }}"
-                                   placeholder="Waste Qty">
+                            <input type="number" name="sublimation_print_send_waste_quantities[{{ $sizeName }}]"
+                                class="form-control waste-qty-input" min="0"
+                                value="{{ old('sublimation_print_send_waste_quantities.' . $sizeName, $currentWasteQty) }}"
+                                placeholder="Waste Qty">
                         </td>
                     </tr>
                 @endforeach
@@ -106,8 +117,12 @@
             <tfoot>
                 <tr>
                     <td colspan="2"><strong>Totals</strong></td>
-                    <td><span id="total-send-qty">{{ $sublimationPrintSendDatum->total_sublimation_print_send_quantity }}</span></td>
-                    <td><span id="total-waste-qty">{{ $sublimationPrintSendDatum->total_sublimation_print_send_waste_quantity }}</span></td>
+                    <td><span
+                            id="total-send-qty">{{ $sublimationPrintSendDatum->total_sublimation_print_send_quantity }}</span>
+                    </td>
+                    <td><span
+                            id="total-waste-qty">{{ $sublimationPrintSendDatum->total_sublimation_print_send_waste_quantity }}</span>
+                    </td>
                 </tr>
             </tfoot>
         </table>

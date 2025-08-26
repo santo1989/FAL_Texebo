@@ -81,6 +81,10 @@
 </div>
 
         </div>
-        <button type="submit" class="btn btn-primary mt-3">Update</button>
+        <!--back button-->
+        <div class="form-group">
+            <a href="{{ route('product-combinations.index') }}" class="btn btn-secondary mt-3">Back</a>
+            <button type="submit" class="btn btn-primary mt-3">Update</button>
+        </div>
     </form>
 </x-backend.layouts.master>

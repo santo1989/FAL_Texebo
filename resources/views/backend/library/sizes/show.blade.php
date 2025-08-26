@@ -45,7 +45,7 @@
                     <!-- /.card -->
 
                     <button class="btn btn-outline-secondary my-1 mx-1 inline btn-sm"
-                        onclick="window.location='{{ route('sizes.edit', ['id' => $size->id]) }}'">
+                        onclick="window.location='{{ route('sizes.edit', ['size' => $size->id]) }}'">
                         <i class="bi bi-pencil"></i> Edit
                     </button>
 

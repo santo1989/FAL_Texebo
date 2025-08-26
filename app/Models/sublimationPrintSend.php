@@ -29,9 +29,4 @@ class sublimationPrintSend extends Model
         return $this->belongsTo(ProductCombination::class);
     }
 
-
-    public function orderData()
-    {
-        return $this->belongsTo(OrderData::class, 'po_number', 'po_number');
-    }
 }

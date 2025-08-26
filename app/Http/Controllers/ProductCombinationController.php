@@ -19,13 +19,13 @@ class ProductCombinationController extends Controller
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
             $query->whereHas('buyer', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
+                $q->where('buyer_id', 'like', '%' . $search . '%');
             })->orWhereHas('style', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
+                $q->where('style_id', 'like', '%' . $search . '%');
             })->orWhereHas('color', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
+                $q->where('color_id', 'like', '%' . $search . '%');
             })->orWhereHas('size', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
+                $q->where('size_id', 'like', '%' . $search . '%');
             });
         }
 
@@ -88,8 +88,8 @@ class ProductCombinationController extends Controller
     public function edit(ProductCombination $productCombination)
     {
         $buyers = Buyer::where('is_active', 0)->get();
-        $styles = Style::where('is_active', 0)->get();
-        $colors = Color::where('is_active', 0)->get();
+        $styles = Style::where('is_active', 1)->get();
+        $colors = Color::where('is_active', 1)->get();
         $sizes = Size::where('is_active', 1)->get();
         return view('backend.library.product_combinations.edit', compact('productCombination', 'buyers', 'styles', 'colors', 'sizes'));
     }

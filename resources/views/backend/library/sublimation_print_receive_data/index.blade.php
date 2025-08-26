@@ -49,13 +49,15 @@
                                     <tr>
                                         <th>Sl#</th>
                                         <th>Date</th>
+                                        <th>PO Number</th>
                                         <th>Buyer</th>
                                         <th>Style</th>
                                         <th>Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ strtoupper($size->name) }}</th>
+                                            <th>{{ strtoupper($size->name) }}<br><small>Receive / Waste</small></th>
                                         @endforeach
-                                        <th>Total</th>
+                                        <th>Total Receive</th>
+                                        <th>Total Waste</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -64,13 +66,19 @@
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data->date }}</td>
+                                            <td>{{ $data->po_number }}</td>
                                             <td>{{ $data->productCombination->buyer->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->style->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->color->name ?? 'N/A' }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data->receive_quantities[$size->name] ?? '' }}</td>
+                                                <td>
+                                                    {{-- Accessing by size ID --}}
+                                                    {{ $data->sublimation_print_receive_quantities[$size->id] ?? 0 }} /
+                                                    {{ $data->sublimation_print_receive_waste_quantities[$size->id] ?? 0 }}
+                                                </td>
                                             @endforeach
-                                            <td>{{ $data->total_receive_quantity }}</td>
+                                            <td>{{ $data->total_sublimation_print_receive_quantity }}</td>
+                                            <td>{{ $data->total_sublimation_print_receive_waste_quantity }}</td>
                                             <td>
                                                 <a href="{{ route('sublimation_print_receive_data.edit', $data->id) }}"
                                                     class="btn btn-sm btn-outline-primary">
@@ -88,7 +96,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 6 + count($allSizes) }}" class="text-center">No print/emb
+                                            <td colspan="{{ 7 + count($allSizes) }}" class="text-center">No print/emb
                                                 receive data found</td>
                                         </tr>
                                     @endforelse

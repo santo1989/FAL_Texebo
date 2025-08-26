@@ -35,14 +35,25 @@
                                     <td>{{ $productCombination->color->name }}</td>
                                 </tr>
                                 <tr>
-                                    <th>Size</th>
-                                    <td>{{ $productCombination->size->name }}</td>
-                                </tr>
-                                <tr>
                                     <th>Active</th>
                                     <td>{{ $productCombination->is_active ? 'Yes' : 'No' }}</td>
                                 </tr>
+                                <tr>
+                                    <th>Size</th>
+                                    <td>
+                                        @foreach ($productCombination->sizes as $size)
+                                            <!--json decode-->
+                                            {{ $size->name }}{{ !$loop->last ? ',' : '' }}
+                                        @endforeach
+                                    </td>
+                                </tr>
+                                
                             </table>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <a href="{{ route('product-combinations.index') }}" class="btn btn-secondary">Back</a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
