@@ -37,16 +37,23 @@
                                 </form>
                             </div>
                         </div>
-                        <div class="card-body">
-                            <table class="table table-bordered table-hover">
+                        <div class="card-body" style="overflow-x: auto;">
+                            <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
-                                        <th>Style</th>
-                                        <th>Color</th>
+                                        <th rowspan="2">Style</th>
+                                        <th rowspan="2">Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ strtoupper($size->name) }}</th>
+                                            <th colspan="2">{{ strtoupper($size->name) }}</th>
                                         @endforeach
-                                        <th>Total</th>
+                                        <th rowspan="2">Total Send</th>
+                                        <th rowspan="2">Total Waste</th>
+                                    </tr>
+                                    <tr>
+                                        @foreach ($allSizes as $size)
+                                            <th>Send</th>
+                                            <th>Waste</th>
+                                        @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -55,13 +62,15 @@
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['sizes'][strtolower($size->name)] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id]['send'] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id]['waste'] ?? 0 }}</td>
                                             @endforeach
-                                            <td>{{ $data['total'] }}</td>
+                                            <td>{{ $data['total_send'] }}</td>
+                                            <td>{{ $data['total_waste'] }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 2 + count($allSizes) + 1 }}" class="text-center">No report
+                                            <td colspan="{{ 2 + (count($allSizes) * 2) + 2 }}" class="text-center">No report
                                                 data found for the selected criteria.</td>
                                         </tr>
                                     @endforelse

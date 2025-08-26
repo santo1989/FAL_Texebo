@@ -31,7 +31,7 @@ class SublimationPrintSendController extends Controller
         }
 
         $printSendData = $query->orderBy('date', 'desc')->paginate(10);
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return view('backend.library.sublimation_print_send_data.index', compact('printSendData', 'allSizes'));
     }
@@ -375,7 +375,7 @@ class SublimationPrintSendController extends Controller
         }
 
         $printSendData = $query->get();
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
 
         // Create a mapping of size IDs to size names
@@ -424,7 +424,7 @@ class SublimationPrintSendController extends Controller
             ->with('style', 'color')
             ->get();
 
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $wipData = [];
 
         // Create a mapping of size IDs to size names
@@ -603,7 +603,7 @@ class SublimationPrintSendController extends Controller
     //     }
 
     //     $printSendData = $query->get();
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $reportData = [];
 
     //     foreach ($printSendData as $data) {
@@ -642,7 +642,7 @@ class SublimationPrintSendController extends Controller
     //         ->with('style', 'color')
     //         ->get();
 
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $wipData = [];
 
     //     foreach ($combinations as $pc) {

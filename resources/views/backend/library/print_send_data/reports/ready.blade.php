@@ -22,17 +22,19 @@
                             <a href="{{ route('print_send_data.index') }}" class="btn btn-lg btn-outline-danger float-right">
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
-                            
                         </div>
-                        <div class="card-body">
-                            <table class="table table-bordered table-hover">
+                        <div class="card-body" style="overflow-x: auto;">
+                            <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
                                         <th>Style</th>
                                         <th>Color</th>
+                                        <th>PO Number(s)</th>
                                         <th>Type</th>
                                         <th>Total Cut</th>
                                         <th>Total Sent</th>
+                                        <th>Total Received</th>
+                                        <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -40,13 +42,16 @@
                                         <tr>
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
+                                            <td>{{ $data['po_number'] ?? 'N/A' }}</td> {{-- Display PO Number --}}
                                             <td>{{ $data['type'] }}</td>
                                             <td>{{ $data['total_cut'] }}</td>
                                             <td>{{ $data['total_sent'] }}</td>
+                                            <td>{{ $data['total_received'] ?? 0 }}</td> {{-- Display Total Received --}}
+                                            <td>{{ $data['status'] ?? 'N/A' }}</td> {{-- Display Status --}}
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="5" class="text-center">No data found for ready to input.</td>
+                                            <td colspan="8" class="text-center">No data found for ready to input.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

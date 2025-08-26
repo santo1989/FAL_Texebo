@@ -23,8 +23,8 @@
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
                         </div>
-                        <div class="card-body">
-                            <table class="table table-bordered table-hover">
+                        <div class="card-body" style="overflow-x: auto;">
+                            <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
                                         <th rowspan="2">Style</th>
@@ -50,13 +50,13 @@
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['sizes'][$size->name]['cut'] ?? 0 }}</td>
-                                                <td>{{ $data['sizes'][$size->name]['sent'] ?? 0 }}</td>
-                                                <td>{{ $data['sizes'][$size->name]['waiting'] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id]['cut'] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id]['sent'] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id]['waiting'] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data['total_cut'] }}</td>
                                             <td>{{ $data['total_sent'] }}</td>
-                                            <td>{{ $data['waiting'] }}</td>
+                                            <td>{{ $data['total_waiting'] }}</td>
                                         </tr>
                                     @empty
                                         <tr>

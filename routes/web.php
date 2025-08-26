@@ -176,7 +176,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('sublimation_print_receive_data', SublimationPrintReceiveController::class);
     Route::get('sublimation_print_receive_data/report/total_receive', [SublimationPrintReceiveController::class, 'totalPrintEmbReceiveReport'])->name('sublimation_print_receive_data.report.total_receive');
     Route::get('sublimation_print_receive_data/report/balance_quantity', [SublimationPrintReceiveController::class, 'totalPrintEmbBalanceReport'])->name('sublimation_print_receive_data.report.balance_quantity');
-   
+
 
 
 
@@ -188,6 +188,7 @@ Route::middleware('auth')->group(function () {
 
 
     // Print/Send Data Routes
+    Route::get('print_send_data/find', [PrintSendDataController::class, 'find'])->name('print_send_data.find');
     Route::prefix('print_send_data')->group(function () {
         // CRUD Routes
         Route::get('/', [PrintSendDataController::class, 'index'])->name('print_send_data.index');

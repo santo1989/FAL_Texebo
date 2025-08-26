@@ -32,7 +32,7 @@ class SublimationPrintReceiveController extends Controller
         }
 
         $printReceiveData = $query->orderBy('date', 'desc')->paginate(10);
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
 
         return view('backend.library.sublimation_print_receive_data.index', compact('printReceiveData', 'allSizes'));
     }
@@ -117,7 +117,7 @@ class SublimationPrintReceiveController extends Controller
     public function show(SublimationPrintReceive $sublimationPrintReceiveDatum)
     {
         $sublimationPrintReceiveDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
 
         return view('backend.library.sublimation_print_receive_data.show', compact('sublimationPrintReceiveDatum', 'allSizes'));
     }
@@ -125,7 +125,7 @@ class SublimationPrintReceiveController extends Controller
     public function edit(SublimationPrintReceive $sublimationPrintReceiveDatum)
     {
         $sublimationPrintReceiveDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
 
         return view('backend.library.sublimation_print_receive_data.edit', compact('sublimationPrintReceiveDatum', 'allSizes'));
     }
@@ -286,7 +286,7 @@ class SublimationPrintReceiveController extends Controller
         }
 
         $printReceiveData = $query->get();
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
         $reportData = [];
 
         // Create a mapping of size IDs to size names
@@ -330,7 +330,7 @@ class SublimationPrintReceiveController extends Controller
 
     public function totalPrintEmbBalanceReport(Request $request)
     {
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
         $balanceData = [];
 
         // Create a mapping of size IDs to size names
@@ -463,7 +463,7 @@ class SublimationPrintReceiveController extends Controller
 //         }
 
 //         $printReceiveData = $query->orderBy('date', 'desc')->paginate(10);
-//         $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+//         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
 
 //         return view('backend.library.sublimation_print_receive_data.index', compact('printReceiveData', 'allSizes'));
 //     }
@@ -650,7 +650,7 @@ class SublimationPrintReceiveController extends Controller
 //         }
 
 //         $printReceiveData = $query->get();
-//         $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+//         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
 //         $reportData = [];
 
 //         foreach ($printReceiveData as $data) {
@@ -684,7 +684,7 @@ class SublimationPrintReceiveController extends Controller
 
 //     public function totalPrintEmbBalanceReport(Request $request)
 //     {
-//         $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+//         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
 //         $balanceData = [];
 
 //         // Get all product combinations that have either been sent or received for print/emb
@@ -769,7 +769,7 @@ class SublimationPrintReceiveController extends Controller
 //             ->with('style', 'color')
 //             ->get();
 
-//         $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+//         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
 //         $wipData = [];
 
 //         foreach ($combinations as $pc) {

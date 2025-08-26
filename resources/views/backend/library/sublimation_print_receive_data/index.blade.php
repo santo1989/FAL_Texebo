@@ -43,37 +43,42 @@
                                 <button class="btn btn-outline-success" type="submit">Search</button>
                             </form>
                         </div>
-                        <div class="card-body">
-                            <table class="table table-bordered table-hover">
+                        <div class="card-body" style="overflow-x: auto;">
+                            <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
-                                        <th>Sl#</th>
-                                        <th>Date</th>
-                                        <th>PO Number</th>
-                                        <th>Buyer</th>
-                                        <th>Style</th>
-                                        <th>Color</th>
+                                        <th rowspan="2">Date</th>
+                                        <th rowspan="2">PO Number</th>
+                                        <th rowspan="2">Style</th>
+                                        <th rowspan="2">Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ strtoupper($size->name) }}<br><small>Receive / Waste</small></th>
+                                            <th colspan="2">{{ strtoupper($size->name) }}</th>
                                         @endforeach
-                                        <th>Total Receive</th>
-                                        <th>Total Waste</th>
-                                        <th>Actions</th>
+                                        <th rowspan="2">Total Receive</th>
+                                        <th rowspan="2">Total Waste</th>
+                                        <th rowspan="2">Actions</th>
+                                    </tr>
+                                    <tr>
+                                        @foreach ($allSizes as $size)
+                                            <th>Receive</th>
+                                            <th>Waste</th>
+                                        @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse ($printReceiveData as $data)
                                         <tr>
-                                            <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data->date }}</td>
                                             <td>{{ $data->po_number }}</td>
-                                            <td>{{ $data->productCombination->buyer->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->style->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->color->name ?? 'N/A' }}</td>
                                             @foreach ($allSizes as $size)
                                                 <td>
                                                     {{-- Accessing by size ID --}}
-                                                    {{ $data->sublimation_print_receive_quantities[$size->id] ?? 0 }} /
+                                                    {{ $data->sublimation_print_receive_quantities[$size->id] ?? 0 }}
+                                                   
+                                                </td>
+                                                <td>
                                                     {{ $data->sublimation_print_receive_waste_quantities[$size->id] ?? 0 }}
                                                 </td>
                                             @endforeach

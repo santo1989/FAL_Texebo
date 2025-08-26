@@ -25,11 +25,16 @@
                             </a>
                             <div class="btn-group ml-2">
                                 <h4 class="btn btn-lg text-center">Reports</h4>
-                               
-                                    <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_send_data.report.total') }}'">Total Print/Emb Send</button>
-                                    <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_send_data.report.wip') }}'">WIP (Waiting)</button>
-                                    <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_send_data.report.ready') }}'">Ready to Input</button>
-                                
+                                <div class="dropdown">
+                                    <button class="btn btn-lg btn-outline-primary dropdown-toggle" type="button" id="reportsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Select Report
+                                    </button>
+                                    <div class="dropdown-menu" aria-labelledby="reportsDropdown">
+                                        <a class="dropdown-item" href="{{ route('print_send_data.report.total') }}">Total Print/Emb Send</a>
+                                        <a class="dropdown-item" href="{{ route('print_send_data.report.wip') }}">WIP (Waiting)</a>
+                                        <a class="dropdown-item" href="{{ route('print_send_data.report.ready') }}">Ready to Input</a>
+                                    </div>
+                                </div>
                             </div>
 
                             <form class="d-flex float-right" action="{{ route('print_send_data.index') }}" method="GET">
@@ -40,20 +45,28 @@
                                 <button class="btn btn-outline-success" type="submit">Search</button>
                             </form>
                         </div>
-                        <div class="card-body">
-                            <table class="table table-bordered table-hover">
+                        <div class="card-body" style="overflow-x: auto;">
+                            <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
-                                        <th>Sl#</th>
-                                        <th>Date</th>
-                                        <th>Buyer</th>
-                                        <th>Style</th>
-                                        <th>Color</th>
+                                        <th rowspan="2">Sl#</th>
+                                        <th rowspan="2">Date</th>
+                                        <th rowspan="2">PO Number</th>
+                                        <th rowspan="2">Buyer</th>
+                                        <th rowspan="2">Style</th>
+                                        <th rowspan="2">Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ strtoupper($size->name) }}</th>
+                                            <th colspan="2">{{ strtoupper($size->name) }}</th>
                                         @endforeach
-                                        <th>Total</th>
-                                        <th>Actions</th>
+                                        <th rowspan="2">Total Send</th>
+                                        <th rowspan="2">Total Waste</th>
+                                        <th rowspan="2">Actions</th>
+                                    </tr>
+                                    <tr>
+                                        @foreach ($allSizes as $size)
+                                            <th>Send</th>
+                                            <th>Waste</th>
+                                        @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -61,14 +74,20 @@
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data->date }}</td>
+                                            <td>{{ $data->po_number }}</td>
                                             <td>{{ $data->productCombination->buyer->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->style->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->color->name ?? 'N/A' }}</td>
                                             @foreach ($allSizes as $size)
-                                                {{-- Accessing by size name directly --}}
-                                                <td>{{ $data->send_quantities[$size->name] ?? '' }}</td>
+                                                <td>
+                                                    {{ $data->send_quantities[$size->id] ?? 0 }}
+                                                </td>
+                                                <td>
+                                                    {{ $data->send_waste_quantities[$size->id] ?? 0 }}
+                                                </td>
                                             @endforeach
                                             <td>{{ $data->total_send_quantity }}</td>
+                                            <td>{{ $data->total_send_waste_quantity }}</td>
                                             <td>
                                                 <a href="{{ route('print_send_data.edit', $data->id) }}" class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-pencil"></i> Edit
@@ -84,7 +103,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 6 + count($allSizes) }}" class="text-center">No print/emb send data found</td>
+                                            <td colspan="{{ 9 + (count($allSizes) * 2) }}" class="text-center">No print/emb send data found</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -122,14 +141,14 @@
             });
         }
 
-        //dropdown toggle for reports
         document.addEventListener('DOMContentLoaded', function() {
-            const dropdownToggle = document.querySelector('.dropdown-toggle');
-            dropdownToggle.addEventListener('click', function() {
-                const dropdownMenu = this.nextElementSibling;
-                dropdownMenu.classList.toggle('show');
-            });
+            const dropdownToggle = document.getElementById('reportsDropdown');
+            if (dropdownToggle) {
+                dropdownToggle.addEventListener('click', function() {
+                    const dropdownMenu = this.nextElementSibling;
+                    dropdownMenu.classList.toggle('show');
+                });
+            }
         });
-
     </script>
 </x-backend.layouts.master>
