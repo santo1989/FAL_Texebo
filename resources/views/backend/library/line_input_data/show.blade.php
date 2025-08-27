@@ -25,6 +25,9 @@
                                 <dt class="col-sm-3">Date</dt>
                                 <dd class="col-sm-9">{{ $lineInputDatum->date }}</dd>
 
+                                <dt class="col-sm-3">PO Number</dt>
+                                <dd class="col-sm-9">{{ $lineInputDatum->po_number }}</dd>
+
                                 <dt class="col-sm-3">Buyer</dt>
                                 <dd class="col-sm-9">{{ $lineInputDatum->productCombination->buyer->name ?? 'N/A' }}</dd>
 
@@ -37,14 +40,30 @@
                                 <dt class="col-sm-3">Input Quantities</dt>
                                 <dd class="col-sm-9">
                                     <ul class="list-unstyled">
-                                        @foreach ($lineInputDatum->input_quantities as $sizeName => $quantity)
-                                            <li><strong>{{ $sizeName }}:</strong> {{ $quantity }}</li>
+                                        @foreach ($allSizes as $size)
+                                            @if (isset($lineInputDatum->input_quantities[$size->id]))
+                                                <li><strong>{{ $size->name }}:</strong> {{ $lineInputDatum->input_quantities[$size->id] }}</li>
+                                            @endif
+                                        @endforeach
+                                    </ul>
+                                </dd>
+
+                                <dt class="col-sm-3">Waste Quantities</dt>
+                                <dd class="col-sm-9">
+                                    <ul class="list-unstyled">
+                                        @foreach ($allSizes as $size)
+                                            @if (isset($lineInputDatum->input_waste_quantities[$size->id]))
+                                                <li><strong>{{ $size->name }}:</strong> {{ $lineInputDatum->input_waste_quantities[$size->id] }}</li>
+                                            @endif
                                         @endforeach
                                     </ul>
                                 </dd>
 
                                 <dt class="col-sm-3">Total Input Quantity</dt>
                                 <dd class="col-sm-9">{{ $lineInputDatum->total_input_quantity }}</dd>
+
+                                <dt class="col-sm-3">Total Waste Quantity</dt>
+                                <dd class="col-sm-9">{{ $lineInputDatum->total_input_waste_quantity ?? 0 }}</dd>
                                 
                                 <dt class="col-sm-3">Created At</dt>
                                 <dd class="col-sm-9">{{ $lineInputDatum->created_at }}</dd>

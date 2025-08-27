@@ -12,182 +12,239 @@
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
 
-    <section class="content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="card card-primary">
-                        <div class="card-header">
-                            <h3 class="card-title">Add Line Input Data</h3>
-                        </div>
-                        <form action="{{ route('line_input_data.store') }}" method="POST" id="lineInputForm">
-                            @csrf
-                            <div class="card-body">
-                                <div class="form-group">
-                                    <label for="date">Date</label>
-                                    <input type="date" name="date" class="form-control" id="date" value="{{ old('date', date('Y-m-d')) }}" required>
-                                    @error('date')
-                                        <div class="text-danger">{{ $message }}</div>
-                                    @enderror
-                                </div>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
-                                <div class="form-group">
-                                    <label for="product_combination_id">Product Combination (Style - Color)</label>
-                                    <select name="product_combination_id" id="product_combination_id" class="form-control" required>
-                                        <option value="">Select Product Combination</option>
-                                        @foreach ($productCombinations as $pc)
-                                            <option value="{{ $pc->id }}" {{ old('product_combination_id') == $pc->id ? 'selected' : '' }}>
-                                                {{ $pc->style->name }} - {{ $pc->color->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('product_combination_id')
-                                        <div class="text-danger">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div id="sizeInputs">
-                                    <!-- Size inputs will be loaded here dynamically -->
-                                    <div class="text-center mt-4">
-                                        <p class="text-muted">Select a product combination to see available quantities</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-footer">
-                                <button type="submit" class="btn btn-primary">Submit</button>
-                                <a href="{{ route('line_input_data.index') }}" class="btn btn-danger">Cancel</a>
-                            </div>
-                        </form>
-                    </div>
+    <x-backend.layouts.elements.errors />
+    <form action="{{ route('line_input_data.store') }}" method="post">
+        @csrf
+        <div class="row">
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <input type="date" name="date" id="date" class="form-control"
+                        value="{{ old('date', date('Y-m-d')) }}" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="po_number">PO Number</label>
+                    <select name="po_number[]" id="po_number" class="form-control" multiple>
+                        @foreach ($distinctPoNumbers as $poNumber)
+                            <option value="{{ $poNumber }}"
+                                {{ in_array($poNumber, old('po_number', [])) ? 'selected' : '' }}>
+                                {{ $poNumber }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
         </div>
-    </section>
+
+        <table class="table table-bordered mt-4 text-center">
+            <thead>
+                <tr>
+                    <th>PO Number</th>
+                    <th>Style</th>
+                    <th>Color</th>
+                    @foreach ($sizes as $size)
+                        <th>
+                            {{ $size->name }}
+                            <br>
+                            <small>Input Qty / Waste Qty</small>
+                        </th>
+                    @endforeach
+                    <th>Total Input Qty</th>
+                    <th>Total Waste Qty</th>
+                </tr>
+            </thead>
+            <tbody id="line-input-data-body">
+                <!-- Dynamic rows will be injected here by JavaScript -->
+            </tbody>
+        </table>
+
+        <a href="{{ route('line_input_data.index') }}" class="btn btn-secondary mt-3">Back</a>
+        <button type="submit" class="btn btn-primary mt-3">Save Line Input Data</button>
+    </form>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const productCombinationSelect = document.getElementById('product_combination_id');
-            const sizeInputsContainer = document.getElementById('sizeInputs');
-            
-            productCombinationSelect.addEventListener('change', function() {
-                const combinationId = this.value;
-                
-                if (!combinationId) {
-                    sizeInputsContainer.innerHTML = `
-                        <div class="text-center mt-4">
-                            <p class="text-muted">Select a product combination to see available quantities</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                // Show loading indicator
-                sizeInputsContainer.innerHTML = `
-                    <div class="text-center mt-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="sr-only">Loading...</span>
-                        </div>
-                        <p class="mt-2">Loading available quantities...</p>
-                    </div>
-                `;
-                
-                // Fetch available quantities via AJAX
-                fetch(`/line_input_data/available_quantities/${combinationId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.availableQuantities) {
-                            let html = `
-                                <div class="form-group">
-                                    <label>Input Quantities by Size</label>
-                                    <div class="row">
-                            `;
-                            
-                            data.sizes.forEach(size => {
-                                const sizeName = size.name.toLowerCase();
-                                const availableQty = data.availableQuantities[sizeName] || 0;
-                                
-                                html += `
-                                    <div class="col-md-3 mb-3">
-                                        <label for="quantity_${size.id}">
-                                            ${size.name} (Available: ${availableQty})
-                                        </label>
-                                        <input type="number" 
-                                               name="quantities[${size.id}]" 
-                                               id="quantity_${size.id}"
-                                               class="form-control" 
-                                               value="0" 
-                                               min="0" 
-                                               max="${availableQty}"
-                                               data-size="${sizeName}">
-                                        <small class="form-text text-muted">Max: ${availableQty}</small>
-                                        <div class="progress mt-2" style="height: 5px;">
-                                            <div class="progress-bar" role="progressbar" style="width: 0%;"></div>
-                                        </div>
-                                        <div class="text-danger" id="error_${size.id}"></div>
-                                    </div>
-                                `;
-                            });
-                            
-                            html += `
-                                    </div>
-                                </div>
-                            `;
-                            
-                            sizeInputsContainer.innerHTML = html;
-                            
-                            // Add event listeners for progress bars
-                            document.querySelectorAll('input[type="number"]').forEach(input => {
-                                input.addEventListener('input', function() {
-                                    const max = parseInt(this.max);
-                                    const value = parseInt(this.value) || 0;
-                                    const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0;
-                                    const progressBar = this.nextElementSibling.nextElementSibling.querySelector('.progress-bar');
-                                    progressBar.style.width = `${percent}%`;
-                                    
-                                    if (value > max) {
-                                        this.classList.add('is-invalid');
-                                        this.nextElementSibling.nextElementSibling.nextElementSibling.textContent = 
-                                            `Cannot exceed ${max}`;
-                                    } else {
-                                        this.classList.remove('is-invalid');
-                                        this.nextElementSibling.nextElementSibling.nextElementSibling.textContent = '';
-                                    }
-                                });
-                            });
-                        } else {
-                            sizeInputsContainer.innerHTML = `
-                                <div class="alert alert-danger">
-                                    Error loading available quantities. Please try again.
-                                </div>
-                            `;
-                        }
-                    })
-                    .catch(error => {
-                        sizeInputsContainer.innerHTML = `
-                            <div class="alert alert-danger">
-                                Error loading available quantities: ${error.message}
-                            </div>
-                        `;
-                    });
-            });
-            
-            // Trigger change if there's already a selected value (e.g., after validation error)
-            if (productCombinationSelect.value) {
-                productCombinationSelect.dispatchEvent(new Event('change'));
+            const poNumberSelect = document.getElementById('po_number');
+            const lineInputDataBody = document.getElementById('line-input-data-body');
+            let savedInputs = {};
+            let processedCombinations = new Set();
+
+            const initialPoNumbers = Array.from(poNumberSelect.selectedOptions).map(option => option.value);
+            if (initialPoNumbers.length > 0) {
+                updateLineInputDataRows(initialPoNumbers);
             }
+
+            poNumberSelect.addEventListener('change', function() {
+                const selectedPoNumbers = Array.from(poNumberSelect.selectedOptions).map(option => option.value);
+                processedCombinations.clear();
+                if (selectedPoNumbers.length > 0) {
+                    updateLineInputDataRows(selectedPoNumbers);
+                } else {
+                    lineInputDataBody.innerHTML = '';
+                    savedInputs = {};
+                }
+            });
+
+            function updateLineInputDataRows(poNumbers) {
+                const url = '{{ route('line_input_data.find') }}?po_numbers[]=' + poNumbers.join('&po_numbers[]=');
+
+                fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
+                    return response.json();
+                })
+                .then(data => {
+                    lineInputDataBody.innerHTML = '';
+                    let rowIndex = 0;
+                    processedCombinations.clear();
+
+                    if (!data || Object.keys(data).length === 0) {
+                        lineInputDataBody.innerHTML = '<tr><td colspan="100%">No data found for selected PO numbers.</td></tr>';
+                        return;
+                    }
+
+                    for (const poNumber in data) {
+                        if (!Array.isArray(data[poNumber])) continue;
+                        
+                        data[poNumber].forEach(combination => {
+                            if (!combination.combination_id || !combination.style || !combination.color || !combination.available_quantities || !combination.size_ids) {
+                                return;
+                            }
+                            
+                            const combinationKey = `${combination.combination_id}-${combination.style}-${combination.color}`;
+                            
+                            if (processedCombinations.has(combinationKey)) {
+                                return;
+                            }
+                            
+                            processedCombinations.add(combinationKey);
+                            
+                            const row = document.createElement('tr');
+                            const key = `${poNumber}-${combination.combination_id}`;
+                            row.dataset.key = key;
+                            row.innerHTML = `
+                                <td class="text-center">
+                                    <input type="hidden" name="rows[${rowIndex}][product_combination_id]" value="${combination.combination_id}">
+                                    ${poNumber}
+                                </td>
+                                <td class="text-center">${combination.style}</td>
+                                <td class="text-center">${combination.color}</td>
+                            `;
+
+                            const availableSizeIds = combination.size_ids.map(id => String(id));
+
+                            @foreach ($sizes as $size)
+                                {
+                                    const sizeId = "{{ $size->id }}";
+                                    const sizeName = "{{ $size->name }}";
+                                    const availableQty = combination.available_quantities[sizeName.toLowerCase()] || 0;
+                                    const savedInput = (savedInputs[key] && savedInputs[key].input && savedInputs[key].input[sizeId]) || 0;
+                                    const savedWaste = (savedInputs[key] && savedInputs[key].waste && savedInputs[key].waste[sizeId]) || 0;
+                                    const isSizeAvailable = availableSizeIds.includes(sizeId);
+
+                                    const cell = document.createElement('td');
+                                    if (isSizeAvailable && availableQty > 0) {
+                                        cell.innerHTML = ` <label>Max = ${availableQty} Pcs </label> <br>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" 
+                                                       name="rows[${rowIndex}][input_quantities][${sizeId}]" 
+                                                       class="form-control input-qty-input"
+                                                       min="0" 
+                                                       max="${availableQty}"
+                                                       value="${savedInput}"
+                                                       placeholder="Av: ${availableQty}">
+                                                <input type="number" 
+                                                       name="rows[${rowIndex}][input_waste_quantities][${sizeId}]" 
+                                                       class="form-control waste-qty-input"
+                                                       min="0" 
+                                                       value="${savedWaste}"
+                                                       max="${availableQty}"
+                                                       placeholder="W: 0">
+                                            </div>
+                                        `;
+                                    } else {
+                                        cell.innerHTML = `<span class="text-muted text-center">N/A</span>`;
+                                    }
+                                    row.appendChild(cell);
+                                }
+                            @endforeach
+
+                            row.innerHTML += `
+                                <td><span class="total-input-qty-span">0</span></td>
+                                <td><span class="total-waste-qty-span">0</span></td>
+                            `;
+
+                            lineInputDataBody.appendChild(row);
+                            rowIndex++;
+                        });
+                    }
+
+                    lineInputDataBody.querySelectorAll('.input-qty-input, .waste-qty-input').forEach(input => {
+                        input.dispatchEvent(new Event('input'));
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    lineInputDataBody.innerHTML = '<tr><td colspan="100%">Error loading data. Please try again.</td></tr>';
+                });
+            }
+
+            lineInputDataBody.addEventListener('input', function(e) {
+                const target = e.target;
+                const row = target.closest('tr');
+                const key = row.dataset.key;
+
+                if (!savedInputs[key]) {
+                    savedInputs[key] = { input: {}, waste: {} };
+                }
+
+                let isInput = target.classList.contains('input-qty-input');
+                let isWaste = target.classList.contains('waste-qty-input');
+
+                if (isInput || isWaste) {
+                    const name = target.name;
+                    const sizeId = name.match(/\[(input_quantities|input_waste_quantities)\]\[(\d+)\]/)[2];
+                    let value = parseInt(target.value) || 0;
+
+                    if (isInput) {
+                        const max = parseInt(target.getAttribute('max')) || 0;
+                        if (value > max) {
+                            value = max;
+                            target.value = max;
+                        }
+                    }
+
+                    if (isInput) {
+                        savedInputs[key].input[sizeId] = value;
+                    } else if (isWaste) {
+                        savedInputs[key].waste[sizeId] = value;
+                    }
+
+                    let totalInput = 0;
+                    let totalWaste = 0;
+
+                    row.querySelectorAll('.input-qty-input').forEach(input => {
+                        totalInput += parseInt(input.value) || 0;
+                    });
+
+                    row.querySelectorAll('.waste-qty-input').forEach(input => {
+                        totalWaste += parseInt(input.value) || 0;
+                    });
+
+                    row.querySelector('.total-input-qty-span').textContent = totalInput;
+                    row.querySelector('.total-waste-qty-span').textContent = totalWaste;
+                }
+            });
         });
     </script>
-    
-    <style>
-        .progress {
-            background-color: #e9ecef;
-        }
-        .progress-bar {
-            background-color: #28a745;
-            transition: width 0.3s ease;
-        }
-        input[type="number"]:disabled {
-            background-color: #f8f9fa;
-        }
-    </style>
 </x-backend.layouts.master>

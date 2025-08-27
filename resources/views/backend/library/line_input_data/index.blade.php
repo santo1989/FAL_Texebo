@@ -43,13 +43,15 @@
                                     <tr>
                                         <th>Sl#</th>
                                         <th>Date</th>
+                                        <th>PO Number</th>
                                         <th>Buyer</th>
                                         <th>Style</th>
                                         <th>Color</th>
                                         @foreach ($allSizes as $size)
                                             <th>{{ strtoupper($size->name) }}</th>
                                         @endforeach
-                                        <th>Total</th>
+                                        <th>Total Input</th>
+                                        <th>Total Waste</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -58,13 +60,22 @@
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data->date }}</td>
+                                            <td>{{ $data->po_number }}</td>
                                             <td>{{ $data->productCombination->buyer->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->style->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->color->name ?? 'N/A' }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data->input_quantities[$size->name] ?? '' }}</td>
+                                                <td>
+                                                    @if (isset($data->input_quantities[$size->id]))
+                                                        {{ $data->input_quantities[$size->id] }}
+                                                        @if (isset($data->input_waste_quantities[$size->id]))
+                                                            <br><small class="text-muted">W: {{ $data->input_waste_quantities[$size->id] }}</small>
+                                                        @endif
+                                                    @endif
+                                                </td>
                                             @endforeach
                                             <td>{{ $data->total_input_quantity }}</td>
+                                            <td>{{ $data->total_input_waste_quantity ?? 0 }}</td>
                                             <td>
                                                 <a href="{{ route('line_input_data.edit', $data->id) }}" class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-pencil"></i> Edit
@@ -80,7 +91,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 6 + count($allSizes) }}" class="text-center">No line input data found</td>
+                                            <td colspan="{{ 7 + count($allSizes) }}" class="text-center">No line input data found</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

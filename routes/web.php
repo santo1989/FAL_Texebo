@@ -225,6 +225,8 @@ Route::middleware('auth')->group(function () {
 
     //line_input_data
 
+    Route::get('line_input_data/find', [LineInputDataController::class, 'find'])->name('line_input_data.find');
+
     Route::resource('line_input_data', LineInputDataController::class);
     Route::get('line_input_data/available_quantities/{productCombination}', [LineInputDataController::class, 'getAvailableQuantities'])->name('line_input_data.available_quantities');
 

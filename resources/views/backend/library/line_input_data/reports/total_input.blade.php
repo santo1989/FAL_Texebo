@@ -31,8 +31,10 @@
                                         <th>Color</th>
                                         @foreach ($allSizes as $size)
                                             <th>{{ strtoupper($size->name) }}</th>
+                                            <th>Waste {{ strtoupper($size->name) }}</th>
                                         @endforeach
-                                        <th>Total</th>
+                                        <th>Total Input</th>
+                                        <th>Total Waste</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -42,12 +44,14 @@
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
                                                 <td>{{ $data['sizes'][strtolower($size->name)] ?? 0 }}</td>
+                                                <td>{{ $data['waste_sizes'][strtolower($size->name)] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data['total'] }}</td>
+                                            <td>{{ $data['total_waste'] }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ count($allSizes) + 3 }}" class="text-center">No data found.
+                                            <td colspan="{{ count($allSizes) * 2 + 4 }}" class="text-center">No data found.
                                             </td>
                                         </tr>
                                     @endforelse

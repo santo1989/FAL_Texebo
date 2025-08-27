@@ -38,14 +38,31 @@
                                 </div>
 
                                 <div class="form-group">
+                                    <label>PO Number</label>
+                                    <input type="text" class="form-control" value="{{ $lineInputDatum->po_number }}" readonly>
+                                </div>
+
+                                <div class="form-group">
                                     <label>Input Quantities by Size</label>
                                     <div class="row">
-                                        @foreach ($sizeData as $size)
+                                        @foreach ($allSizes as $size)
+                                            @php
+                                                $inputQty = $lineInputDatum->input_quantities[$size->id] ?? 0;
+                                                $wasteQty = $lineInputDatum->input_waste_quantities[$size->id] ?? 0;
+                                            @endphp
                                             <div class="col-md-3 mb-3">
-                                                <label for="quantity_{{ $size['id'] }}">{{ $size['name'] }} (Max: {{ $size['max_allowed'] }})</label>
-                                                <input type="number" name="quantities[{{ $size['id'] }}]" id="quantity_{{ $size['id'] }}"
-                                                    class="form-control" value="{{ old('quantities.' . $size['id'], $size['current_quantity']) }}" min="0" max="{{ $size['max_allowed'] + $size['current_quantity'] }}">
-                                                @error('quantities.' . $size['id'])
+                                                <label for="input_quantities_{{ $size->id }}">{{ $size->name }} Input</label>
+                                                <input type="number" name="input_quantities[{{ $size->id }}]" id="input_quantities_{{ $size->id }}"
+                                                    class="form-control" value="{{ old('input_quantities.' . $size->id, $inputQty) }}" min="0">
+                                                @error('input_quantities.' . $size->id)
+                                                    <div class="text-danger">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="input_waste_quantities_{{ $size->id }}">{{ $size->name }} Waste</label>
+                                                <input type="number" name="input_waste_quantities[{{ $size->id }}]" id="input_waste_quantities_{{ $size->id }}"
+                                                    class="form-control" value="{{ old('input_waste_quantities.' . $size->id, $wasteQty) }}" min="0">
+                                                @error('input_waste_quantities.' . $size->id)
                                                     <div class="text-danger">{{ $message }}</div>
                                                 @enderror
                                             </div>

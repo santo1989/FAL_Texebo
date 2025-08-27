@@ -59,6 +59,18 @@ class ProductCombination extends Model
         return $this->hasMany(CuttingData::class);
     }
 
+
+    public function sublimationPrintSends()
+    {
+        return $this->hasMany(SublimationPrintSend::class);
+    }
+
+    public function sublimationPrintReceives()
+    {
+        return $this->hasMany(SublimationPrintReceive::class);
+    }
+
+
     public function printSends()
     {
         return $this->hasMany(PrintSendData::class);
