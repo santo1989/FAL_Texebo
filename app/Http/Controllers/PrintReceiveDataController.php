@@ -571,137 +571,228 @@ class PrintReceiveDataController extends Controller
         }
 
         $printReceiveData = $query->orderBy('date', 'desc')->paginate(10);
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return view('backend.library.print_receive_data.index', compact('printReceiveData', 'allSizes'));
     }
 
     public function create()
     {
-        $productCombinations = ProductCombination::whereHas('printSends')
-            ->with('buyer', 'style', 'color')
-            ->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        $sizes = Size::where('is_active', 1)->get();
+        // Get distinct PO numbers from PrintSendData
+        $distinctPoNumbers = PrintSendData::distinct()
+            ->pluck('po_number')
+            ->filter()
+            ->values();
 
-        return view('backend.library.print_receive_data.create', compact('productCombinations', 'sizes'));
+        return view('backend.library.print_receive_data.create', compact('distinctPoNumbers', 'allSizes'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'date' => 'required|date',
-            'product_combination_id' => 'required|exists:product_combinations,id',
-            'quantities.*' => 'nullable|integer|min:0',
+            'po_number' => 'required|array',
+            'po_number.*' => 'required|string',
+            'rows' => 'required|array',
+            'rows.*.product_combination_id' => 'required|exists:product_combinations,id',
+            'rows.*.receive_quantities.*' => 'nullable|integer|min:0',
+            'rows.*.receive_waste_quantities.*' => 'nullable|integer|min:0',
         ]);
 
-        $productCombination = ProductCombination::findOrFail($request->product_combination_id);
-        $availableQuantities = $this->getAvailableReceiveQuantities($productCombination)->getData()->availableQuantities;
+        try {
+            DB::beginTransaction();
 
-        $receiveQuantities = [];
-        $totalReceiveQuantity = 0;
-        $errors = [];
+            foreach ($request->rows as $row) {
+                $receiveQuantities = [];
+                $wasteQuantities = [];
+                $totalReceiveQuantity = 0;
+                $totalWasteQuantity = 0;
 
-        foreach ($request->input('quantities', []) as $sizeId => $quantity) {
-            $size = Size::find($sizeId);
-            if ($size && $quantity > 0) {
-                $sizeName = strtolower($size->name);
-                $available = $availableQuantities[$sizeName] ?? 0;
-                if ($quantity > $available) {
-                    $errors["quantities.$sizeId"] = "Quantity for {$size->name} exceeds available to receive ($available)";
-                } else {
-                    $receiveQuantities[$size->name] = (int)$quantity;
-                    $totalReceiveQuantity += (int)$quantity;
+                // Process receive quantities
+                foreach ($row['receive_quantities'] as $sizeId => $quantity) {
+                    if ($quantity !== null && (int)$quantity > 0) {
+                        $size = Size::find($sizeId);
+                        if ($size) {
+                            $receiveQuantities[$size->id] = (int)$quantity;
+                            $totalReceiveQuantity += (int)$quantity;
+                        }
+                    }
+                }
+
+                // Process waste quantities
+                foreach ($row['receive_waste_quantities'] as $sizeId => $quantity) {
+                    if ($quantity !== null && (int)$quantity > 0) {
+                        $size = Size::find($sizeId);
+                        if ($size) {
+                            $wasteQuantities[$size->id] = (int)$quantity;
+                            $totalWasteQuantity += (int)$quantity;
+                        }
+                    }
+                }
+
+                // Only create a record if there's at least one valid receive or waste quantity
+                if (!empty($receiveQuantities) || !empty($wasteQuantities)) {
+                    PrintReceiveData::create([
+                        'date' => $request->date,
+                        'product_combination_id' => $row['product_combination_id'],
+                        'po_number' => implode(',', $request->po_number),
+                        'receive_quantities' => $receiveQuantities,
+                        'total_receive_quantity' => $totalReceiveQuantity,
+                        'receive_waste_quantities' => $wasteQuantities,
+                        'total_receive_waste_quantity' => $totalWasteQuantity,
+                    ]);
                 }
             }
+
+            DB::commit();
+
+            return redirect()->route('print_receive_data.index')
+                ->with('success', 'Print/Embroidery Receive data added successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Error occurred: ' . $e->getMessage())
+                ->withInput();
         }
-
-        if (!empty($errors)) {
-            return redirect()->back()->withErrors($errors)->withInput();
-        }
-
-        PrintReceiveData::create([
-            'date' => $request->date,
-            'product_combination_id' => $request->product_combination_id,
-            'receive_quantities' => $receiveQuantities,
-            'total_receive_quantity' => $totalReceiveQuantity,
-        ]);
-
-        return redirect()->route('print_receive_data.index')->with('success', 'Print/Receive data added successfully.');
     }
 
     public function show(PrintReceiveData $printReceiveDatum)
     {
-        return view('backend.library.print_receive_data.show', compact('printReceiveDatum'));
+        $printReceiveDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+        //only valid sizes
+        $validSizes = $allSizes->filter(function ($size) use ($printReceiveDatum) {
+            return isset($printReceiveDatum->receive_quantities[$size->id]) ||
+                   isset($printReceiveDatum->receive_waste_quantities[$size->id]);
+        });
+
+        $allSizes = $validSizes->values();
+
+        return view('backend.library.print_receive_data.show', compact('printReceiveDatum', 'allSizes'));
     }
 
     public function edit(PrintReceiveData $printReceiveDatum)
     {
         $printReceiveDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-        $sizes = Size::where('is_active', 1)->get();
-        $availableQuantities = $this->getAvailableReceiveQuantities($printReceiveDatum->productCombination)->getData()->availableQuantities;
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        $sizeData = $sizes->map(function ($size) use ($printReceiveDatum, $availableQuantities) {
-            $sizeName = strtolower($size->name);
-            return [
-                'id' => $size->id,
-                'name' => $size->name,
-                'available' => $availableQuantities[$sizeName] ?? 0,
-                'current_quantity' => $printReceiveDatum->receive_quantities[$size->name] ?? 0
-            ];
+        //only valid sizes
+        $validSizes = $allSizes->filter(function ($size) use ($printReceiveDatum) {
+            return isset($printReceiveDatum->receive_quantities[$size->id]) ||
+                isset($printReceiveDatum->receive_waste_quantities[$size->id]);
         });
 
-        return view('backend.library.print_receive_data.edit', [
-            'printReceiveDatum' => $printReceiveDatum,
-            'sizes' => $sizeData
-        ]);
+        $allSizes = $validSizes->values();
+
+        return view('backend.library.print_receive_data.edit', compact('printReceiveDatum', 'allSizes'));
     }
 
     public function update(Request $request, PrintReceiveData $printReceiveDatum)
     {
         $request->validate([
             'date' => 'required|date',
-            'quantities.*' => 'nullable|integer|min:0',
+            'receive_quantities.*' => 'nullable|integer|min:0',
+            'receive_waste_quantities.*' => 'nullable|integer|min:0',
         ]);
 
-        $productCombination = $printReceiveDatum->productCombination;
-        $availableQuantities = $this->getAvailableReceiveQuantities($productCombination)->getData()->availableQuantities;
+        try {
+            $receiveQuantities = [];
+            $wasteQuantities = [];
+            $totalReceiveQuantity = 0;
+            $totalWasteQuantity = 0;
 
-        $receiveQuantities = [];
-        $totalReceiveQuantity = 0;
-        $errors = [];
-
-        foreach ($request->input('quantities', []) as $sizeId => $quantity) {
-            $size = Size::find($sizeId);
-            if ($size && $quantity > 0) {
-                $sizeName = strtolower($size->name);
-                $maxAllowed = ($availableQuantities[$sizeName] ?? 0) + ($printReceiveDatum->receive_quantities[$size->name] ?? 0);
-                if ($quantity > $maxAllowed) {
-                    $errors["quantities.$sizeId"] = "Quantity for {$size->name} exceeds available to receive ($maxAllowed)";
-                } else {
-                    $receiveQuantities[$size->name] = (int)$quantity;
+            // Process receive quantities
+            foreach ($request->receive_quantities as $sizeId => $quantity) {
+                if ($quantity !== null && (int)$quantity > 0) {
+                    $receiveQuantities[$sizeId] = (int)$quantity;
                     $totalReceiveQuantity += (int)$quantity;
                 }
             }
+
+            // Process waste quantities
+            foreach ($request->receive_waste_quantities as $sizeId => $quantity) {
+                if ($quantity !== null && (int)$quantity > 0) {
+                    $wasteQuantities[$sizeId] = (int)$quantity;
+                    $totalWasteQuantity += (int)$quantity;
+                }
+            }
+
+            $printReceiveDatum->update([
+                'date' => $request->date,
+                'receive_quantities' => $receiveQuantities,
+                'total_receive_quantity' => $totalReceiveQuantity,
+                'receive_waste_quantities' => $wasteQuantities,
+                'total_receive_waste_quantity' => $totalWasteQuantity,
+            ]);
+
+            return redirect()->route('print_receive_data.index')
+                ->with('success', 'Print/Embroidery Receive data updated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Error occurred: ' . $e->getMessage())
+                ->withInput();
         }
-
-        if (!empty($errors)) {
-            return redirect()->back()->withErrors($errors)->withInput();
-        }
-
-        $printReceiveDatum->update([
-            'date' => $request->date,
-            'receive_quantities' => $receiveQuantities,
-            'total_receive_quantity' => $totalReceiveQuantity,
-        ]);
-
-        return redirect()->route('print_receive_data.index')->with('success', 'Print/Receive data updated successfully.');
     }
 
     public function destroy(PrintReceiveData $printReceiveDatum)
     {
         $printReceiveDatum->delete();
-        return redirect()->route('print_receive_data.index')->with('success', 'Print/Receive data deleted successfully.');
+
+        return redirect()->route('print_receive_data.index')
+            ->with('success', 'Print/Embroidery Receive data deleted successfully.');
+    }
+
+    public function find(Request $request)
+    {
+        $poNumbers = $request->input('po_numbers', []);
+
+        if (empty($poNumbers)) {
+            return response()->json([]);
+        }
+
+        $result = [];
+        $processedCombinations = [];
+
+        foreach ($poNumbers as $poNumber) {
+            // Get print send data for the selected PO number
+            $printSendData = PrintSendData::where('po_number', 'like', '%' . $poNumber . '%')
+                ->with(['productCombination.style', 'productCombination.color'])
+                ->get();
+
+            foreach ($printSendData as $data) {
+                if (!$data->productCombination) {
+                    continue;
+                }
+
+                // Create a unique key for this combination
+                $combinationKey = $data->productCombination->id . '-' .
+                    $data->productCombination->style->name . '-' .
+                    $data->productCombination->color->name;
+
+                // Skip if we've already processed this combination
+                if (in_array($combinationKey, $processedCombinations)) {
+                    continue;
+                }
+
+                // Mark this combination as processed
+                $processedCombinations[] = $combinationKey;
+
+                $availableQuantities = $this->getAvailableReceiveQuantities($data->productCombination)->getData()->availableQuantities;
+
+                $result[$poNumber][] = [
+                    'combination_id' => $data->productCombination->id,
+                    'style' => $data->productCombination->style->name,
+                    'color' => $data->productCombination->color->name,
+                    'available_quantities' => $availableQuantities,
+                    'size_ids' => $data->productCombination->sizes->pluck('id')->toArray()
+                ];
+            }
+        }
+
+        return response()->json($result);
     }
 
     public function getAvailableReceiveQuantities(ProductCombination $productCombination)
@@ -714,9 +805,8 @@ class PrintReceiveDataController extends Controller
             ->get()
             ->pluck('send_quantities')
             ->reduce(function ($carry, $quantities) {
-                foreach ($quantities as $size => $qty) {
-                    $normalized = strtolower($size);
-                    $carry[$normalized] = ($carry[$normalized] ?? 0) + $qty;
+                foreach ($quantities as $sizeId => $qty) {
+                    $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
                 }
                 return $carry;
             }, []);
@@ -726,18 +816,17 @@ class PrintReceiveDataController extends Controller
             ->get()
             ->pluck('receive_quantities')
             ->reduce(function ($carry, $quantities) {
-                foreach ($quantities as $size => $qty) {
-                    $normalized = strtolower($size);
-                    $carry[$normalized] = ($carry[$normalized] ?? 0) + $qty;
+                foreach ($quantities as $sizeId => $qty) {
+                    $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
                 }
                 return $carry;
             }, []);
 
+        // Calculate available quantities
         foreach ($sizes as $size) {
-            $sizeName = strtolower($size->name);
-            $sent = $sentQuantities[$sizeName] ?? 0;
-            $received = $receivedQuantities[$sizeName] ?? 0;
-            $availableQuantities[$sizeName] = max(0, $sent - $received);
+            $sent = $sentQuantities[$size->id] ?? 0;
+            $received = $receivedQuantities[$size->id] ?? 0;
+            $availableQuantities[$size->id] = max(0, $sent - $received);
         }
 
         return response()->json([
@@ -749,260 +838,351 @@ class PrintReceiveDataController extends Controller
     // Existing report methods remain unchanged...
     //     // Reports
 
-        public function totalPrintEmbReceiveReport(Request $request)
-        {
-            $query = PrintReceiveData::with('productCombination.style', 'productCombination.color');
+    public function totalPrintEmbReceiveReport(Request $request)
+    {
+        $query = PrintReceiveData::with('productCombination.style', 'productCombination.color');
 
-            if ($request->filled('start_date') && $request->filled('end_date')) {
-                $query->whereBetween('date', [$request->start_date, $request->end_date]);
-            }
-
-            $printReceiveData = $query->get();
-            $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
-            $reportData = [];
-
-            foreach ($printReceiveData as $data) {
-                $style = $data->productCombination->style->name;
-                $color = $data->productCombination->color->name;
-                $key = $style . '-' . $color;
-
-                if (!isset($reportData[$key])) {
-                    $reportData[$key] = [
-                        'style' => $style,
-                        'color' => $color,
-                        'sizes' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
-                        'total' => 0
-                    ];
-                }
-
-                foreach ($data->receive_quantities as $size => $qty) {
-                    $normalized = strtolower($size);
-                    if (array_key_exists($normalized, $reportData[$key]['sizes'])) {
-                        $reportData[$key]['sizes'][$normalized] += $qty;
-                    }
-                }
-                $reportData[$key]['total'] += $data->total_receive_quantity;
-            }
-
-            return view('backend.library.print_receive_data.reports.total_receive', [
-                'reportData' => array_values($reportData),
-                'allSizes' => $allSizes
-            ]);
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('date', [$request->start_date, $request->end_date]);
         }
 
-        public function totalPrintEmbBalanceReport(Request $request)
-        {
-            $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
-            $balanceData = [];
+        $printReceiveData = $query->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
 
-            // Get all product combinations that have either been sent or received for print/emb
-            $productCombinations = ProductCombination::whereHas('printSends')
-                ->orWhereHas('printReceives')
-                ->with('style', 'color')
-                ->get();
+        // Create a map for size ID to size name and vice versa
+        $sizeIdToName = $allSizes->pluck('name', 'id')->toArray();
+        $sizeNameToId = $allSizes->pluck('id', 'name')->map(fn($id) => strtolower($allSizes->firstWhere('id', $id)->name))->toArray(); // Ensure keys are lowercase size names
 
-            foreach ($productCombinations as $pc) {
-                $style = $pc->style->name;
-                $color = $pc->color->name;
-                $key = $style . '-' . $color;
+        $reportData = [];
 
-                // Initialize with default values
+        foreach ($printReceiveData as $data) {
+            $style = $data->productCombination->style->name;
+            $color = $data->productCombination->color->name;
+            $key = $style . '-' . $color;
+
+            if (!isset($reportData[$key])) {
+                $reportData[$key] = [
+                    'style' => $style,
+                    'color' => $color,
+                    // Initialize with size IDs as keys for quantities
+                    'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                    'waste_sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                    'total' => 0,
+                    'total_waste' => 0
+                ];
+            }
+
+            // Quantities are stored with size IDs as keys
+            foreach ($data->receive_quantities as $sizeId => $qty) {
+                if (array_key_exists($sizeId, $reportData[$key]['sizes'])) {
+                    $reportData[$key]['sizes'][$sizeId] += $qty;
+                }
+            }
+            $reportData[$key]['total'] += $data->total_receive_quantity;
+
+            if ($data->receive_waste_quantities) {
+                foreach ($data->receive_waste_quantities as $sizeId => $qty) {
+                    if (array_key_exists($sizeId, $reportData[$key]['waste_sizes'])) {
+                        $reportData[$key]['waste_sizes'][$sizeId] += $qty;
+                    }
+                }
+            }
+            $reportData[$key]['total_waste'] += $data->total_receive_waste_quantity ?? 0;
+        }
+
+        return view('backend.library.print_receive_data.reports.total_receive', [
+            'reportData' => array_values($reportData),
+            'allSizes' => $allSizes,
+            'sizeIdToName' => $sizeIdToName, // Pass the map to the view
+        ]);
+    }
+
+    public function totalPrintEmbBalanceReport(Request $request)
+    {
+        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $sizeIdToName = $allSizes->pluck('name', 'id')->toArray();
+        $sizeNameToId = $allSizes->pluck('id', 'name')->map(fn($id) => strtolower($allSizes->firstWhere('id', $id)->name))->toArray();
+
+        $balanceData = [];
+
+        $productCombinations = ProductCombination::whereHas('printSends')
+            ->orWhereHas('printReceives')
+            ->with('style', 'color')
+            ->get();
+
+        foreach ($productCombinations as $pc) {
+            $style = $pc->style->name;
+            $color = $pc->color->name;
+            $key = $style . '-' . $color;
+
+            if (!isset($balanceData[$key])) {
                 $balanceData[$key] = [
                     'style' => $style,
                     'color' => $color,
-                    'sizes' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), ['sent' => 0, 'received' => 0, 'balance' => 0]),
+                    // Initialize with size IDs as keys
+                    'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), ['sent' => 0, 'received' => 0, 'balance' => 0, 'waste' => 0]),
                     'total_sent' => 0,
                     'total_received' => 0,
+                    'total_waste' => 0,
                     'total_balance' => 0,
                 ];
-
-                // Aggregate sent quantities
-                $sentData = PrintSendData::where('product_combination_id', $pc->id);
-                if ($request->filled('start_date') && $request->filled('end_date')) {
-                    $sentData->whereBetween('date', [$request->start_date, $request->end_date]);
-                }
-                $sentData = $sentData->get();
-
-                foreach ($sentData as $data) {
-                    foreach ($data->send_quantities as $size => $qty) {
-                        $normalized = strtolower($size);
-                        if (isset($balanceData[$key]['sizes'][$normalized])) {
-                            $balanceData[$key]['sizes'][$normalized]['sent'] += $qty;
-                        }
-                    }
-                    $balanceData[$key]['total_sent'] += $data->total_send_quantity;
-                }
-
-                // Aggregate received quantities
-                $receiveData = PrintReceiveData::where('product_combination_id', $pc->id);
-                if ($request->filled('start_date') && $request->filled('end_date')) {
-                    $receiveData->whereBetween('date', [$request->start_date, $request->end_date]);
-                }
-                $receiveData = $receiveData->get();
-
-                foreach ($receiveData as $data) {
-                    foreach ($data->receive_quantities as $size => $qty) {
-                        $normalized = strtolower($size);
-                        if (isset($balanceData[$key]['sizes'][$normalized])) {
-                            $balanceData[$key]['sizes'][$normalized]['received'] += $qty;
-                        }
-                    }
-                    $balanceData[$key]['total_received'] += $data->total_receive_quantity;
-                }
-
-                // Calculate balance per size and total balance
-                foreach ($balanceData[$key]['sizes'] as $sizeName => &$sizeData) {
-                    $sizeData['balance'] = $sizeData['sent'] - $sizeData['received'];
-                }
-                unset($sizeData); // Unset the reference to avoid unexpected behavior
-
-                $balanceData[$key]['total_balance'] = $balanceData[$key]['total_sent'] - $balanceData[$key]['total_received'];
-
-                // Remove if total balance is 0 or less (meaning everything sent has been received) unless filtered by date
-                if ($balanceData[$key]['total_balance'] <= 0 && (!$request->filled('start_date') && !$request->filled('end_date'))) {
-                    unset($balanceData[$key]);
-                }
             }
 
-            return view('backend.library.print_receive_data.reports.balance_quantity', [
-                'reportData' => array_values($balanceData),
-                'allSizes' => $allSizes
-            ]);
+
+            // Aggregate sent quantities
+            $sentData = PrintSendData::where('product_combination_id', $pc->id);
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $sentData->whereBetween('date', [$request->start_date, $request->end_date]);
+            }
+            $sentData = $sentData->get();
+
+            foreach ($sentData as $data) {
+                foreach ($data->send_quantities as $sizeId => $qty) { // Assuming send_quantities also uses size IDs
+                    if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                        $balanceData[$key]['sizes'][$sizeId]['sent'] += $qty;
+                    }
+                }
+                $balanceData[$key]['total_sent'] += $data->total_send_quantity;
+            }
+
+            // Aggregate received quantities and waste
+            $receiveData = PrintReceiveData::where('product_combination_id', $pc->id);
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $receiveData->whereBetween('date', [$request->start_date, $request->end_date]);
+            }
+            $receiveData = $receiveData->get();
+
+            foreach ($receiveData as $data) {
+                foreach ($data->receive_quantities as $sizeId => $qty) {
+                    if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                        $balanceData[$key]['sizes'][$sizeId]['received'] += $qty;
+                    }
+                }
+                $balanceData[$key]['total_received'] += $data->total_receive_quantity;
+
+                if ($data->receive_waste_quantities) {
+                    foreach ($data->receive_waste_quantities as $sizeId => $qty) {
+                        if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                            $balanceData[$key]['sizes'][$sizeId]['waste'] += $qty;
+                        }
+                    }
+                }
+                $balanceData[$key]['total_waste'] += $data->total_receive_waste_quantity ?? 0;
+            }
+
+            // Calculate balance per size and total balance
+            foreach ($balanceData[$key]['sizes'] as $sizeId => &$sizeData) {
+                $sizeData['balance'] = $sizeData['sent'] - $sizeData['received'] - $sizeData['waste'];
+            }
+            unset($sizeData);
+
+            $balanceData[$key]['total_balance'] = $balanceData[$key]['total_sent'] - $balanceData[$key]['total_received'] - $balanceData[$key]['total_waste'];
+
+            if ($balanceData[$key]['total_balance'] <= 0 && (!$request->filled('start_date') && !$request->filled('end_date'))) {
+                unset($balanceData[$key]);
+            }
         }
 
-        public function wipReport(Request $request)
-        {
-            // Get product combinations with print_embroidery = true
-            $combinations = ProductCombination::where('print_embroidery', true)
-                ->with('style', 'color')
-                ->get();
+        return view('backend.library.print_receive_data.reports.balance_quantity', [
+            'reportData' => array_values($balanceData),
+            'allSizes' => $allSizes,
+            'sizeIdToName' => $sizeIdToName,
+        ]);
+    }
 
-            $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
-            $wipData = [];
+    public function wipReport(Request $request)
+    {
+        $combinations = ProductCombination::where('print_embroidery', true)
+            ->with('style', 'color')
+            ->get();
 
-            foreach ($combinations as $pc) {
-                $totalSent = PrintSendData::where('product_combination_id', $pc->id)
-                    ->sum('total_send_quantity');
+        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $sizeIdToName = $allSizes->pluck('name', 'id')->toArray();
+        $sizeNameToId = $allSizes->pluck('id', 'name')->map(fn($id) => strtolower($allSizes->firstWhere('id', $id)->name))->toArray();
 
-                // Get total received quantity for this product combination
-                $totalReceived = PrintReceiveData::where('product_combination_id', $pc->id)
-                    ->sum('total_receive_quantity');
+        $wipData = [];
 
-                // WIP is total sent - total received. It's the items still at print/emb.
-                // Only show if there's a positive balance (more sent than received)
-                if (($totalSent - $totalReceived) > 0) {
-                    $key = $pc->style->name . '-' . $pc->color->name;
+        foreach ($combinations as $pc) {
+            $totalSent = PrintSendData::where('product_combination_id', $pc->id)
+                ->sum('total_send_quantity');
 
-                    if (!isset($wipData[$key])) {
-                        $wipData[$key] = [
-                            'style' => $pc->style->name,
-                            'color' => $pc->color->name,
-                            'sizes' => [],
-                            'total_sent' => 0,
-                            'total_received' => 0,
+            $totalReceived = PrintReceiveData::where('product_combination_id', $pc->id)
+                ->sum('total_receive_quantity');
+
+            $totalReceivedWaste = PrintReceiveData::where('product_combination_id', $pc->id)
+                ->sum('total_receive_waste_quantity');
+
+            $currentWaiting = $totalSent - $totalReceived - $totalReceivedWaste;
+
+            if ($currentWaiting > 0) {
+                $key = $pc->style->name . '-' . $pc->color->name;
+
+                if (!isset($wipData[$key])) {
+                    $wipData[$key] = [
+                        'style' => $pc->style->name,
+                        'color' => $pc->color->name,
+                        'sizes' => [], // Initialize with empty array, will be populated with size IDs
+                        'total_sent' => 0,
+                        'total_received' => 0,
+                        'total_received_waste' => 0,
+                        'waiting' => 0
+                    ];
+
+                    foreach ($allSizes as $size) {
+                        $wipData[$key]['sizes'][$size->id] = [ // Use size ID as key
+                            'sent' => 0,
+                            'received' => 0,
+                            'waste' => 0,
                             'waiting' => 0
                         ];
+                    }
+                }
 
-                        // Initialize sizes
-                        foreach ($allSizes as $size) {
-                            $wipData[$key]['sizes'][strtolower($size->name)] = [
-                                'sent' => 0,
-                                'received' => 0,
-                                'waiting' => 0
-                            ];
+                $wipData[$key]['total_sent'] += $totalSent;
+                $wipData[$key]['total_received'] += $totalReceived;
+                $wipData[$key]['total_received_waste'] += $totalReceivedWaste;
+                $wipData[$key]['waiting'] += $currentWaiting;
+
+                // Aggregate size quantities for sent
+                $sendData = PrintSendData::where('product_combination_id', $pc->id)->get();
+                foreach ($sendData as $sd) {
+                    foreach ($sd->send_quantities as $sizeId => $qty) { // Assuming send_quantities also uses size IDs
+                        if (isset($wipData[$key]['sizes'][$sizeId])) {
+                            $wipData[$key]['sizes'][$sizeId]['sent'] += $qty;
                         }
                     }
+                }
 
-                    $wipData[$key]['total_sent'] += $totalSent;
-                    $wipData[$key]['total_received'] += $totalReceived;
-                    $wipData[$key]['waiting'] += ($totalSent - $totalReceived);
-
-                    // Aggregate size quantities for sent
-                    $sendData = PrintSendData::where('product_combination_id', $pc->id)->get();
-                    foreach ($sendData as $sd) {
-                        foreach ($sd->send_quantities as $size => $qty) {
-                            $normalizedSize = strtolower($size);
-                            if (isset($wipData[$key]['sizes'][$normalizedSize])) {
-                                $wipData[$key]['sizes'][$normalizedSize]['sent'] += $qty;
+                // Aggregate size quantities for received (good) and waste
+                $receiveData = PrintReceiveData::where('product_combination_id', $pc->id)->get();
+                foreach ($receiveData as $rd) {
+                    foreach ($rd->receive_quantities as $sizeId => $qty) {
+                        if (isset($wipData[$key]['sizes'][$sizeId])) {
+                            $wipData[$key]['sizes'][$sizeId]['received'] += $qty;
+                        }
+                    }
+                    if ($rd->receive_waste_quantities) {
+                        foreach ($rd->receive_waste_quantities as $sizeId => $qty) {
+                            if (isset($wipData[$key]['sizes'][$sizeId])) {
+                                $wipData[$key]['sizes'][$sizeId]['waste'] += $qty;
                             }
                         }
                     }
+                }
 
-                    // Aggregate size quantities for received
-                    $receiveData = PrintReceiveData::where('product_combination_id', $pc->id)->get();
-                    foreach ($receiveData as $rd) {
-                        foreach ($rd->receive_quantities as $size => $qty) {
-                            $normalizedSize = strtolower($size);
-                            if (isset($wipData[$key]['sizes'][$normalizedSize])) {
-                                $wipData[$key]['sizes'][$normalizedSize]['received'] += $qty;
-                            }
-                        }
-                    }
+                // Calculate waiting per size (sent - received - waste)
+                foreach ($wipData[$key]['sizes'] as $sizeId => &$data) {
+                    $data['waiting'] = $data['sent'] - $data['received'] - $data['waste'];
+                }
+                unset($data);
+            }
+        }
 
-                    // Calculate waiting per size
-                    foreach ($wipData[$key]['sizes'] as $sizeName => &$data) {
-                        $data['waiting'] = $data['sent'] - $data['received'];
-                    }
-                    unset($data); // Unset the reference
+        return view('backend.library.print_receive_data.reports.wip', [
+            'wipData' => array_values($wipData),
+            'allSizes' => $allSizes,
+            'sizeIdToName' => $sizeIdToName,
+        ]);
+    }
+
+    public function readyToInputReport(Request $request)
+    {
+        $readyData = [];
+
+        // Product combinations with print_embroidery = false OR sublimation_print = false
+        $nonEmbCombinations = ProductCombination::where(function ($query) {
+            $query->where('print_embroidery', false)
+                ->orWhere('sublimation_print', false);
+        })
+            ->with('style', 'color')
+            ->get();
+
+            // dd($nonEmbCombinations);
+
+        foreach ($nonEmbCombinations as $pc) {
+            // Calculate total_cut dynamically by summing from 'cut_quantities' JSON
+            $cuttingData = CuttingData::where('product_combination_id', $pc->id)->get();
+            $dynamicTotalCut = 0;
+            foreach ($cuttingData as $cut) {
+                foreach ($cut->cut_quantities as $qty) {
+                    $dynamicTotalCut += $qty;
                 }
             }
 
-            return view('backend.library.print_send_data.reports.wip', [
-                'wipData' => array_values($wipData),
-                'allSizes' => $allSizes
-            ]);
+            $readyData[] = [
+                'style' => $pc->style->name,
+                'color' => $pc->color->name,
+                'type' => 'No Print/Emb Needed',
+                'total_cut' => $dynamicTotalCut, // Use dynamic total cut
+                'total_sent' => 0,
+                'total_received_good' => 0,
+                'total_received_waste' => 0,
+            ];
         }
 
-        public function readyToInputReport(Request $request)
-        {
-            $readyData = [];
+        // dd($readyData);
 
-            // Product combinations with print_embroidery = false
-            $nonEmbCombinations = ProductCombination::where('print_embroidery', false)
-                ->with('style', 'color')
-                ->get();
+        // Product combinations with print_embroidery = true OR sublimation_print = true
+        $embCombinations = ProductCombination::where(function ($query) {
+            $query->where('print_embroidery', true)
+                ->orWhere('sublimation_print', true);
+        })
+            ->with('style', 'color')
+            ->get();
 
-            foreach ($nonEmbCombinations as $pc) {
-                $totalCut = CuttingData::where('product_combination_id', $pc->id)->sum('total_cut_quantity');
+        foreach ($embCombinations as $pc) {
+            // Calculate total_cut dynamically
+            $cuttingData = CuttingData::where('product_combination_id', $pc->id)->get();
+            $dynamicTotalCut = 0;
+            foreach ($cuttingData as $cut) {
+                foreach ($cut->cut_quantities as $qty) {
+                    $dynamicTotalCut += $qty;
+                }
+            }
+
+            // Calculate total_sent dynamically by summing from 'send_quantities' JSON
+            $printSendData = PrintSendData::where('product_combination_id', $pc->id)->get();
+            $dynamicTotalSent = 0;
+            foreach ($printSendData as $send) {
+                foreach ($send->send_quantities as $qty) {
+                    $dynamicTotalSent += $qty;
+                }
+            }
+
+            // Calculate total_received_good dynamically by summing from 'receive_quantities' JSON
+            $printReceiveData = PrintReceiveData::where('product_combination_id', $pc->id)->get();
+            $dynamicTotalReceivedGood = 0;
+            foreach ($printReceiveData as $receive) {
+                foreach ($receive->receive_quantities as $qty) {
+                    $dynamicTotalReceivedGood += $qty;
+                }
+            }
+
+            // Calculate total_received_waste dynamically by summing from 'receive_waste_quantities' JSON
+            $dynamicTotalReceivedWaste = 0;
+            foreach ($printReceiveData as $receive) {
+                if ($receive->receive_waste_quantities) {
+                    foreach ($receive->receive_waste_quantities as $qty) {
+                        $dynamicTotalReceivedWaste += $qty;
+                    }
+                }
+            }
+
+            // "Ready to input" means either no print/emb needed OR all sent items have been received (good quantity only).
+            // Here, dynamicTotalSent must match dynamicTotalReceivedGood to be 'ready'.
+            if ($dynamicTotalSent > 0 && $dynamicTotalSent == $dynamicTotalReceivedGood && $dynamicTotalReceivedWaste >= 0) {
                 $readyData[] = [
                     'style' => $pc->style->name,
                     'color' => $pc->color->name,
-                    'type' => 'No Print/Emb Needed',
-                    'total_cut' => $totalCut,
-                    'total_sent' => 0,
-                    'total_received' => 0
+                    'type' => 'Print/Emb Completed',
+                    'total_cut' => $dynamicTotalCut,
+                    'total_sent' => $dynamicTotalSent,
+                    'total_received_good' => $dynamicTotalReceivedGood,
+                    'total_received_waste' => $dynamicTotalReceivedWaste,
                 ];
             }
-
-            // Product combinations with print_embroidery = true and completed (total sent == total received)
-            $embCombinations = ProductCombination::where('print_embroidery', true)
-                ->with('style', 'color')
-                ->get();
-
-            foreach ($embCombinations as $pc) {
-                $totalCut = CuttingData::where('product_combination_id', $pc->id)
-                    ->sum('total_cut_quantity');
-
-                $totalSent = PrintSendData::where('product_combination_id', $pc->id)
-                    ->sum('total_send_quantity');
-
-                // Get total received quantity
-                $totalReceived = PrintReceiveData::where('product_combination_id', $pc->id)
-                    ->sum('total_receive_quantity');
-
-                // "Ready to input" means either no print/emb needed OR all sent items have been received.
-                if ($totalSent > 0 && $totalSent == $totalReceived) {
-                    $readyData[] = [
-                        'style' => $pc->style->name,
-                        'color' => $pc->color->name,
-                        'type' => 'Print/Emb Completed',
-                        'total_cut' => $totalCut,
-                        'total_sent' => $totalSent,
-                        'total_received' => $totalReceived
-                    ];
-                }
-            }
-
-            return view('backend.library.print_send_data.reports.ready', compact('readyData'));
         }
+
+        return view('backend.library.print_receive_data.reports.ready', compact('readyData'));
+    }
 }

@@ -36,19 +36,6 @@ class PrintSendDataController extends Controller
         return view('backend.library.print_send_data.index', compact('printSendData', 'allSizes'));
     }
 
-    // public function create()
-    // {
-    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
-
-    //     // Get distinct PO numbers from SublimationPrintReceive
-    //     $distinctPoNumbers = SublimationPrintReceive::distinct()
-    //         ->pluck('po_number')
-    //         ->filter()
-    //         ->values();
-
-    //     return view('backend.library.print_send_data.create', compact('distinctPoNumbers', 'allSizes'));
-    // }
-
     public function store(Request $request)
     {
         $request->validate([
@@ -73,32 +60,43 @@ class PrintSendDataController extends Controller
 
                 // Process send quantities
                 foreach ($row['send_quantities'] as $sizeId => $quantity) {
-                    if ($quantity > 0) {
+                    // Ensure quantity is not null and greater than 0
+                    if ($quantity !== null && (int)$quantity > 0) {
                         $size = Size::find($sizeId);
-                        $sendQuantities[$size->id] = (int)$quantity;
-                        $totalSendQuantity += (int)$quantity;
+                        // Only add if the size exists in the database
+                        if ($size) {
+                            $sendQuantities[$size->id] = (int)$quantity;
+                            $totalSendQuantity += (int)$quantity;
+                        }
                     }
                 }
 
                 // Process waste quantities
                 foreach ($row['send_waste_quantities'] as $sizeId => $quantity) {
-                    if ($quantity > 0) {
+                    // Ensure quantity is not null and greater than 0
+                    if ($quantity !== null && (int)$quantity > 0) {
                         $size = Size::find($sizeId);
-                        $wasteQuantities[$size->id] = (int)$quantity;
-                        $totalWasteQuantity += (int)$quantity;
+                        // Only add if the size exists in the database
+                        if ($size) {
+                            $wasteQuantities[$size->id] = (int)$quantity;
+                            $totalWasteQuantity += (int)$quantity;
+                        }
                     }
                 }
 
-                PrintSendData::create([
-                    'date' => $request->date,
-                    'product_combination_id' => $row['product_combination_id'],
-                    'po_number' => implode(',', $request->po_number),
-                    'old_order' => $request->old_order,
-                    'send_quantities' => $sendQuantities,
-                    'total_send_quantity' => $totalSendQuantity,
-                    'send_waste_quantities' => $wasteQuantities,
-                    'total_send_waste_quantity' => $totalWasteQuantity,
-                ]);
+                // Only create a record if there's at least one valid send or waste quantity
+                if (!empty($sendQuantities) || !empty($wasteQuantities)) {
+                    PrintSendData::create([
+                        'date' => $request->date,
+                        'product_combination_id' => $row['product_combination_id'],
+                        'po_number' => implode(',', $request->po_number),
+                        'old_order' => $request->old_order,
+                        'send_quantities' => $sendQuantities,
+                        'total_send_quantity' => $totalSendQuantity,
+                        'send_waste_quantities' => $wasteQuantities,
+                        'total_send_waste_quantity' => $totalWasteQuantity,
+                    ]);
+                }
             }
 
             DB::commit();
@@ -124,9 +122,15 @@ class PrintSendDataController extends Controller
     public function edit(PrintSendData $printSendDatum)
     {
         $printSendDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        return view('backend.library.print_send_data.edit', compact('printSendDatum', 'allSizes'));
+        // Get valid sizes for this product combination
+        $validSizeIds = $printSendDatum->productCombination->size_ids;
+        $validSizes = Size::whereIn('id', $validSizeIds)
+            ->where('is_active', 1)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        return view('backend.library.print_send_data.edit', compact('printSendDatum', 'validSizes'));
     }
 
     public function update(Request $request, PrintSendData $printSendDatum)
@@ -145,7 +149,8 @@ class PrintSendDataController extends Controller
 
             // Process send quantities
             foreach ($request->send_quantities as $sizeId => $quantity) {
-                if ($quantity > 0) {
+                // Ensure quantity is not null and greater than 0
+                if ($quantity !== null && (int)$quantity > 0) {
                     $sendQuantities[$sizeId] = (int)$quantity;
                     $totalSendQuantity += (int)$quantity;
                 }
@@ -153,7 +158,8 @@ class PrintSendDataController extends Controller
 
             // Process waste quantities
             foreach ($request->send_waste_quantities as $sizeId => $quantity) {
-                if ($quantity > 0) {
+                // Ensure quantity is not null and greater than 0
+                if ($quantity !== null && (int)$quantity > 0) {
                     $wasteQuantities[$sizeId] = (int)$quantity;
                     $totalWasteQuantity += (int)$quantity;
                 }

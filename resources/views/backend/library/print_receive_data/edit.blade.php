@@ -38,25 +38,36 @@
                                 </div>
 
                                 <div class="form-group">
+                                    <label>PO Number</label>
+                                    <input type="text" class="form-control" value="{{ $printReceiveDatum->po_number }}" readonly>
+                                </div>
+
+                                <div class="form-group">
                                     <label>Receive Quantities by Size</label>
-                                    <p class="text-info">Total Sent for this combination: {{ $totalSent }}</p>
-                                    <p class="text-info">Total Received So Far (excluding current entry): {{ $totalReceivedSoFar }}</p>
-                                    <p class="text-info">Available to Receive (Total): {{ $availableToReceiveTotal }}</p>
                                     <div class="row">
-                                        @foreach ($sizes as $size)
+                                        @foreach ($allSizes as $size)
+                                            @php
+                                                $receiveQty = $printReceiveDatum->receive_quantities[$size->id] ?? 0;
+                                                $wasteQty = $printReceiveDatum->receive_waste_quantities[$size->id] ?? 0;
+                                            @endphp
                                             <div class="col-md-3 mb-3">
-                                                <label for="quantity_{{ $size['id'] }}">{{ $size['name'] }} (Sent: {{ $size['sent'] }}, Received: {{ $size['received_so_far'] }}, Available: {{ $size['available_to_receive'] }})</label>
-                                                <input type="number" name="quantities[{{ $size['id'] }}]" id="quantity_{{ $size['id'] }}"
-                                                    class="form-control" value="{{ old('quantities.' . $size['id'], $size['current_quantity']) }}" min="0">
-                                                @error('quantities.' . $size['id'])
+                                                <label for="receive_quantities_{{ $size->id }}">{{ $size->name }} Receive</label>
+                                                <input type="number" name="receive_quantities[{{ $size->id }}]" id="receive_quantities_{{ $size->id }}"
+                                                    class="form-control" value="{{ old('receive_quantities.' . $size->id, $receiveQty) }}" min="0">
+                                                @error('receive_quantities.' . $size->id)
+                                                    <div class="text-danger">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                            <div class="col-md-3 mb-3">
+                                                <label for="receive_waste_quantities_{{ $size->id }}">{{ $size->name }} Waste</label>
+                                                <input type="number" name="receive_waste_quantities[{{ $size->id }}]" id="receive_waste_quantities_{{ $size->id }}"
+                                                    class="form-control" value="{{ old('receive_waste_quantities.' . $size->id, $wasteQty) }}" min="0">
+                                                @error('receive_waste_quantities.' . $size->id)
                                                     <div class="text-danger">{{ $message }}</div>
                                                 @enderror
                                             </div>
                                         @endforeach
                                     </div>
-                                    @error('total')
-                                        <div class="text-danger">{{ $message }}</div>
-                                    @enderror
                                 </div>
                             </div>
                             <div class="card-footer">

@@ -23,10 +23,13 @@
                             <a href="{{ route('print_receive_data.create') }}" class="btn btn-lg btn-outline-primary">
                                 <i class="fas fa-plus"></i> Add Print/Emb Receive
                             </a>
+                            
                             <div class="btn-group ml-2">
                                 <h4 class="btn btn-lg text-center">Reports</h4>
                                 <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_receive_data.report.total_receive') }}'">Total Print/Emb Receive</button>
                                 <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_receive_data.report.balance_quantity') }}'">Print/Emb Balance</button>
+                                <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_receive_data.report.ready') }}'">Ready to Input</button>
+                                <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_receive_data.report.wip') }}'">WIP</button>
                             </div>
 
                             <form class="d-flex float-right" action="{{ route('print_receive_data.index') }}" method="GET">
@@ -37,34 +40,41 @@
                                 <button class="btn btn-outline-success" type="submit">Search</button>
                             </form>
                         </div>
-                        <div class="card-body">
-                            <table class="table table-bordered table-hover">
+                        <div class="card-body" style="overflow-x: auto;">
+                            <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
-                                        <th>Sl#</th>
-                                        <th>Date</th>
-                                        <th>Buyer</th>
-                                        <th>Style</th>
-                                        <th>Color</th>
+                                        <th rowspan="2">Date</th>
+                                        <th rowspan="2">PO Number</th>
+                                        <th rowspan="2">Style</th>
+                                        <th rowspan="2">Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ strtoupper($size->name) }}</th>
+                                            <th colspan="2">{{ strtoupper($size->name) }}</th>
                                         @endforeach
-                                        <th>Total</th>
-                                        <th>Actions</th>
+                                        <th rowspan="2">Total Receive</th>
+                                        <th rowspan="2">Total Waste</th>
+                                        <th rowspan="2">Actions</th>
+                                    </tr>
+                                    <tr>
+                                        @foreach ($allSizes as $size)
+                                            <th>Receive</th>
+                                            <th>Waste</th>
+                                        @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse ($printReceiveData as $data)
                                         <tr>
-                                            <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data->date }}</td>
-                                            <td>{{ $data->productCombination->buyer->name ?? 'N/A' }}</td>
+                                            <td>{{ $data->po_number }}</td>
                                             <td>{{ $data->productCombination->style->name ?? 'N/A' }}</td>
                                             <td>{{ $data->productCombination->color->name ?? 'N/A' }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data->receive_quantities[$size->name] ?? '' }}</td>
+                                                <td>{{ $data->receive_quantities[$size->id] ?? '0' }}</td>
+                                                <td>{{ $data->receive_waste_quantities[$size->id] ?? '0' }}</td>
                                             @endforeach
                                             <td>{{ $data->total_receive_quantity }}</td>
+                                            <td>{{ $data->total_receive_waste_quantity }}</td>
                                             <td>
                                                 <a href="{{ route('print_receive_data.edit', $data->id) }}" class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-pencil"></i> Edit
@@ -80,7 +90,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 6 + count($allSizes) }}" class="text-center">No print/emb receive data found</td>
+                                            <td colspan="{{ 6 + (count($allSizes) * 2) + 3 }}" class="text-center">No print/emb receive data found</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -119,3 +129,5 @@
         }
     </script>
 </x-backend.layouts.master>
+                        
+                        

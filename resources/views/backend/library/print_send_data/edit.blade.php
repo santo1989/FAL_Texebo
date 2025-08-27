@@ -66,30 +66,61 @@
             <thead>
                 <tr>
                     <th>Size</th>
+                    <th>Available Quantity</th>
                     <th>Send Quantity</th>
                     <th>Waste Quantity</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach ($allSizes as $size)
+                @php
+                    // Get available quantities for this product combination
+                    $availableResponse = app('App\Http\Controllers\PrintSendDataController')
+                        ->getAvailableSendQuantities($printSendDatum->productCombination);
+                    $availableData = json_decode($availableResponse->content(), true);
+                    $availableQuantities = $availableData['availableQuantities'] ?? [];
+                    
+                    // Get the size IDs for this product combination
+                    $validSizeIds = $printSendDatum->productCombination->size_ids;
+                    $validSizes = \App\Models\Size::whereIn('id', $validSizeIds)
+                        ->where('is_active', 1)
+                        ->orderBy('id', 'asc')
+                        ->get();
+                @endphp
+                
+                @foreach ($validSizes as $size)
+                    @php
+                        $availableQty = $availableQuantities[$size->name] ?? 0;
+                        $sendQty = $printSendDatum->send_quantities[$size->id] ?? 0;
+                        $wasteQty = $printSendDatum->send_waste_quantities[$size->id] ?? 0;
+                        $maxQty = $availableQty + $sendQty;
+                    @endphp
                     <tr>
                         <td>{{ $size->name }}</td>
+                        <td>{{ $availableQty }} Pcs</td>
                         <td>
-                            <input type="number" name="send_quantities[{{ $size->id }}]" 
-                                class="form-control" 
-                                value="{{ $printSendDatum->send_quantities[$size->id] ?? 0 }}" 
-                                min="0">
+                            <input type="number" 
+                                name="send_quantities[{{ $size->id }}]" 
+                                class="form-control send-qty-input" 
+                                value="{{ $sendQty }}" 
+                                min="0" 
+                                max="{{ $maxQty }}"
+                                data-max="{{ $maxQty }}"
+                                oninput="validateQuantity(this)">
                         </td>
                         <td>
-                            <input type="number" name="send_waste_quantities[{{ $size->id }}]" 
-                                class="form-control" 
-                                value="{{ $printSendDatum->send_waste_quantities[$size->id] ?? 0 }}" 
-                                min="0">
+                            <input type="number" 
+                                name="send_waste_quantities[{{ $size->id }}]" 
+                                class="form-control waste-qty-input" 
+                                value="{{ $wasteQty }}" 
+                                min="0" 
+                                max="{{ $maxQty }}"
+                                oninput="validateWasteQuantity(this, {{ $maxQty }})">
                         </td>
                     </tr>
                 @endforeach
                 <tr>
                     <td><strong>Total</strong></td>
+                    <td><strong>{{ array_sum($availableQuantities) }} Pcs</strong></td>
                     <td><strong>{{ $printSendDatum->total_send_quantity }}</strong></td>
                     <td><strong>{{ $printSendDatum->total_send_waste_quantity }}</strong></td>
                 </tr>
@@ -99,4 +130,66 @@
         <a href="{{ route('print_send_data.index') }}" class="btn btn-secondary mt-3">Back</a>
         <button type="submit" class="btn btn-primary mt-3">Update Print/Embroidery Send Data</button>
     </form>
+
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function validateQuantity(input) {
+            const max = parseInt(input.getAttribute('data-max')) || 0;
+            const value = parseInt(input.value) || 0;
+            
+            if (value > max) {
+                input.value = max;
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid Input',
+                    text: `Send quantity cannot exceed available quantity (${max}).`,
+                });
+            }
+        }
+        
+        function validateWasteQuantity(input, max) {
+            const value = parseInt(input.value) || 0;
+            
+            if (value > max) {
+                input.value = max;
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid Input',
+                    text: `Waste quantity cannot exceed available quantity (${max}).`,
+                });
+            }
+        }
+        
+        // Calculate and update totals on input
+        document.addEventListener('DOMContentLoaded', function() {
+            const sendInputs = document.querySelectorAll('.send-qty-input');
+            const wasteInputs = document.querySelectorAll('.waste-qty-input');
+            
+            function updateTotals() {
+                let totalSend = 0;
+                let totalWaste = 0;
+                
+                sendInputs.forEach(input => {
+                    totalSend += parseInt(input.value) || 0;
+                });
+                
+                wasteInputs.forEach(input => {
+                    totalWaste += parseInt(input.value) || 0;
+                });
+                
+                // Update the total row
+                const totalCells = document.querySelectorAll('tbody tr:last-child td');
+                totalCells[2].textContent = totalSend;
+                totalCells[3].textContent = totalWaste;
+            }
+            
+            sendInputs.forEach(input => {
+                input.addEventListener('input', updateTotals);
+            });
+            
+            wasteInputs.forEach(input => {
+                input.addEventListener('input', updateTotals);
+            });
+        });
+    </script>
 </x-backend.layouts.master>

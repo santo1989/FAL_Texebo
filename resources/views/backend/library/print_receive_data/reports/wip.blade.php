@@ -1,14 +1,14 @@
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Print/Embroidery Balance Quantity Report
+        WIP (Work In Progress) Report
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Print/Embroidery Balance Quantity Report </x-slot>
+            <x-slot name="pageHeader"> WIP (Work In Progress) Report </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('print_receive_data.index') }}">Print/Emb Receive</a></li>
-            <li class="breadcrumb-item active">Balance Quantity Report</li>
+            <li class="breadcrumb-item"><a href="{{ route('print_receive_data.index') }}">Print/Emb Send</a></li>
+            <li class="breadcrumb-item active">WIP Report</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
 
@@ -18,17 +18,9 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Print/Embroidery Balance Quantities (Sent - Received - Waste)</h3>
+                            <h3 class="card-title">Work In Progress (Sent - Received - Waste)</h3>
                             <a href="{{ route('print_receive_data.index') }}" class="btn btn-primary float-right">Back
                                 to List</a>
-                            <form class="d-flex float-right"
-                                action="{{ route('print_receive_data.report.balance_quantity') }}" method="GET">
-                                <input class="form-control me-2" type="date" name="start_date"
-                                    value="{{ request('start_date') }}">
-                                <input class="form-control me-2" type="date" name="end_date"
-                                    value="{{ request('end_date') }}">
-                                <button class="btn btn-outline-success" type="submit">Filter</button>
-                            </form>
                         </div>
                         <div class="card-body">
                             <table class="table table-bordered table-hover">
@@ -38,34 +30,34 @@
                                         <th>Style</th>
                                         <th>Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ strtoupper($sizeIdToName[$size->id] ?? 'N/A') }} (Bal)</th>
+                                            <th>{{ strtoupper($sizeIdToName[$size->id] ?? 'N/A') }} (WIP)</th>
                                             <th>{{ strtoupper($sizeIdToName[$size->id] ?? 'N/A') }} (Waste)</th>
                                         @endforeach
                                         <th>Total Sent</th>
-                                        <th>Total Received</th>
-                                        <th>Total Waste</th>
-                                        <th>Total Balance</th>
+                                        <th>Total Received (Good)</th>
+                                        <th>Total Received (Waste)</th>
+                                        <th>Total WIP</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @forelse ($reportData as $data)
+                                    @forelse ($wipData as $data)
                                         <tr>
                                             <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['sizes'][$size->id]['balance'] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id]['waiting'] ?? 0 }}</td>
                                                 <td>{{ $data['sizes'][$size->id]['waste'] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data['total_sent'] }}</td>
                                             <td>{{ $data['total_received'] }}</td>
-                                            <td>{{ $data['total_waste'] }}</td>
-                                            <td>{{ $data['total_balance'] }}</td>
+                                            <td>{{ $data['total_received_waste'] }}</td>
+                                            <td>{{ $data['waiting'] }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 7 + (count($allSizes) * 2) }}" class="text-center">No balance
-                                                data found for the selected criteria.</td>
+                                            <td colspan="{{ 7 + (count($allSizes) * 2) }}" class="text-center">No WIP
+                                                data found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

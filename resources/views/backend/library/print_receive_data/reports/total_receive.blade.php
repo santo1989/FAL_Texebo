@@ -38,9 +38,12 @@
                                         <th>Style</th>
                                         <th>Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ strtoupper($size->name) }}</th>
+                                            <th>{{ strtoupper($sizeIdToName[$size->id] ?? 'N/A') }} (Rcv)</th>
+                                            {{-- If you want to show waste per size, uncomment the line below --}}
+                                            {{-- <th>{{ strtoupper($sizeIdToName[$size->id] ?? 'N/A') }} (Waste)</th> --}}
                                         @endforeach
                                         <th>Total Received</th>
+                                        {{-- <th>Total Waste</th> --}} {{-- Uncomment to show total waste --}}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -50,9 +53,12 @@
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['sizes'][strtolower($size->name)] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id] ?? 0 }}</td>
+                                                {{-- If you want to show waste per size, you'll need to modify the controller to pass this data --}}
+                                                {{-- <td>{{ $data['waste_sizes'][$size->id] ?? 0 }}</td> --}}
                                             @endforeach
                                             <td>{{ $data['total'] }}</td>
+                                            {{-- <td>{{ $data['total_waste'] ?? 0 }}</td> --}} {{-- You'll need to modify the controller to pass this data --}}
                                         </tr>
                                     @empty
                                         <tr>

@@ -205,13 +205,25 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/ready', [PrintSendDataController::class, 'readyToInputReport'])->name('print_send_data.report.ready');
     });
 
+    //create for print_send_data/available_quantities/{product_combination_id}
+    Route::get('/print_send_data/available_quantities/{product_combination_id}', [PrintSendDataController::class, 'getAvailableSendQuantities'])->name('print_send_data.available_quantities');
+
+    //Print Receive Data
+
+    Route::get('print_receive_data/find', [PrintReceiveDataController::class, 'find'])->name('print_receive_data.find');
+
     Route::resource('print_receive_data', PrintReceiveDataController::class);
 
     Route::prefix('print_receive_data/reports')->name('print_receive_data.report.')->group(function () {
         Route::get('/total-receive', [PrintReceiveDataController::class, 'totalPrintEmbReceiveReport'])->name('total_receive');
         Route::get('/balance-quantity', [PrintReceiveDataController::class, 'totalPrintEmbBalanceReport'])->name('balance_quantity');
+        Route::get('/ready', [PrintReceiveDataController::class, 'readyToInputReport'])->name('ready');
+        Route::get('/wip', [PrintReceiveDataController::class, 'wipReport'])->name('wip');
     });
 
+    Route::get('/print_receive_data/available_quantities/{product_combination_id}', [PrintReceiveDataController::class, 'getAvailableReceiveQuantities'])->name('print_receive_data.available_quantities');
+
+    //line_input_data
 
     Route::resource('line_input_data', LineInputDataController::class);
     Route::get('line_input_data/available_quantities/{productCombination}', [LineInputDataController::class, 'getAvailableQuantities'])->name('line_input_data.available_quantities');
@@ -230,7 +242,7 @@ Route::middleware('auth')->group(function () {
     Route::get('output_finishing_data/max_quantities/{id}', [OutputFinishingDataController::class, 'maxQuantities'])
         ->name('output_finishing_data.max_quantities');
 
-
+// Finish Packing Data Routes
     Route::resource('finish_packing_data', FinishPackingDataController::class);
     Route::get('finish_packing_data/available_quantities/{productCombination}', [FinishPackingDataController::class, 'getAvailablePackingQuantities'])->name('finish_packing_data.available_quantities');
 
@@ -273,15 +285,14 @@ Route::get('/get-size-name/{sizeId}', function ($sizeId) {
 });
 
 // web.php
-Route::get('/print_send_data/get-colors/{style_id}', [PrintSendDataController::class, 'getColors']);
-Route::get('/print_send_data/get-combination/{style_id}/{color_id}', [PrintSendDataController::class, 'getCombination']);
-Route::get('/print_send_data/available/{product_combination_id}', [PrintSendDataController::class, 'available']);
+// Route::get('/print_send_data/get-colors/{style_id}', [PrintSendDataController::class, 'getColors']);
+// Route::get('/print_send_data/get-combination/{style_id}/{color_id}', [PrintSendDataController::class, 'getCombination']);
+// Route::get('/print_send_data/available/{product_combination_id}', [PrintSendDataController::class, 'available']);
 
 //create print_receive_data/available_quantities/{product_combination_id}
-Route::get('/print_receive_data/available_quantities/{product_combination_id}', [PrintReceiveDataController::class, 'getAvailableReceiveQuantities'])->name('print_receive_data.available_quantities');
 
-//create for print_send_data/available_quantities/{product_combination_id}
-Route::get('/print_send_data/available_quantities/{product_combination_id}', [PrintSendDataController::class, 'getAvailableSendQuantities'])->name('print_send_data.available_quantities');
+
+
 
 
 
