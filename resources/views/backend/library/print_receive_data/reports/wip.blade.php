@@ -22,7 +22,7 @@
                             <a href="{{ route('print_receive_data.index') }}" class="btn btn-primary float-right">Back
                                 to List</a>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body" style="overflow-x: auto;">
                             <table class="table table-bordered table-hover">
                                 <thead>
                                     <tr>

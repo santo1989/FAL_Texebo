@@ -29,64 +29,78 @@ class AuthServiceProvider extends ServiceProvider
 
         //
 
-        // Gate::define('Admin', function (User $user) {
-
-        //     if ($user->role_id == 1) {
-        //         return true;
-        //     }
-
-        //     return false;
-        // });
-
-        // Gate::define('General', function (User $user) {
-
-        //     if ($user->role_id == 2) {
-        //         return true;
-        //     }
-        //     return false;
-        // });
-
-        // Gate::define('Factory', function (User $user) {
-
-        //     if ($user->role_id == 3) {
-        //         return true;
-        //     }
-        //     return false;
-        // });
-
-        // Gate::define('SupplyChain', function (User $user) {
-
-        //     if ($user->role_id == 4) {
-        //         return true;
-        //     }
-        //     return false;
-        // });
-
-        // Gate::define('Commercial', function (User $user) {
-
-        //     if ($user->role_id == 5) {
-        //         return true;
-        //     }
-        //     return false;
-        // });
-
-        // Gate::define('Accounts', function (User $user) {
-
-        //     if ($user->role_id == 6) {
-        //         return true;
-        //     }
-        //     return false;
-        // });
-
-        // Gate::define('TNA-Factory', function ($user) {
-        //     return in_array($user->role->name, ['SuperVisor', 'Admin', 'Factory Merchandise']);
-        // });
-
-        DB::table('roles')->get()->each(function ($role) {
-            Gate::define($role->name, function (User $user) use ($role) {
-                return $user->role_id == $role->id;
-            });
+        // Gate for Admin
+        Gate::define('Admin', function (User $user) {
+            return $user->role()->where('name', 'Admin')->exists();
         });
+
+        // Gate for General
+        Gate::define('General', function (User $user) {
+            return $user->role()->where('name', 'General')->exists();
+        });
+
+        // Gate for Cutting
+        Gate::define('Cutting', function (User $user) {
+            return $user->role()->where('name', 'Cutting')->exists();
+        });
+
+        // Gate for Print Send
+        Gate::define('Print Send', function (User $user) {
+            return $user->role()->where('name', 'Print Send')->exists();
+        });
+
+        // Gate for Print Receive
+        Gate::define('Print Receive', function (User $user) {
+            return $user->role()->where('name', 'Print Receive')->exists();
+        });
+
+        // Gate for Input
+        Gate::define('Input', function (User $user) {
+            return $user->role()->where('name', 'Input')->exists();
+        });
+
+        // Gate for Output
+        Gate::define('Output', function (User $user) {
+            return $user->role()->where('name', 'Output')->exists();
+        });
+
+        // Gate for Packing
+        Gate::define('Packing', function (User $user) {
+            return $user->role()->where('name', 'Packing')->exists();
+        });
+
+        // Gate for Shipment
+        Gate::define('Shipment', function (User $user) {
+            return $user->role()->where('name', 'Shipment')->exists();
+        });
+
+        // Gate for HR
+        Gate::define('HR', function (User $user) {
+            return $user->role()->where('name', 'HR')->exists();
+        });
+
+        // Gate for Supervisor
+        Gate::define('Supervisor', function (User $user) {
+            return $user->role()->where('name', 'Supervisor')->exists();
+        });
+
+        // Gate for QC
+        Gate::define('QC', function (User $user) {
+            return $user->role()->where('name', 'QC')->exists();
+        });
+
+        // Optional: Super Admin Gate - Bypasses all other gates
+        Gate::before(function (User $user) {
+            if ($user->role()->where('name', 'Admin')->exists()) {
+                return true;
+            }
+        });
+
+        // DB::table('role')->get()->each(function ($role) {
+        //     Gate::define($role->name, function (User $user) use ($role) {
+        //         return $user->role_id == $role->id;
+        //     });
+        // });
 
     //     Gate::define('QC-CURD', function ($user) {
     //         return in_array($user->role->name, ['QC', 'Admin', 'Supervisor']);

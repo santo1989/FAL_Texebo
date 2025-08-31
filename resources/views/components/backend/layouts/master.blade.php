@@ -73,21 +73,21 @@
             }
         }
 
-        .select2-container .select2-selection--single {
+        /* .select2-container .select2-selection--single {
             height: 38px;
             border-color: var(--accent-color);
         }
 
         .select2-container--default .select2-selection--single .select2-selection__rendered {
             line-height: 38px;
-        }
+        } */
     </style>
 </head>
 <body>
     <div class="container-fluid">
-        
+         {!! $breadCrumb ?? '' !!}
         <div class="main-card">
-            {!! $breadCrumb ?? '' !!}
+           
             {{ $slot ?? '' }}
         </div>
     </div>

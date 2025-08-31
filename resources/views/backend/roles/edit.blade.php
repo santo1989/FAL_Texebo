@@ -32,7 +32,7 @@
       <!-- text input -->
       <div class="form-group">
           <label>Role Name</label>
-          <input type="text" class="form-control" placeholder="Enter role Name" name="name" value="{{ old('name', $role->name ) }}">
+          <input type="text" class="form-control" placeholder="Enter role Name" name="name" value="{{ old('name', $role->name ) }}" required>
       </div>
       </div>
       

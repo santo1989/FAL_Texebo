@@ -44,7 +44,7 @@
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach($allSizes as $size)
-                                                <td>{{ $data['sizes'][strtolower($size->name)] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data['total'] }}</td>
                                         </tr>
@@ -58,7 +58,7 @@
                                                 @php
                                                     $totalSizeBalance = 0;
                                                     foreach ($reportData as $data) {
-                                                        $totalSizeBalance += $data['sizes'][strtolower($size->name)] ?? 0;
+                                                        $totalSizeBalance += $data['sizes'][$size->id] ?? 0;
                                                     }
                                                     echo $totalSizeBalance;
                                                 @endphp

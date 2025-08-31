@@ -19,7 +19,7 @@
             @csrf
             <!-- Use a wrapper to contain all dynamic inputs -->
             <div id="style-input-wrapper">
-                <x-backend.form.input name="name[]" type="text" label="Style Name" />
+                <x-backend.form.input name="name[]" type="text" label="Style Name" required />
             </div>
             <br>
             <button type="button" class="btn btn-secondary p-2 add-more">Add More</button>
@@ -42,7 +42,7 @@
 
                 div.innerHTML = `
                 <label for="style_name_${index}">Style Name</label>
-                <input type="text" name="name[]" id="style_name_${index}" class="form-control" placeholder="Enter style name">
+                <input type="text" name="name[]" id="style_name_${index}" class="form-control" placeholder="Enter style name" required>
             `;
                 return div;
             }

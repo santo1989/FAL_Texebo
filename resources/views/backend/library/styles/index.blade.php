@@ -52,6 +52,7 @@
                                         <tr>
                                             <th>Sl#</th>
                                             <th>Name</th>
+                                            <th>Active</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -60,6 +61,14 @@
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
                                                 <td>{{ $style->name }}</td>
+                                                <td>
+                                                    <form action="{{ route('styles.active', ['id' => $style->id]) }}" method="POST">
+                                                        @csrf
+                                                        <button class="btn btn-sm {{ $style->is_active ? 'btn-success' : 'btn-danger' }}">
+                                                            {{ $style->is_active ? 'Active' : 'Inactive' }}
+                                                        </button>
+                                                    </form>
+                                                </td>
                                                 <td>
                                                     <x-backend.form.anchor :href="route('styles.edit', ['id' => $style->id])" type="edit" />
                                                     <x-backend.form.anchor :href="route('styles.show', ['id' => $style->id])" type="show" />

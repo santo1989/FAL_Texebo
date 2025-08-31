@@ -20,7 +20,7 @@
             @method('put')
 
 
-            <x-backend.form.input name="name" type="text" label="Name" :value="$size->name" />
+            <x-backend.form.input name="name" type="text" label="Name" :value="$size->name" required/>
             <br>
 
             <x-backend.form.saveButton>Save</x-backend.form.saveButton>

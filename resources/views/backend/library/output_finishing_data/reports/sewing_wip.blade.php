@@ -7,7 +7,7 @@
         <x-backend.layouts.elements.breadcrumb>
             <x-slot name="pageHeader"> Sewing WIP Report </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('finish_packing_data.index') }}">Finish Packing</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('output_finishing_data.index') }}">Output Finishing</a></li>
             <li class="breadcrumb-item active">Sewing WIP Report</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
@@ -18,8 +18,8 @@
                 <div class="card-header">
                     <h3 class="card-title">Sewing Work-In-Progress (WIP) Report</h3>
                     <!--back button-->
-                    <a href="{{ route('finish_packing_data.index') }}" class="btn btn-secondary mb-3">
-                        <i class="fas fa-arrow-left"></i> close
+                    <a href="{{ route('output_finishing_data.index') }}" class="btn btn-secondary mb-3">
+                        <i class="fas fa-arrow-left"></i> Close
                     </a>
                 </div>
                 <div class="card-body">
@@ -46,7 +46,7 @@
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['sizes'][strtolower($size->name)] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data['total'] }}</td>
                                         </tr>
@@ -60,7 +60,7 @@
                                                 @php
                                                     $totalSizeWip = 0;
                                                     foreach ($wipData as $data) {
-                                                        $totalSizeWip += $data['sizes'][strtolower($size->name)] ?? 0;
+                                                        $totalSizeWip += $data['sizes'][$size->id] ?? 0;
                                                     }
                                                     echo $totalSizeWip;
                                                 @endphp

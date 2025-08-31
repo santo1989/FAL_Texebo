@@ -38,186 +38,6 @@ class CuttingDataController extends Controller
         return view('backend.library.cutting_data.index', compact('cuttingData', 'allSizes'));
     }
 
-    // public function create()
-    // {
-    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
-    //     $distinctPoNumbers = OrderData::where('po_status', 'running')->distinct()->pluck('po_number');
-
-    //     return view('backend.library.cutting_data.create', compact('allSizes', 'distinctPoNumbers'));
-    // }
-
-    // public function store(Request $request)
-    // {
-    //     Log::info('Store Request Data:', $request->all());
-
-    //     // Use the raw request data for validation, as it's correctly structured.
-    //     $request->validate([
-    //         'date' => 'required|date',
-    //         'po_number' => 'required|array',
-    //         'po_number.*' => 'string',
-    //         'old_order' => 'required|in:yes,no',
-    //         'rows' => 'required|array',
-    //         'rows.*.po_number' => 'required|string|in:' . implode(',', $request->input('po_number', [])),
-    //         'rows.*.product_combination_id' => 'required|integer|exists:product_combinations,id',
-    //         'rows.*.cut_quantities' => 'nullable|array',
-    //         'rows.*.waste_quantities' => 'nullable|array',
-    //         'rows.*.cut_quantities.*' => 'nullable|integer|min:0',
-    //         'rows.*.waste_quantities.*' => 'nullable|integer|min:0',
-    //     ]);
-
-    //     foreach ($request->rows as $index => $row) {
-    //         $poNumber = $row['po_number'];
-    //         $productCombinationId = $row['product_combination_id'];
-
-    //         $cutQuantities = array_filter($row['cut_quantities'] ?? [], 'is_numeric');
-    //         $wasteQuantities = array_filter($row['waste_quantities'] ?? [], 'is_numeric');
-
-    //         if (empty($cutQuantities) && empty($wasteQuantities)) {
-    //             Log::info("Skipping row {$index} for PO {$poNumber}: No quantities provided.");
-    //             continue;
-    //         }
-
-    //         // Aggregate total quantities directly from the input
-    //         $totalCutQty = array_sum($cutQuantities);
-    //         $totalWasteQty = array_sum($wasteQuantities);
-
-    //         // Fetch order data for validation
-    //         $orderData = OrderData::where('po_number', $poNumber)
-    //             ->where('product_combination_id', $productCombinationId)
-    //             ->first();
-
-    //         if (!$orderData) {
-    //             throw ValidationException::withMessages([
-    //                 "rows.{$index}.po_number" => "Order data not found for PO: {$poNumber} and combination ID: {$productCombinationId}"
-    //             ]);
-    //         }
-
-    //         // Get total existing quantities
-    //         $existingCuttingData = CuttingData::where('po_number', $poNumber)
-    //             ->where('product_combination_id', $productCombinationId)
-    //             ->get();
-
-    //         $totalExistingCut = $existingCuttingData->sum('total_cut_quantity');
-    //         $totalExistingWaste = $existingCuttingData->sum('total_cut_waste_quantity');
-    //         $totalOrderQty = array_sum($orderData->order_quantities);
-
-    //         // Validate that new quantities don't exceed remaining order quantity
-    //         if (($totalCutQty + $totalWasteQty + $totalExistingCut + $totalExistingWaste) > $totalOrderQty) {
-    //             throw ValidationException::withMessages([
-    //                 "rows.{$index}" => "Total quantities for PO: {$poNumber} exceed the total order quantity."
-    //             ]);
-    //         }
-
-    //         // Create the new CuttingData record
-    //         CuttingData::create([
-    //             'date' => $request->date,
-    //             'po_number' => $poNumber,
-    //             'old_order' => $request->old_order,
-    //             'product_combination_id' => $productCombinationId,
-    //             'cut_quantities' => $cutQuantities,
-    //             'total_cut_quantity' => $totalCutQty,
-    //             'cut_waste_quantities' => $wasteQuantities,
-    //             'total_cut_waste_quantity' => $totalWasteQty,
-    //         ]);
-
-    //         Log::info("Created cutting data for PO: {$poNumber}, Combination ID: {$productCombinationId}", [
-    //             'cut_quantities' => $cutQuantities,
-    //             'waste_quantities' => $wasteQuantities,
-    //         ]);
-    //     }
-
-    //     return redirect()->route('cutting_data.index')->with('success', 'Cutting data saved successfully.');
-    // }
-
-    // public function find(Request $request)
-    // {
-    //     $poNumbers = $request->input('po_numbers', []);
-    //     Log::info('PO Numbers:', $poNumbers);
-
-    //     if (empty($poNumbers)) {
-    //         return response()->json([]);
-    //     }
-
-    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
-    //     Log::info('Sizes:', $allSizes->toArray());
-    //     $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
-
-    //     $orderData = OrderData::whereIn('po_number', $poNumbers)
-    //         ->with(['productCombination.style', 'productCombination.color'])
-    //         ->get();
-    //     Log::info('Order Data:', $orderData->toArray());
-
-    //     $existingCuttingData = CuttingData::whereIn('po_number', $poNumbers)->get();
-    //     Log::info('Cutting Data:', $existingCuttingData->toArray());
-
-    //     $response = [];
-    //     $aggregatedData = [];
-
-    //     foreach ($orderData as $order) {
-    //         $poNumber = $order->po_number;
-    //         $combinationId = $order->product_combination_id;
-    //         $key = $poNumber . '-' . $combinationId;
-
-    //         if (!isset($aggregatedData[$key])) {
-    //             $sizeIds = $order->productCombination ? $order->productCombination->size_ids : [];
-    //             $aggregatedData[$key] = [
-    //                 'po_number' => $poNumber,
-    //                 'combination_id' => $combinationId,
-    //                 'style' => $order->productCombination->style->name ?? 'Unknown',
-    //                 'color' => $order->productCombination->color->name ?? 'Unknown',
-    //                 'size_ids' => $sizeIds,
-    //                 'order_quantities' => [],
-    //                 'cut_quantities' => [],
-    //                 'cut_waste_quantities' => [],
-    //             ];
-    //         }
-
-    //         foreach ($order->order_quantities as $sizeId => $quantity) {
-    //             $sizeName = $sizeIdToNameMap[(string)$sizeId] ?? 'unknown';
-    //             $aggregatedData[$key]['order_quantities'][$sizeName] =
-    //                 ($aggregatedData[$key]['order_quantities'][$sizeName] ?? 0) + (int)$quantity;
-    //         }
-    //     }
-
-    //     foreach ($existingCuttingData as $cut) {
-    //         $poNumber = $cut->po_number;
-    //         $combinationId = $cut->product_combination_id;
-    //         $key = $poNumber . '-' . $combinationId;
-
-    //         if (isset($aggregatedData[$key])) {
-    //             foreach ($cut->cut_quantities as $sizeName => $quantity) {
-    //                 $aggregatedData[$key]['cut_quantities'][$sizeName] =
-    //                     ($aggregatedData[$key]['cut_quantities'][$sizeName] ?? 0) + (int)$quantity;
-    //             }
-    //             foreach ($cut->cut_waste_quantities as $sizeName => $quantity) {
-    //                 $aggregatedData[$key]['cut_waste_quantities'][$sizeName] =
-    //                     ($aggregatedData[$key]['cut_waste_quantities'][$sizeName] ?? 0) + (int)$quantity;
-    //             }
-    //         }
-    //     }
-
-    //     foreach ($aggregatedData as $data) {
-    //         $availableQuantities = [];
-    //         foreach ($data['order_quantities'] as $sizeName => $orderQty) {
-    //             $cutQty = $data['cut_quantities'][$sizeName] ?? 0;
-    //             $wasteQty = $data['cut_waste_quantities'][$sizeName] ?? 0;
-    //             $availableQuantities[$sizeName] = max(0, $orderQty - ($cutQty + $wasteQty));
-    //         }
-
-    //         $response[$data['po_number']][] = [
-    //             'combination_id' => $data['combination_id'],
-    //             'style' => $data['style'],
-    //             'color' => $data['color'],
-    //             'size_ids' => $data['size_ids'],
-    //             'available_quantities' => $availableQuantities,
-    //         ];
-    //     }
-
-    //     Log::info('Response Data:', $response);
-    //     return response()->json($response);
-    // }
-
-
     public function create()
     {
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
@@ -242,6 +62,9 @@ class CuttingDataController extends Controller
             'rows.*.cut_quantities.*' => 'nullable|integer|min:0',
         ]);
 
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
+
         foreach ($request->rows as $index => $row) {
             $poNumber = $row['po_number'];
             $productCombinationId = $row['product_combination_id'];
@@ -252,8 +75,6 @@ class CuttingDataController extends Controller
                 Log::info("Skipping row {$index} for PO {$poNumber}: No quantities provided.");
                 continue;
             }
-
-            $totalCutQty = array_sum($cutQuantities);
 
             // Fetch order data for validation
             $orderData = OrderData::where('po_number', $poNumber)
@@ -267,18 +88,33 @@ class CuttingDataController extends Controller
             }
 
             // Get total existing cut quantities
-            $totalExistingCut = CuttingData::where('po_number', $poNumber)
+            $existingCuttingData = CuttingData::where('po_number', $poNumber)
                 ->where('product_combination_id', $productCombinationId)
-                ->sum('total_cut_quantity');
+                ->get();
 
-            $totalOrderQty = array_sum($orderData->order_quantities);
+            // Validate each size with 5% extra allowance
+            foreach ($cutQuantities as $sizeId => $newCutQty) {
+                $orderQty = $orderData->order_quantities[$sizeId] ?? 0;
 
-            // Validate that new quantities don't exceed remaining order quantity
-            if (($totalCutQty + $totalExistingCut) > $totalOrderQty) {
-                throw ValidationException::withMessages([
-                    "rows.{$index}" => "Total cut quantities for PO: {$poNumber} exceed the total order quantity."
-                ]);
+                // Calculate 5% extra allowance
+                $maxAllowed = ceil($orderQty * 1.05);
+
+                // Calculate already cut quantity for this size
+                $alreadyCut = 0;
+                foreach ($existingCuttingData as $cut) {
+                    $alreadyCut += $cut->cut_quantities[$sizeId] ?? 0;
+                }
+
+                // Check if new cut exceeds allowed quantity
+                if (($alreadyCut + $newCutQty) > $maxAllowed) {
+                    $sizeName = $sizeIdToNameMap[$sizeId] ?? $sizeId;
+                    throw ValidationException::withMessages([
+                        "rows.{$index}.cut_quantities.{$sizeId}" => "Cut quantity for size {$sizeName} exceeds the allowed maximum of {$maxAllowed} (order quantity: {$orderQty} + 5%)"
+                    ]);
+                }
             }
+
+            $totalCutQty = array_sum($cutQuantities);
 
             // Create the new CuttingData record
             CuttingData::create([
@@ -298,89 +134,6 @@ class CuttingDataController extends Controller
         return redirect()->route('cutting_data.index')->with('success', 'Cutting data saved successfully.');
     }
 
-    // public function find(Request $request)
-    // {
-    //     $poNumbers = $request->input('po_numbers', []);
-    //     Log::info('PO Numbers:', $poNumbers);
-
-    //     if (empty($poNumbers)) {
-    //         return response()->json([]);
-    //     }
-
-    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
-    //     Log::info('Sizes:', $allSizes->toArray());
-    //     $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
-
-    //     $orderData = OrderData::whereIn('po_number', $poNumbers)
-    //         ->with(['productCombination.style', 'productCombination.color'])
-    //         ->get();
-    //     Log::info('Order Data:', $orderData->toArray());
-
-    //     $existingCuttingData = CuttingData::whereIn('po_number', $poNumbers)->get();
-    //     Log::info('Cutting Data:', $existingCuttingData->toArray());
-
-    //     $response = [];
-    //     $aggregatedData = [];
-
-    //     foreach ($orderData as $order) {
-    //         $poNumber = $order->po_number;
-    //         $combinationId = $order->product_combination_id;
-    //         $key = $poNumber . '-' . $combinationId;
-
-    //         if (!isset($aggregatedData[$key])) {
-    //             $sizeIds = $order->productCombination ? $order->productCombination->size_ids : [];
-    //             $aggregatedData[$key] = [
-    //                 'po_number' => $poNumber,
-    //                 'combination_id' => $combinationId,
-    //                 'style' => $order->productCombination->style->name ?? 'Unknown',
-    //                 'color' => $order->productCombination->color->name ?? 'Unknown',
-    //                 'size_ids' => $sizeIds,
-    //                 'order_quantities' => [],
-    //                 'cut_quantities' => [],
-    //             ];
-    //         }
-
-    //         foreach ($order->order_quantities as $sizeId => $quantity) {
-    //             $sizeName = $sizeIdToNameMap[(string)$sizeId] ?? 'unknown';
-    //             $aggregatedData[$key]['order_quantities'][$sizeName] =
-    //                 ($aggregatedData[$key]['order_quantities'][$sizeName] ?? 0) + (int)$quantity;
-    //         }
-    //     }
-
-    //     foreach ($existingCuttingData as $cut) {
-    //         $poNumber = $cut->po_number;
-    //         $combinationId = $cut->product_combination_id;
-    //         $key = $poNumber . '-' . $combinationId;
-
-    //         if (isset($aggregatedData[$key])) {
-    //             foreach ($cut->cut_quantities as $sizeName => $quantity) {
-    //                 $aggregatedData[$key]['cut_quantities'][$sizeName] =
-    //                     ($aggregatedData[$key]['cut_quantities'][$sizeName] ?? 0) + (int)$quantity;
-    //             }
-    //         }
-    //     }
-
-    //     foreach ($aggregatedData as $data) {
-    //         $availableQuantities = [];
-    //         foreach ($data['order_quantities'] as $sizeName => $orderQty) {
-    //             $cutQty = $data['cut_quantities'][$sizeName] ?? 0;
-    //             $availableQuantities[$sizeName] = max(0, $orderQty - $cutQty);
-    //         }
-
-    //         $response[$data['po_number']][] = [
-    //             'combination_id' => $data['combination_id'],
-    //             'style' => $data['style'],
-    //             'color' => $data['color'],
-    //             'size_ids' => $data['size_ids'],
-    //             'available_quantities' => $availableQuantities,
-    //         ];
-    //     }
-
-    //     Log::info('Response Data:', $response);
-    //     return response()->json($response);
-    // }
-
-    // Existing code
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
@@ -391,59 +144,82 @@ class CuttingDataController extends Controller
         }
 
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        Log::info('Sizes:', $allSizes->toArray());
         $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
 
-        $orderData = OrderData::whereIn('po_number', $poNumbers)->get();
-        $cuttingData = CuttingData::whereIn('po_number', $poNumbers)->get();
+        $orderData = OrderData::whereIn('po_number', $poNumbers)
+            ->with(['productCombination.style', 'productCombination.color'])
+            ->get();
+        Log::info('Order Data:', $orderData->toArray());
 
-        $aggregatedOrderQuantities = [];
-        foreach ($orderData as $order) {
-            $key = $order->po_number . '-' . $order->product_combination_id;
-            foreach ($order->order_quantities as $sizeId => $quantity) {
-                $sizeName = $sizeIdToNameMap[(string)$sizeId] ?? 'unknown';
-                $aggregatedOrderQuantities[$key][$sizeName] = ($aggregatedOrderQuantities[$key][$sizeName] ?? 0) + (int)$quantity;
-            }
-        }
-
-        $aggregatedCutQuantities = [];
-        foreach ($cuttingData as $cut) {
-            $key = $cut->po_number . '-' . $cut->product_combination_id;
-            if (!isset($aggregatedCutQuantities[$key])) {
-                $aggregatedCutQuantities[$key] = [];
-            }
-            foreach ($cut->cut_quantities as $sizeIdOrName => $quantity) {
-                // Normalize size key (assuming cut_quantities might use size names or ids)
-                $sizeName = is_numeric($sizeIdOrName) ? ($sizeIdToNameMap[(string)$sizeIdOrName] ?? 'unknown') : $sizeIdOrName;
-                $aggregatedCutQuantities[$key][$sizeName] = ($aggregatedCutQuantities[$key][$sizeName] ?? 0) + (int)$quantity;
-            }
-        }
+        $existingCuttingData = CuttingData::whereIn('po_number', $poNumbers)->get();
+        Log::info('Cutting Data:', $existingCuttingData->toArray());
 
         $response = [];
-        foreach ($aggregatedOrderQuantities as $key => $orderQuantities) {
-            [$poNumber, $combinationId] = explode('-', $key);
-            $combination = $orderData->first(fn($item) => $item->po_number == $poNumber && $item->product_combination_id == $combinationId);
+        $aggregatedData = [];
 
-            if (!$combination) {
-                continue; // Skip if combination data not found
+        foreach ($orderData as $order) {
+            $poNumber = $order->po_number;
+            $combinationId = $order->product_combination_id;
+            $key = $poNumber . '-' . $combinationId;
+
+            if (!isset($aggregatedData[$key])) {
+                $sizeIds = $order->productCombination ? $order->productCombination->size_ids : [];
+                $aggregatedData[$key] = [
+                    'po_number' => $poNumber,
+                    'combination_id' => $combinationId,
+                    'style' => $order->productCombination->style->name ?? 'Unknown',
+                    'color' => $order->productCombination->color->name ?? 'Unknown',
+                    'size_ids' => $sizeIds,
+                    'order_quantities' => [],
+                    'cut_quantities' => [],
+                ];
             }
-            $style = $combination->productCombination->style->name ?? 'Unknown';
-            $color = $combination->productCombination->color->name ?? 'Unknown';
-            $sizeIds = $combination->productCombination->size_ids ?? [];
 
+            foreach ($order->order_quantities as $sizeId => $quantity) {
+                $sizeName = $sizeIdToNameMap[(string)$sizeId] ?? 'unknown';
+                $aggregatedData[$key]['order_quantities'][$sizeName] =
+                    ($aggregatedData[$key]['order_quantities'][$sizeName] ?? 0) + (int)$quantity;
+            }
+        }
+
+        foreach ($existingCuttingData as $cut) {
+            $poNumber = $cut->po_number;
+            $combinationId = $cut->product_combination_id;
+            $key = $poNumber . '-' . $combinationId;
+
+            if (isset($aggregatedData[$key])) {
+                foreach ($cut->cut_quantities as $sizeIdOrName => $quantity) {
+                    // Normalize size name (handle both IDs and names)
+                    $sizeName = is_numeric($sizeIdOrName) ?
+                        ($sizeIdToNameMap[(string)$sizeIdOrName] ?? 'unknown') :
+                        $sizeIdOrName;
+
+                    $aggregatedData[$key]['cut_quantities'][$sizeName] =
+                        ($aggregatedData[$key]['cut_quantities'][$sizeName] ?? 0) + (int)$quantity;
+                }
+            }
+        }
+
+        foreach ($aggregatedData as $data) {
             $availableQuantities = [];
-            foreach ($orderQuantities as $sizeName => $orderQty) {
-                $cutQty = $aggregatedCutQuantities[$key][$sizeName] ?? 0;
-                $availableQuantities[$sizeName] = max(0, $orderQty - $cutQty);
+            foreach ($data['order_quantities'] as $sizeName => $orderQty) {
+                $cutQty = $data['cut_quantities'][$sizeName] ?? 0;
+
+                // Calculate maximum allowed (order quantity + 5%)
+                $maxAllowed = ceil($orderQty * 1.05);
+
+                // Calculate available quantity (max allowed minus already cut)
+                $available = max(0, $maxAllowed - $cutQty);
+
+                $availableQuantities[$sizeName] = $available;
             }
 
-            if (!isset($response[$poNumber])) {
-                $response[$poNumber] = [];
-            }
-            $response[$poNumber][] = [
-                'combination_id' => $combinationId,
-                'style' => $style,
-                'color' => $color,
-                'size_ids' => $sizeIds,
+            $response[$data['po_number']][] = [
+                'combination_id' => $data['combination_id'],
+                'style' => $data['style'],
+                'color' => $data['color'],
+                'size_ids' => $data['size_ids'],
                 'available_quantities' => $availableQuantities,
             ];
         }
@@ -451,12 +227,14 @@ class CuttingDataController extends Controller
         Log::info('Response Data:', $response);
         return response()->json($response);
     }
-    
+
     public function edit(CuttingData $cuttingDatum)
     {
         $cuttingDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
 
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
+
         $poOrderData = OrderData::where('po_number', $cuttingDatum->po_number)
             ->where('product_combination_id', $cuttingDatum->product_combination_id)
             ->first();
@@ -476,30 +254,25 @@ class CuttingDataController extends Controller
                 return $carry;
             }, []);
 
-        $totalExistingWasteQuantities = CuttingData::where('po_number', $cuttingDatum->po_number)
-            ->where('product_combination_id', $cuttingDatum->product_combination_id)
-            ->where('id', '!=', $cuttingDatum->id)
-            ->get()
-            ->flatMap(fn($data) => $data->cut_waste_quantities)
-            ->reduce(function ($carry, $quantity, $sizeId) {
-                $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $quantity;
-                return $carry;
-            }, []);
-
         $orderQuantities = $poOrderData->order_quantities;
         $availableQuantities = [];
 
         foreach ($orderQuantities as $sizeId => $orderQty) {
             $existingCutQty = $totalExistingCutQuantities[$sizeId] ?? 0;
-            $existingWasteQty = $totalExistingWasteQuantities[$sizeId] ?? 0;
-            $availableQuantities[$sizeId] = $orderQty - ($existingCutQty + $existingWasteQty);
+
+            // Calculate maximum allowed (order quantity + 5%)
+            $maxAllowed = ceil($orderQty * 1.05);
+
+            // Calculate available quantity (max allowed minus already cut from other records)
+            $availableQuantities[$sizeId] = max(0, $maxAllowed - $existingCutQty);
         }
 
         return view('backend.library.cutting_data.edit', compact(
             'cuttingDatum',
             'allSizes',
             'availableQuantities',
-            'orderQuantities'
+            'orderQuantities',
+            'sizeIdToNameMap'
         ));
     }
 
@@ -520,6 +293,10 @@ class CuttingDataController extends Controller
         if (!$poOrderData) {
             return redirect()->back()->withErrors('Order data for this PO not found.');
         }
+
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
+
         $orderQuantities = $poOrderData->order_quantities;
 
         // Sum existing quantities from all records EXCEPT the current one
@@ -527,22 +304,39 @@ class CuttingDataController extends Controller
             ->where('product_combination_id', $productCombinationId)
             ->where('id', '!=', $cuttingDatum->id)
             ->get();
-        $totalExistingCut = $existingCuttingData->sum('total_cut_quantity');
-        $totalExistingWaste = $existingCuttingData->sum('total_cut_waste_quantity');
+
+        $existingCutQuantities = [];
+        foreach ($existingCuttingData as $cut) {
+            foreach ($cut->cut_quantities as $sizeId => $quantity) {
+                $existingCutQuantities[$sizeId] = ($existingCutQuantities[$sizeId] ?? 0) + $quantity;
+            }
+        }
 
         // Sum new quantities from the request
         $newCutQuantities = array_filter($request->input('cut_quantities', []), 'is_numeric');
         $newWasteQuantities = array_filter($request->input('waste_quantities', []), 'is_numeric');
+
+        // Validate each size with 5% extra allowance
+        foreach ($newCutQuantities as $sizeId => $newCutQty) {
+            $orderQty = $orderQuantities[$sizeId] ?? 0;
+
+            // Calculate 5% extra allowance
+            $maxAllowed = ceil($orderQty * 1.05);
+
+            // Calculate already cut quantity for this size (excluding current record)
+            $alreadyCut = $existingCutQuantities[$sizeId] ?? 0;
+
+            // Check if new cut exceeds allowed quantity
+            if (($alreadyCut + $newCutQty) > $maxAllowed) {
+                $sizeName = $sizeIdToNameMap[$sizeId] ?? $sizeId;
+                throw ValidationException::withMessages([
+                    "cut_quantities.{$sizeId}" => "Cut quantity for size {$sizeName} exceeds the allowed maximum of {$maxAllowed} (order quantity: {$orderQty} + 5%)"
+                ]);
+            }
+        }
+
         $totalNewCut = array_sum($newCutQuantities);
         $totalNewWaste = array_sum($newWasteQuantities);
-
-        // Check if total new + total existing quantities exceed total order quantity
-        $totalOrderQty = array_sum($orderQuantities);
-        if (($totalNewCut + $totalNewWaste + $totalExistingCut + $totalExistingWaste) > $totalOrderQty) {
-            throw ValidationException::withMessages([
-                'cut_quantities' => "The updated quantities exceed the total order quantity for this combination."
-            ]);
-        }
 
         // Update the model with the new quantities
         $cuttingDatum->update([
@@ -570,7 +364,8 @@ class CuttingDataController extends Controller
         return redirect()->route('cutting_data.index')->with('success', 'Cutting data deleted successfully.');
     }
 
-   
+    // Other methods remain the same...
+
     public function createWaste()
     {
         $distinctPoNumbers = CuttingData::distinct()->pluck('po_number');
@@ -592,6 +387,9 @@ class CuttingDataController extends Controller
             'rows.*.waste_quantities.*' => 'nullable|integer|min:0',
         ]);
 
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
+
         foreach ($request->rows as $index => $row) {
             $poNumber = $row['po_number'];
             $productCombinationId = $row['product_combination_id'];
@@ -599,6 +397,44 @@ class CuttingDataController extends Controller
 
             if (empty($wasteQuantities)) {
                 continue;
+            }
+
+            // Fetch order data for validation
+            $orderData = OrderData::where('po_number', $poNumber)
+                ->where('product_combination_id', $productCombinationId)
+                ->first();
+
+            if (!$orderData) {
+                throw ValidationException::withMessages([
+                    "rows.{$index}.po_number" => "Order data not found for PO: {$poNumber} and combination ID: {$productCombinationId}"
+                ]);
+            }
+
+            // Get total existing waste quantities
+            $existingCuttingData = CuttingData::where('po_number', $poNumber)
+                ->where('product_combination_id', $productCombinationId)
+                ->get();
+
+            // Validate each size with 5% extra allowance for waste
+            foreach ($wasteQuantities as $sizeId => $newWasteQty) {
+                $orderQty = $orderData->order_quantities[$sizeId] ?? 0;
+
+                // Calculate 5% extra allowance
+                $maxAllowed = ceil($orderQty * 1.05);
+
+                // Calculate already waste quantity for this size
+                $alreadyWaste = 0;
+                foreach ($existingCuttingData as $cut) {
+                    $alreadyWaste += $cut->cut_waste_quantities[$sizeId] ?? 0;
+                }
+
+                // Check if new waste exceeds allowed quantity
+                if (($alreadyWaste + $newWasteQty) > $maxAllowed) {
+                    $sizeName = $sizeIdToNameMap[$sizeId] ?? $sizeId;
+                    throw ValidationException::withMessages([
+                        "rows.{$index}.waste_quantities.{$sizeId}" => "Waste quantity for size {$sizeName} exceeds the allowed maximum of {$maxAllowed} (order quantity: {$orderQty} + 5%)"
+                    ]);
+                }
             }
 
             $totalWasteQty = array_sum($wasteQuantities);
@@ -614,8 +450,7 @@ class CuttingDataController extends Controller
                 $newWasteQuantities = $existingWasteQuantities;
 
                 foreach ($wasteQuantities as $sizeId => $qty) {
-                    $sizeName = Size::find($sizeId)->name ?? $sizeId; // Assuming size is saved by name
-                    $newWasteQuantities[$sizeName] = ($newWasteQuantities[$sizeName] ?? 0) + $qty;
+                    $newWasteQuantities[$sizeId] = ($newWasteQuantities[$sizeId] ?? 0) + $qty;
                 }
 
                 $cuttingData->update([
@@ -627,9 +462,9 @@ class CuttingDataController extends Controller
                 CuttingData::create([
                     'date' => $request->date,
                     'po_number' => $poNumber,
-                    'old_order' => 'no', // or a default value
+                    'old_order' => 'no',
                     'product_combination_id' => $productCombinationId,
-                    'cut_quantities' => [], // No cut quantities
+                    'cut_quantities' => [],
                     'total_cut_quantity' => 0,
                     'cut_waste_quantities' => $wasteQuantities,
                     'total_cut_waste_quantity' => $totalWasteQty,
@@ -639,6 +474,390 @@ class CuttingDataController extends Controller
 
         return redirect()->route('cutting_data.index')->with('success', 'Waste data saved successfully.');
     }
+//     public function index(Request $request)
+//     {
+//         $query = CuttingData::with('orderData', 'productCombination.style', 'productCombination.color');
+
+//         if ($request->filled('search')) {
+//             $search = $request->input('search');
+//             $query->where('po_number', 'like', '%' . $search . '%')
+//                 ->orWhereHas('productCombination.style', function ($q) use ($search) {
+//                     $q->where('name', 'like', '%' . $search . '%');
+//                 })
+//                 ->orWhereHas('productCombination.color', function ($q) use ($search) {
+//                     $q->where('name', 'like', '%' . $search . '%');
+//                 });
+//         }
+//         if ($request->filled('date')) {
+//             $query->whereDate('date', $request->input('date'));
+//         }
+
+//         $cuttingData = $query->orderBy('date', 'desc')->paginate(perPage: 10);
+//         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+//         return view('backend.library.cutting_data.index', compact('cuttingData', 'allSizes'));
+//     }
+
+//    public function create()
+//     {
+//         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+//         $distinctPoNumbers = OrderData::where('po_status', 'running')->distinct()->pluck('po_number');
+
+//         return view('backend.library.cutting_data.create', compact('allSizes', 'distinctPoNumbers'));
+//     }
+
+//     public function store(Request $request)
+//     {
+//         Log::info('Store Request Data:', $request->all());
+
+//         $request->validate([
+//             'date' => 'required|date',
+//             'po_number' => 'required|array',
+//             'po_number.*' => 'string',
+//             'old_order' => 'required|in:yes,no',
+//             'rows' => 'required|array',
+//             'rows.*.po_number' => 'required|string|in:' . implode(',', $request->input('po_number', [])),
+//             'rows.*.product_combination_id' => 'required|integer|exists:product_combinations,id',
+//             'rows.*.cut_quantities' => 'nullable|array',
+//             'rows.*.cut_quantities.*' => 'nullable|integer|min:0',
+//         ]);
+
+//         foreach ($request->rows as $index => $row) {
+//             $poNumber = $row['po_number'];
+//             $productCombinationId = $row['product_combination_id'];
+
+//             $cutQuantities = array_filter($row['cut_quantities'] ?? [], 'is_numeric');
+
+//             if (empty($cutQuantities)) {
+//                 Log::info("Skipping row {$index} for PO {$poNumber}: No quantities provided.");
+//                 continue;
+//             }
+
+//             $totalCutQty = array_sum($cutQuantities);
+
+//             // Fetch order data for validation
+//             $orderData = OrderData::where('po_number', $poNumber)
+//                 ->where('product_combination_id', $productCombinationId)
+//                 ->first();
+
+//             if (!$orderData) {
+//                 throw ValidationException::withMessages([
+//                     "rows.{$index}.po_number" => "Order data not found for PO: {$poNumber} and combination ID: {$productCombinationId}"
+//                 ]);
+//             }
+
+//             // Get total existing cut quantities
+//             $totalExistingCut = CuttingData::where('po_number', $poNumber)
+//                 ->where('product_combination_id', $productCombinationId)
+//                 ->sum('total_cut_quantity');
+
+//             $totalOrderQty = array_sum($orderData->order_quantities);
+
+//             // Validate that new quantities don't exceed remaining order quantity
+//             if (($totalCutQty + $totalExistingCut) > $totalOrderQty) {
+//                 throw ValidationException::withMessages([
+//                     "rows.{$index}" => "Total cut quantities for PO: {$poNumber} exceed the total order quantity."
+//                 ]);
+//             }
+
+//             // Create the new CuttingData record
+//             CuttingData::create([
+//                 'date' => $request->date,
+//                 'po_number' => $poNumber,
+//                 'old_order' => $request->old_order,
+//                 'product_combination_id' => $productCombinationId,
+//                 'cut_quantities' => $cutQuantities,
+//                 'total_cut_quantity' => $totalCutQty,
+//             ]);
+
+//             Log::info("Created cutting data for PO: {$poNumber}, Combination ID: {$productCombinationId}", [
+//                 'cut_quantities' => $cutQuantities,
+//             ]);
+//         }
+
+//         return redirect()->route('cutting_data.index')->with('success', 'Cutting data saved successfully.');
+//     }
+
+//     public function find(Request $request)
+//     {
+//         $poNumbers = $request->input('po_numbers', []);
+//         Log::info('PO Numbers:', $poNumbers);
+
+//         if (empty($poNumbers)) {
+//             return response()->json([]);
+//         }
+
+//         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+//         Log::info('Sizes:', $allSizes->toArray());
+//         $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
+
+//         $orderData = OrderData::whereIn('po_number', $poNumbers)
+//             ->with(['productCombination.style', 'productCombination.color'])
+//             ->get();
+//         Log::info('Order Data:', $orderData->toArray());
+
+//         $existingCuttingData = CuttingData::whereIn('po_number', $poNumbers)->get();
+//         Log::info('Cutting Data:', $existingCuttingData->toArray());
+
+//         $response = [];
+//         $aggregatedData = [];
+
+//         foreach ($orderData as $order) {
+//             $poNumber = $order->po_number;
+//             $combinationId = $order->product_combination_id;
+//             $key = $poNumber . '-' . $combinationId;
+
+//             if (!isset($aggregatedData[$key])) {
+//                 $sizeIds = $order->productCombination ? $order->productCombination->size_ids : [];
+//                 $aggregatedData[$key] = [
+//                     'po_number' => $poNumber,
+//                     'combination_id' => $combinationId,
+//                     'style' => $order->productCombination->style->name ?? 'Unknown',
+//                     'color' => $order->productCombination->color->name ?? 'Unknown',
+//                     'size_ids' => $sizeIds,
+//                     'order_quantities' => [],
+//                     'cut_quantities' => [],
+//                 ];
+//             }
+
+//             foreach ($order->order_quantities as $sizeId => $quantity) {
+//                 $sizeName = $sizeIdToNameMap[(string)$sizeId] ?? 'unknown';
+//                 $aggregatedData[$key]['order_quantities'][$sizeName] =
+//                     ($aggregatedData[$key]['order_quantities'][$sizeName] ?? 0) + (int)$quantity;
+//             }
+//         }
+
+//         foreach ($existingCuttingData as $cut) {
+//             $poNumber = $cut->po_number;
+//             $combinationId = $cut->product_combination_id;
+//             $key = $poNumber . '-' . $combinationId;
+
+//             if (isset($aggregatedData[$key])) {
+//                 foreach ($cut->cut_quantities as $sizeIdOrName => $quantity) {
+//                     // Normalize size name (handle both IDs and names)
+//                     $sizeName = is_numeric($sizeIdOrName) ?
+//                         ($sizeIdToNameMap[(string)$sizeIdOrName] ?? 'unknown') :
+//                         $sizeIdOrName;
+
+//                     $aggregatedData[$key]['cut_quantities'][$sizeName] =
+//                         ($aggregatedData[$key]['cut_quantities'][$sizeName] ?? 0) + (int)$quantity;
+//                 }
+//             }
+//         }
+
+//         foreach ($aggregatedData as $data) {
+//             $availableQuantities = [];
+//             foreach ($data['order_quantities'] as $sizeName => $orderQty) {
+//                 $cutQty = $data['cut_quantities'][$sizeName] ?? 0;
+
+//                 // Calculate maximum allowed (order quantity + 5%)
+//                 $maxAllowed = ceil($orderQty * 1.05);
+
+//                 // Calculate available quantity (max allowed minus already cut)
+//                 $available = max(0, $maxAllowed - $cutQty);
+
+//                 $availableQuantities[$sizeName] = $available;
+//             }
+
+//             $response[$data['po_number']][] = [
+//                 'combination_id' => $data['combination_id'],
+//                 'style' => $data['style'],
+//                 'color' => $data['color'],
+//                 'size_ids' => $data['size_ids'],
+//                 'available_quantities' => $availableQuantities,
+//             ];
+//         }
+
+//         Log::info('Response Data:', $response);
+//         return response()->json($response);
+//     }
+//     public function edit(CuttingData $cuttingDatum)
+//     {
+//         $cuttingDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+
+//         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+//         $poOrderData = OrderData::where('po_number', $cuttingDatum->po_number)
+//             ->where('product_combination_id', $cuttingDatum->product_combination_id)
+//             ->first();
+
+//         if (!$poOrderData) {
+//             return redirect()->route('cutting_data.index')->withErrors('Order data for this PO not found.');
+//         }
+
+//         // Fetch existing quantities from all other cutting data records for this PO
+//         $totalExistingCutQuantities = CuttingData::where('po_number', $cuttingDatum->po_number)
+//             ->where('product_combination_id', $cuttingDatum->product_combination_id)
+//             ->where('id', '!=', $cuttingDatum->id)
+//             ->get()
+//             ->flatMap(fn($data) => $data->cut_quantities)
+//             ->reduce(function ($carry, $quantity, $sizeId) {
+//                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $quantity;
+//                 return $carry;
+//             }, []);
+
+//         $totalExistingWasteQuantities = CuttingData::where('po_number', $cuttingDatum->po_number)
+//             ->where('product_combination_id', $cuttingDatum->product_combination_id)
+//             ->where('id', '!=', $cuttingDatum->id)
+//             ->get()
+//             ->flatMap(fn($data) => $data->cut_waste_quantities)
+//             ->reduce(function ($carry, $quantity, $sizeId) {
+//                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $quantity;
+//                 return $carry;
+//             }, []);
+
+//         $orderQuantities = $poOrderData->order_quantities;
+//         $availableQuantities = [];
+
+//         foreach ($orderQuantities as $sizeId => $orderQty) {
+//             $existingCutQty = $totalExistingCutQuantities[$sizeId] ?? 0;
+//             $existingWasteQty = $totalExistingWasteQuantities[$sizeId] ?? 0;
+//             $availableQuantities[$sizeId] = $orderQty - ($existingCutQty + $existingWasteQty);
+//         }
+
+//         return view('backend.library.cutting_data.edit', compact(
+//             'cuttingDatum',
+//             'allSizes',
+//             'availableQuantities',
+//             'orderQuantities'
+//         ));
+//     }
+
+//     public function update(Request $request, CuttingData $cuttingDatum)
+//     {
+//         $request->validate([
+//             'date' => 'required|date',
+//             'cut_quantities' => 'nullable|array',
+//             'cut_quantities.*' => 'nullable|integer|min:0',
+//             'waste_quantities' => 'nullable|array',
+//             'waste_quantities.*' => 'nullable|integer|min:0',
+//         ]);
+
+//         $poNumber = $cuttingDatum->po_number;
+//         $productCombinationId = $cuttingDatum->product_combination_id;
+
+//         $poOrderData = OrderData::where('po_number', $poNumber)->where('product_combination_id', $productCombinationId)->first();
+//         if (!$poOrderData) {
+//             return redirect()->back()->withErrors('Order data for this PO not found.');
+//         }
+//         $orderQuantities = $poOrderData->order_quantities;
+
+//         // Sum existing quantities from all records EXCEPT the current one
+//         $existingCuttingData = CuttingData::where('po_number', $poNumber)
+//             ->where('product_combination_id', $productCombinationId)
+//             ->where('id', '!=', $cuttingDatum->id)
+//             ->get();
+//         $totalExistingCut = $existingCuttingData->sum('total_cut_quantity');
+//         $totalExistingWaste = $existingCuttingData->sum('total_cut_waste_quantity');
+
+//         // Sum new quantities from the request
+//         $newCutQuantities = array_filter($request->input('cut_quantities', []), 'is_numeric');
+//         $newWasteQuantities = array_filter($request->input('waste_quantities', []), 'is_numeric');
+//         $totalNewCut = array_sum($newCutQuantities);
+//         $totalNewWaste = array_sum($newWasteQuantities);
+
+//         // Check if total new + total existing quantities exceed total order quantity
+//         $totalOrderQty = array_sum($orderQuantities);
+//         if (($totalNewCut + $totalNewWaste + $totalExistingCut + $totalExistingWaste) > $totalOrderQty) {
+//             throw ValidationException::withMessages([
+//                 'cut_quantities' => "The updated quantities exceed the total order quantity for this combination."
+//             ]);
+//         }
+
+//         // Update the model with the new quantities
+//         $cuttingDatum->update([
+//             'date' => $request->date,
+//             'cut_quantities' => $newCutQuantities,
+//             'total_cut_quantity' => $totalNewCut,
+//             'cut_waste_quantities' => $newWasteQuantities,
+//             'total_cut_waste_quantity' => $totalNewWaste,
+//         ]);
+
+//         return redirect()->route('cutting_data.index')->with('success', 'Cutting data updated successfully.');
+//     }
+
+//     public function show(CuttingData $cuttingDatum)
+//     {
+//         $cuttingDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+//         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+//         return view('backend.library.cutting_data.show', compact('cuttingDatum', 'allSizes'));
+//     }
+
+//     public function destroy(CuttingData $cuttingDatum)
+//     {
+//         $cuttingDatum->delete();
+//         return redirect()->route('cutting_data.index')->with('success', 'Cutting data deleted successfully.');
+//     }
+
+   
+//     public function createWaste()
+//     {
+//         $distinctPoNumbers = CuttingData::distinct()->pluck('po_number');
+//         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+//         return view('backend.library.cutting_data.waste_create', compact('allSizes', 'distinctPoNumbers'));
+//     }
+
+//     public function storeWaste(Request $request)
+//     {
+//         $request->validate([
+//             'date' => 'required|date',
+//             'po_number' => 'required|array',
+//             'po_number.*' => 'string',
+//             'rows' => 'required|array',
+//             'rows.*.po_number' => 'required|string',
+//             'rows.*.product_combination_id' => 'required|integer',
+//             'rows.*.waste_quantities' => 'nullable|array',
+//             'rows.*.waste_quantities.*' => 'nullable|integer|min:0',
+//         ]);
+
+//         foreach ($request->rows as $index => $row) {
+//             $poNumber = $row['po_number'];
+//             $productCombinationId = $row['product_combination_id'];
+//             $wasteQuantities = array_filter($row['waste_quantities'] ?? [], 'is_numeric');
+
+//             if (empty($wasteQuantities)) {
+//                 continue;
+//             }
+
+//             $totalWasteQty = array_sum($wasteQuantities);
+
+//             // Find existing record to update
+//             $cuttingData = CuttingData::where('po_number', $poNumber)
+//                 ->where('product_combination_id', $productCombinationId)
+//                 ->first();
+
+//             if ($cuttingData) {
+//                 // Merge and sum new waste with existing waste quantities
+//                 $existingWasteQuantities = $cuttingData->cut_waste_quantities ?? [];
+//                 $newWasteQuantities = $existingWasteQuantities;
+
+//                 foreach ($wasteQuantities as $sizeId => $qty) {
+//                     $sizeName = Size::find($sizeId)->name ?? $sizeId; // Assuming size is saved by name
+//                     $newWasteQuantities[$sizeName] = ($newWasteQuantities[$sizeName] ?? 0) + $qty;
+//                 }
+
+//                 $cuttingData->update([
+//                     'cut_waste_quantities' => $newWasteQuantities,
+//                     'total_cut_waste_quantity' => $cuttingData->total_cut_waste_quantity + $totalWasteQty,
+//                 ]);
+//             } else {
+//                 // If no cutting data exists yet, create a new entry for waste
+//                 CuttingData::create([
+//                     'date' => $request->date,
+//                     'po_number' => $poNumber,
+//                     'old_order' => 'no', // or a default value
+//                     'product_combination_id' => $productCombinationId,
+//                     'cut_quantities' => [], // No cut quantities
+//                     'total_cut_quantity' => 0,
+//                     'cut_waste_quantities' => $wasteQuantities,
+//                     'total_cut_waste_quantity' => $totalWasteQty,
+//                 ]);
+//             }
+//         }
+
+//         return redirect()->route('cutting_data.index')->with('success', 'Waste data saved successfully.');
+//     }
 
     public function findWaste(Request $request)
     {

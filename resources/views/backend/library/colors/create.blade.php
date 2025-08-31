@@ -19,9 +19,10 @@
             @csrf
             <!-- Use a wrapper to contain all dynamic inputs -->
             <div id="color-input-wrapper">
-                <x-backend.form.input name="name[]" type="text" label="Color Name" />
+                <x-backend.form.input name="name[]" type="text" label="Color Name" required />
             </div>
             <br>
+
             <button type="button" class="btn btn-secondary p-2 add-more">Add More</button>
             <button type="button" class="btn btn-danger p-2 remove-more">Remove Last</button>
             <x-backend.form.saveButton>Save</x-backend.form.saveButton>
@@ -39,7 +40,7 @@
 
                 div.innerHTML = `
                 <label for="color_name_${index}">Color Name</label>
-                <input type="text" name="name[]" id="color_name_${index}" class="form-control" placeholder="Enter color name">
+                <input type="text" name="name[]" id="color_name_${index}" class="form-control" placeholder="Enter color name" required>
             `;
                 return div;
             }

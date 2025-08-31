@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CuttingData;
 use App\Models\LineInputData;
+use App\Models\OrderData;
 use App\Models\PrintReceiveData;
 use App\Models\ProductCombination;
 use App\Models\Size;
@@ -23,14 +24,16 @@ class LineInputDataController extends Controller
                 $q->where('name', 'like', '%' . $search . '%');
             })->orWhereHas('productCombination.color', function ($q) use ($search) {
                 $q->where('name', 'like', '%' . $search . '%');
-            });
+            })->orWhereHas('productCombination.buyer', function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%');
+            })->orWhere('po_number', 'like', '%' . $search . '%');
         }
         if ($request->filled('date')) {
             $query->whereDate('date', $request->input('date'));
         }
 
         $lineInputData = $query->orderBy('date', 'desc')->paginate(10);
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return view('backend.library.line_input_data.index', compact('lineInputData', 'allSizes'));
     }
@@ -129,7 +132,7 @@ class LineInputDataController extends Controller
         return view('backend.library.line_input_data.show', compact('lineInputDatum', 'allSizes'));
     }
 
-    public function edit(LineInputData $lineInputDatum)
+       public function edit(LineInputData $lineInputDatum)
     {
         $lineInputDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
@@ -142,9 +145,49 @@ class LineInputDataController extends Controller
 
         $allSizes = $validSizes->values();
 
-        return view('backend.library.line_input_data.edit', compact('lineInputDatum', 'allSizes'));
-    }
+        // Get max available quantities for this product combination
+        $maxQuantities = $this->getMaxInputQuantities($lineInputDatum->productCombination);
 
+        // Get order quantities from order_data table
+        $poNumbers = explode(',', $lineInputDatum->po_number);
+        $orderQuantities = [];
+
+        foreach ($poNumbers as $poNumber) {
+            $orderData = OrderData::where('product_combination_id', $lineInputDatum->product_combination_id)
+                ->where('po_number', $poNumber)
+                ->first();
+
+            if ($orderData && $orderData->order_quantities) {
+                foreach ($orderData->order_quantities as $sizeId => $qty) {
+                    $orderQuantities[$sizeId] = ($orderQuantities[$sizeId] ?? 0) + $qty;
+                }
+            }
+        }
+
+        // Prepare size data with max available quantities and order quantities
+        $sizeData = [];
+        foreach ($allSizes as $size) {
+            $inputQty = $lineInputDatum->input_quantities[$size->id] ?? 0;
+            $wasteQty = $lineInputDatum->input_waste_quantities[$size->id] ?? 0;
+            $maxAvailable = $maxQuantities[$size->id] ?? 0;
+            $orderQty = $orderQuantities[$size->id] ?? 0;
+
+            // Calculate the maximum allowed (available + current input)
+            $maxAllowed = $maxAvailable + $inputQty;
+
+            $sizeData[] = [
+                'id' => $size->id,
+                'name' => $size->name,
+                'input_quantity' => $inputQty,
+                'waste_quantity' => $wasteQty,
+                'max_available' => $maxAvailable,
+                'max_allowed' => $maxAllowed,
+                'order_quantity' => $orderQty,
+            ];
+        }
+
+        return view('backend.library.line_input_data.edit', compact('lineInputDatum', 'sizeData'));
+    }
     public function update(Request $request, LineInputData $lineInputDatum)
     {
         $request->validate([
@@ -208,8 +251,14 @@ class LineInputDataController extends Controller
         }
 
         $lineInputData = $query->get();
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
+
+        // Initialize totals
+        $totalInputBySize = array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0);
+        $totalWasteBySize = array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0);
+        $grandTotalInput = 0;
+        $grandTotalWaste = 0;
 
         foreach ($lineInputData as $data) {
             $style = $data->productCombination->style->name;
@@ -233,10 +282,12 @@ class LineInputDataController extends Controller
                     $normalized = strtolower($size->name);
                     if (array_key_exists($normalized, $reportData[$key]['sizes'])) {
                         $reportData[$key]['sizes'][$normalized] += $qty;
+                        $totalInputBySize[$normalized] += $qty;
                     }
                 }
             }
             $reportData[$key]['total'] += $data->total_input_quantity;
+            $grandTotalInput += $data->total_input_quantity;
 
             if ($data->input_waste_quantities) {
                 foreach ($data->input_waste_quantities as $sizeId => $qty) {
@@ -245,22 +296,28 @@ class LineInputDataController extends Controller
                         $normalized = strtolower($size->name);
                         if (array_key_exists($normalized, $reportData[$key]['waste_sizes'])) {
                             $reportData[$key]['waste_sizes'][$normalized] += $qty;
+                            $totalWasteBySize[$normalized] += $qty;
                         }
                     }
                 }
             }
             $reportData[$key]['total_waste'] += $data->total_input_waste_quantity ?? 0;
+            $grandTotalWaste += $data->total_input_waste_quantity ?? 0;
         }
 
         return view('backend.library.line_input_data.reports.total_input', [
             'reportData' => array_values($reportData),
-            'allSizes' => $allSizes
+            'allSizes' => $allSizes,
+            'totalInputBySize' => $totalInputBySize,
+            'totalWasteBySize' => $totalWasteBySize,
+            'grandTotalInput' => $grandTotalInput,
+            'grandTotalWaste' => $grandTotalWaste
         ]);
     }
 
-    public function inputBalanceReport(Request $request)
+   public function inputBalanceReport(Request $request)
     {
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $balanceData = [];
 
         $productCombinations = ProductCombination::whereHas('cuttingData')
@@ -274,102 +331,162 @@ class LineInputDataController extends Controller
             $color = $pc->color->name;
             $key = $style . '-' . $color;
 
+            // Initialize with all sizes
             $balanceData[$key] = [
                 'style' => $style,
                 'color' => $color,
-                'sizes' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), ['available' => 0, 'input' => 0, 'waste' => 0, 'balance' => 0]),
+                'sizes' => [],
                 'total_available' => 0,
                 'total_input' => 0,
                 'total_waste' => 0,
                 'total_balance' => 0,
             ];
 
+            // Initialize size data for all sizes
+            foreach ($allSizes as $size) {
+                $balanceData[$key]['sizes'][$size->id] = [
+                    'name' => $size->name,
+                    'available' => 0,
+                    'input' => 0,
+                    'waste' => 0,
+                    'balance' => 0
+                ];
+            }
+
             // Get available quantities based on product combination type
             if ($pc->print_embroidery && !$pc->sublimation_print) {
                 // Only print_embroidery is true - from PrintReceiveData
                 $receiveQuantities = PrintReceiveData::where('product_combination_id', $pc->id)
                     ->get()
-                    ->flatMap(fn($item) => $item->receive_quantities)
-                    ->groupBy(fn($value, $key) => strtolower(Size::find($key)->name))
-                    ->map(fn($group) => $group->sum())
+                    ->flatMap(function ($item) {
+                        return $item->receive_quantities;
+                    })
+                    ->groupBy(function ($value, $key) {
+                        return $key; // Use size ID as key
+                    })
+                    ->map(function ($group) {
+                        return $group->sum();
+                    })
                     ->toArray();
 
-                foreach ($receiveQuantities as $size => $qty) {
-                    $balanceData[$key]['sizes'][$size]['available'] = $qty;
-                    $balanceData[$key]['total_available'] += $qty;
+                foreach ($receiveQuantities as $sizeId => $qty) {
+                    if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                        $balanceData[$key]['sizes'][$sizeId]['available'] = $qty;
+                        $balanceData[$key]['total_available'] += $qty;
+                    }
                 }
             } elseif (!$pc->print_embroidery && $pc->sublimation_print) {
                 // Only sublimation_print is true - from SublimationPrintReceive
                 $receiveQuantities = SublimationPrintReceive::where('product_combination_id', $pc->id)
                     ->get()
-                    ->flatMap(fn($item) => $item->receive_quantities)
-                    ->groupBy(fn($value, $key) => strtolower(Size::find($key)->name))
-                    ->map(fn($group) => $group->sum())
+                    ->flatMap(function ($item) {
+                        return $item->receive_quantities;
+                    })
+                    ->groupBy(function ($value, $key) {
+                        return $key; // Use size ID as key
+                    })
+                    ->map(function ($group) {
+                        return $group->sum();
+                    })
                     ->toArray();
 
-                foreach ($receiveQuantities as $size => $qty) {
-                    $balanceData[$key]['sizes'][$size]['available'] = $qty;
-                    $balanceData[$key]['total_available'] += $qty;
+                foreach ($receiveQuantities as $sizeId => $qty) {
+                    if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                        $balanceData[$key]['sizes'][$sizeId]['available'] = $qty;
+                        $balanceData[$key]['total_available'] += $qty;
+                    }
                 }
             } elseif ($pc->print_embroidery && $pc->sublimation_print) {
                 // Both are true - from PrintReceiveData
                 $receiveQuantities = PrintReceiveData::where('product_combination_id', $pc->id)
                     ->get()
-                    ->flatMap(fn($item) => $item->receive_quantities)
-                    ->groupBy(fn($value, $key) => strtolower(Size::find($key)->name))
-                    ->map(fn($group) => $group->sum())
+                    ->flatMap(function ($item) {
+                        return $item->receive_quantities;
+                    })
+                    ->groupBy(function ($value, $key) {
+                        return $key; // Use size ID as key
+                    })
+                    ->map(function ($group) {
+                        return $group->sum();
+                    })
                     ->toArray();
 
-                foreach ($receiveQuantities as $size => $qty) {
-                    $balanceData[$key]['sizes'][$size]['available'] = $qty;
-                    $balanceData[$key]['total_available'] += $qty;
+                foreach ($receiveQuantities as $sizeId => $qty) {
+                    if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                        $balanceData[$key]['sizes'][$sizeId]['available'] = $qty;
+                        $balanceData[$key]['total_available'] += $qty;
+                    }
                 }
             } else {
                 // Both are false - from CuttingData
                 $cutQuantities = CuttingData::where('product_combination_id', $pc->id)
                     ->get()
-                    ->flatMap(fn($item) => $item->cut_quantities)
-                    ->groupBy(fn($value, $key) => strtolower($key))
-                    ->map(fn($group) => $group->sum())
+                    ->flatMap(function ($item) {
+                        return $item->cut_quantities;
+                    })
+                    ->groupBy(function ($value, $key) {
+                        return $key; // Use size ID as key
+                    })
+                    ->map(function ($group) {
+                        return $group->sum();
+                    })
                     ->toArray();
 
-                foreach ($cutQuantities as $size => $qty) {
-                    $balanceData[$key]['sizes'][$size]['available'] = $qty;
-                    $balanceData[$key]['total_available'] += $qty;
+                foreach ($cutQuantities as $sizeId => $qty) {
+                    if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                        $balanceData[$key]['sizes'][$sizeId]['available'] = $qty;
+                        $balanceData[$key]['total_available'] += $qty;
+                    }
                 }
             }
 
             // Get input quantities
             $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
                 ->get()
-                ->flatMap(fn($item) => $item->input_quantities)
-                ->groupBy(fn($value, $key) => strtolower(Size::find($key)->name))
-                ->map(fn($group) => $group->sum())
+                ->flatMap(function ($item) {
+                    return $item->input_quantities;
+                })
+                ->groupBy(function ($value, $key) {
+                    return $key; // Use size ID as key
+                })
+                ->map(function ($group) {
+                    return $group->sum();
+                })
                 ->toArray();
 
-            foreach ($inputQuantities as $size => $qty) {
-                $balanceData[$key]['sizes'][$size]['input'] = $qty;
-                $balanceData[$key]['total_input'] += $qty;
+            foreach ($inputQuantities as $sizeId => $qty) {
+                if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                    $balanceData[$key]['sizes'][$sizeId]['input'] = $qty;
+                    $balanceData[$key]['total_input'] += $qty;
+                }
             }
 
             // Get waste quantities
             $wasteQuantities = LineInputData::where('product_combination_id', $pc->id)
                 ->get()
-                ->flatMap(fn($item) => $item->input_waste_quantities ?? [])
-                ->groupBy(fn($value, $key) => strtolower(Size::find($key)->name))
-                ->map(fn($group) => $group->sum())
+                ->flatMap(function ($item) {
+                    return $item->input_waste_quantities ?? [];
+                })
+                ->groupBy(function ($value, $key) {
+                    return $key; // Use size ID as key
+                })
+                ->map(function ($group) {
+                    return $group->sum();
+                })
                 ->toArray();
 
-            foreach ($wasteQuantities as $size => $qty) {
-                $balanceData[$key]['sizes'][$size]['waste'] = $qty;
-                $balanceData[$key]['total_waste'] += $qty;
+            foreach ($wasteQuantities as $sizeId => $qty) {
+                if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                    $balanceData[$key]['sizes'][$sizeId]['waste'] = $qty;
+                    $balanceData[$key]['total_waste'] += $qty;
+                }
             }
 
-            // Calculate balance
-            foreach ($balanceData[$key]['sizes'] as $size => &$data) {
-                $data['balance'] = $data['available'] - $data['input'] - $data['waste'];
+            // Calculate balance for each size
+            foreach ($balanceData[$key]['sizes'] as $sizeId => &$sizeData) {
+                $sizeData['balance'] = $sizeData['available'] - $sizeData['input'] - $sizeData['waste'];
             }
-            unset($data);
+            unset($sizeData);
 
             $balanceData[$key]['total_balance'] = $balanceData[$key]['total_available'] - $balanceData[$key]['total_input'] - $balanceData[$key]['total_waste'];
         }
@@ -379,7 +496,6 @@ class LineInputDataController extends Controller
             'allSizes' => $allSizes
         ]);
     }
-
     public function getMaxInputQuantities(ProductCombination $pc)
     {
         $maxQuantities = [];
@@ -390,54 +506,82 @@ class LineInputDataController extends Controller
             // Only print_embroidery is true - from PrintReceiveData
             $sourceQuantities = PrintReceiveData::where('product_combination_id', $pc->id)
                 ->get()
-                ->flatMap(fn($item) => $item->receive_quantities)
-                ->groupBy(fn($value, $key) => strtolower(Size::find($key)->name))
-                ->map(fn($group) => $group->sum())
+                ->flatMap(function ($item) {
+                    return $item->receive_quantities;
+                })
+                ->groupBy(function ($value, $key) {
+                    return $key; // Use size ID as key
+                })
+                ->map(function ($group) {
+                    return $group->sum();
+                })
                 ->toArray();
         } elseif (!$pc->print_embroidery && $pc->sublimation_print) {
             // Only sublimation_print is true - from SublimationPrintReceive
             $sourceQuantities = SublimationPrintReceive::where('product_combination_id', $pc->id)
                 ->get()
-                ->flatMap(fn($item) => $item->receive_quantities)
-                ->groupBy(fn($value, $key) => strtolower(Size::find($key)->name))
-                ->map(fn($group) => $group->sum())
+                ->flatMap(function ($item) {
+                    return $item->receive_quantities;
+                })
+                ->groupBy(function ($value, $key) {
+                    return $key; // Use size ID as key
+                })
+                ->map(function ($group) {
+                    return $group->sum();
+                })
                 ->toArray();
         } elseif ($pc->print_embroidery && $pc->sublimation_print) {
             // Both are true - from PrintReceiveData
             $sourceQuantities = PrintReceiveData::where('product_combination_id', $pc->id)
                 ->get()
-                ->flatMap(fn($item) => $item->receive_quantities)
-                ->groupBy(fn($value, $key) => strtolower(Size::find($key)->name))
-                ->map(fn($group) => $group->sum())
+                ->flatMap(function ($item) {
+                    return $item->receive_quantities;
+                })
+                ->groupBy(function ($value, $key) {
+                    return $key; // Use size ID as key
+                })
+                ->map(function ($group) {
+                    return $group->sum();
+                })
                 ->toArray();
         } else {
             // Both are false - from CuttingData
             $sourceQuantities = CuttingData::where('product_combination_id', $pc->id)
                 ->get()
-                ->flatMap(fn($item) => $item->cut_quantities)
-                ->groupBy(fn($value, $key) => strtolower($key))
-                ->map(fn($group) => $group->sum())
+                ->flatMap(function ($item) {
+                    return $item->cut_quantities;
+                })
+                ->groupBy(function ($value, $key) {
+                    return $key; // Use size ID as key
+                })
+                ->map(function ($group) {
+                    return $group->sum();
+                })
                 ->toArray();
         }
 
         $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
             ->get()
-            ->flatMap(fn($item) => $item->input_quantities)
-            ->groupBy(fn($value, $key) => strtolower(Size::find($key)->name))
-            ->map(fn($group) => $group->sum())
+            ->flatMap(function ($item) {
+                return $item->input_quantities;
+            })
+            ->groupBy(function ($value, $key) {
+                return $key; // Use size ID as key
+            })
+            ->map(function ($group) {
+                return $group->sum();
+            })
             ->toArray();
 
         foreach ($allSizes as $size) {
-            $sizeName = strtolower($size->name);
-            $source = $sourceQuantities[$sizeName] ?? 0;
-            $input = $inputQuantities[$sizeName] ?? 0;
-            $maxQuantities[$sizeName] = max(0, $source - $input);
+            $source = $sourceQuantities[$size->id] ?? 0;
+            $input = $inputQuantities[$size->id] ?? 0;
+            $maxQuantities[$size->id] = max(0, $source - $input);
         }
 
         return $maxQuantities;
     }
-
-    public function getAvailableQuantities(ProductCombination $productCombination)
+   public function getAvailableQuantities(ProductCombination $productCombination)
     {
         $maxQuantities = $this->getMaxInputQuantities($productCombination);
         $sizes = Size::where('is_active', 1)->get();
@@ -447,7 +591,6 @@ class LineInputDataController extends Controller
             'sizes' => $sizes
         ]);
     }
-
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
@@ -470,11 +613,12 @@ class LineInputDataController extends Controller
                     $q->where('po_number', 'like', '%' . $poNumber . '%');
                 });
             })
-                ->with('style', 'color')
+                ->with('style', 'color', 'size')
                 ->get();
 
             foreach ($productCombinations as $pc) {
-                if (!$pc) {
+                // Skip if product combination doesn't have style or color
+                if (!$pc->style || !$pc->color) {
                     continue;
                 }
 
@@ -522,345 +666,4 @@ class LineInputDataController extends Controller
 
         return array_unique($poNumbers);
     }
-    // public function index(Request $request)
-    // {
-    //     $query = LineInputData::with('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-
-    //     if ($request->filled('search')) {
-    //         $search = $request->input('search');
-    //         $query->whereHas('productCombination.style', function ($q) use ($search) {
-    //             $q->where('name', 'like', '%' . $search . '%');
-    //         })->orWhereHas('productCombination.color', function ($q) use ($search) {
-    //             $q->where('name', 'like', '%' . $search . '%');
-    //         });
-    //     }
-    //     if ($request->filled('date')) {
-    //         $query->whereDate('date', $request->input('date'));
-    //     }
-
-    //     $lineInputData = $query->orderBy('date', 'desc')->paginate(10);
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
-
-    //     return view('backend.library.line_input_data.index', compact('lineInputData', 'allSizes'));
-    // }
-
-    // public function create()
-    // {
-    //     // Show only combinations that are ready for input
-    //     $productCombinations = ProductCombination::whereHas('cuttingData')
-    //         ->with('buyer', 'style', 'color')
-    //         ->get();
-
-    //     $sizes = Size::where('is_active', 1)->get();
-
-    //     return view('backend.library.line_input_data.create', compact('productCombinations', 'sizes'));
-    // }
-
-    // public function store(Request $request)
-    // {
-    //     $request->validate([
-    //         'date' => 'required|date',
-    //         'product_combination_id' => 'required|exists:product_combinations,id',
-    //         'quantities.*' => 'nullable|integer|min:0',
-    //     ]);
-
-    //     $productCombination = ProductCombination::findOrFail($request->product_combination_id);
-    //     $maxQuantities = $this->getMaxInputQuantities($productCombination);
-
-    //     $inputQuantities = [];
-    //     $totalInputQuantity = 0;
-    //     $errors = [];
-
-    //     foreach ($request->input('quantities', []) as $sizeId => $quantity) {
-    //         $size = Size::where('is_active', 1)->find($sizeId);
-    //         if ($size && $quantity > 0) {
-    //             $sizeName = strtolower($size->name);
-    //             $maxAllowed = $maxQuantities[$sizeName] ?? 0;
-
-    //             if ($quantity > $maxAllowed) {
-    //                 $errors["quantities.$sizeId"] = "Quantity for {$size->name} exceeds available limit ($maxAllowed)";
-    //                 continue;
-    //             }
-
-    //             $inputQuantities[$size->name] = (int)$quantity;
-    //             $totalInputQuantity += (int)$quantity;
-    //         }
-    //     }
-
-    //     if (!empty($errors)) {
-    //         return redirect()->back()->withErrors($errors)->withInput();
-    //     }
-
-    //     LineInputData::create([
-    //         'date' => $request->date,
-    //         'product_combination_id' => $request->product_combination_id,
-    //         'input_quantities' => $inputQuantities,
-    //         'total_input_quantity' => $totalInputQuantity,
-    //     ]);
-
-    //     return redirect()->route('line_input_data.index')->with('success', 'Line input data added successfully.');
-    // }
-
-   
-
-    // public function show(LineInputData $lineInputDatum)
-    // {
-    //     return view('backend.library.line_input_data.show', compact('lineInputDatum'));
-    // }
-
-    // public function edit(LineInputData $lineInputDatum)
-    // {
-    //     $lineInputDatum->load('productCombination.style', 'productCombination.color');
-    //     $sizes = Size::where('is_active', 1)->get();
-    //     $maxQuantities = $this->getMaxInputQuantities($lineInputDatum->productCombination);
-
-    //     $sizeData = $sizes->map(function ($size) use ($lineInputDatum, $maxQuantities) {
-    //         $sizeName = strtolower($size->name);
-    //         return [
-    //             'id' => $size->id,
-    //             'name' => $size->name,
-    //             'max_allowed' => $maxQuantities[$sizeName] ?? 0,
-    //             'current_quantity' => $lineInputDatum->input_quantities[$size->name] ?? 0
-    //         ];
-    //     });
-
-    //     return view('backend.library.line_input_data.edit', [
-    //         'lineInputDatum' => $lineInputDatum,
-    //         'sizeData' => $sizeData
-    //     ]);
-    // }
-
-    // public function update(Request $request, LineInputData $lineInputDatum)
-    // {
-    //     $request->validate([
-    //         'date' => 'required|date',
-    //         'quantities.*' => 'nullable|integer|min:0',
-    //     ]);
-
-    //     $productCombination = $lineInputDatum->productCombination;
-    //     $maxQuantities = $this->getMaxInputQuantities($productCombination);
-
-    //     $inputQuantities = [];
-    //     $totalInputQuantity = 0;
-    //     $errors = [];
-
-    //     foreach ($request->input('quantities', []) as $sizeId => $quantity) {
-    //         $size = Size::where('is_active', 1)->find($sizeId);
-    //         if ($size && $quantity > 0) {
-    //             $sizeName = strtolower($size->name);
-    //             $maxAllowed = ($maxQuantities[$sizeName] ?? 0) + ($lineInputDatum->input_quantities[$size->name] ?? 0);
-
-    //             if ($quantity > $maxAllowed) {
-    //                 $errors["quantities.$sizeId"] = "Quantity for {$size->name} exceeds available limit ($maxAllowed)";
-    //                 continue;
-    //             }
-
-    //             $inputQuantities[$size->name] = (int)$quantity;
-    //             $totalInputQuantity += (int)$quantity;
-    //         }
-    //     }
-
-    //     if (!empty($errors)) {
-    //         return redirect()->back()->withErrors($errors)->withInput();
-    //     }
-
-    //     $lineInputDatum->update([
-    //         'date' => $request->date,
-    //         'input_quantities' => $inputQuantities,
-    //         'total_input_quantity' => $totalInputQuantity,
-    //     ]);
-
-    //     return redirect()->route('line_input_data.index')->with('success', 'Line input data updated successfully.');
-    // }
-
-    // public function destroy(LineInputData $lineInputDatum)
-    // {
-    //     $lineInputDatum->delete();
-    //     return redirect()->route('line_input_data.index')->with('success', 'Line input data deleted successfully.');
-    // }
-
-    // // Reports
-    // public function totalInputReport(Request $request)
-    // {
-    //     $query = LineInputData::with('productCombination.style', 'productCombination.color');
-
-    //     if ($request->filled('start_date') && $request->filled('end_date')) {
-    //         $query->whereBetween('date', [$request->start_date, $request->end_date]);
-    //     }
-
-    //     $lineInputData = $query->get();
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
-    //     $reportData = [];
-
-    //     foreach ($lineInputData as $data) {
-    //         $style = $data->productCombination->style->name;
-    //         $color = $data->productCombination->color->name;
-    //         $key = $style . '-' . $color;
-
-    //         if (!isset($reportData[$key])) {
-    //             $reportData[$key] = [
-    //                 'style' => $style,
-    //                 'color' => $color,
-    //                 'sizes' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
-    //                 'total' => 0
-    //             ];
-    //         }
-
-    //         foreach ($data->input_quantities as $size => $qty) {
-    //             $normalized = strtolower($size);
-    //             if (array_key_exists($normalized, $reportData[$key]['sizes'])) {
-    //                 $reportData[$key]['sizes'][$normalized] += $qty;
-    //             }
-    //         }
-    //         $reportData[$key]['total'] += $data->total_input_quantity;
-    //     }
-
-    //     return view('backend.library.line_input_data.reports.total_input', [
-    //         'reportData' => array_values($reportData),
-    //         'allSizes' => $allSizes
-    //     ]);
-    // }
-
-    // public function inputBalanceReport(Request $request)
-    // {
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
-    //     $balanceData = [];
-
-    //     $productCombinations = ProductCombination::whereHas('cuttingData')
-    //         ->with('style', 'color')
-    //         ->get();
-
-    //     foreach ($productCombinations as $pc) {
-    //         $style = $pc->style->name;
-    //         $color = $pc->color->name;
-    //         $key = $style . '-' . $color;
-
-    //         $balanceData[$key] = [
-    //             'style' => $style,
-    //             'color' => $color,
-    //             'sizes' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), ['available' => 0, 'input' => 0, 'balance' => 0]),
-    //             'total_available' => 0,
-    //             'total_input' => 0,
-    //             'total_balance' => 0,
-    //         ];
-
-    //         // Get available quantities (cut or received print)
-    //         if (!$pc->print_embroidery) {
-    //             $cutQuantities = CuttingData::where('product_combination_id', $pc->id)
-    //                 ->get()
-    //                 ->flatMap(fn($item) => $item->cut_quantities)
-    //                 ->groupBy(fn($value, $key) => strtolower($key))
-    //                 ->map(fn($group) => $group->sum())
-    //                 ->toArray();
-
-    //             foreach ($cutQuantities as $size => $qty) {
-    //                 $balanceData[$key]['sizes'][$size]['available'] = $qty;
-    //                 $balanceData[$key]['total_available'] += $qty;
-    //             }
-    //         } else {
-    //             $receiveQuantities = PrintReceiveData::where('product_combination_id', $pc->id)
-    //                 ->get()
-    //                 ->flatMap(fn($item) => $item->receive_quantities)
-    //                 ->groupBy(fn($value, $key) => strtolower($key))
-    //                 ->map(fn($group) => $group->sum())
-    //                 ->toArray();
-
-    //             foreach ($receiveQuantities as $size => $qty) {
-    //                 $balanceData[$key]['sizes'][$size]['available'] = $qty;
-    //                 $balanceData[$key]['total_available'] += $qty;
-    //             }
-    //         }
-
-    //         // Get input quantities
-    //         $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
-    //             ->get()
-    //             ->flatMap(fn($item) => $item->input_quantities)
-    //             ->groupBy(fn($value, $key) => strtolower($key))
-    //             ->map(fn($group) => $group->sum())
-    //             ->toArray();
-
-    //         foreach ($inputQuantities as $size => $qty) {
-    //             $balanceData[$key]['sizes'][$size]['input'] = $qty;
-    //             $balanceData[$key]['total_input'] += $qty;
-    //         }
-
-    //         // Calculate balance
-    //         foreach ($balanceData[$key]['sizes'] as $size => &$data) {
-    //             $data['balance'] = $data['available'] - $data['input'];
-    //         }
-    //         unset($data);
-
-    //         $balanceData[$key]['total_balance'] = $balanceData[$key]['total_available'] - $balanceData[$key]['total_input'];
-    //     }
-
-    //     return view('backend.library.line_input_data.reports.input_balance', [
-    //         'balanceData' => array_values($balanceData),
-    //         'allSizes' => $allSizes
-    //     ]);
-    // }
-
-    // public function getMaxInputQuantities(ProductCombination $pc)
-    // {
-    //     $maxQuantities = [];
-    //     $allSizes = Size::where('is_active', 1)->get();
-
-    //     // For non-print/embroidery: max = cut quantities
-    //     if (!$pc->print_embroidery) {
-    //         $cutQuantities = CuttingData::where('product_combination_id', $pc->id)
-    //             ->get()
-    //             ->flatMap(fn($item) => $item->cut_quantities)
-    //             ->groupBy(fn($value, $key) => strtolower($key))
-    //             ->map(fn($group) => $group->sum())
-    //             ->toArray();
-
-    //         $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
-    //             ->get()
-    //             ->flatMap(fn($item) => $item->input_quantities)
-    //             ->groupBy(fn($value, $key) => strtolower($key))
-    //             ->map(fn($group) => $group->sum())
-    //             ->toArray();
-
-    //         foreach ($allSizes as $size) {
-    //             $sizeName = strtolower($size->name);
-    //             $cut = $cutQuantities[$sizeName] ?? 0;
-    //             $input = $inputQuantities[$sizeName] ?? 0;
-    //             $maxQuantities[$sizeName] = max(0, $cut - $input);
-    //         }
-    //     }
-    //     // For print/embroidery: max = received print quantities
-    //     else {
-    //         $receiveQuantities = PrintReceiveData::where('product_combination_id', $pc->id)
-    //             ->get()
-    //             ->flatMap(fn($item) => $item->receive_quantities)
-    //             ->groupBy(fn($value, $key) => strtolower($key))
-    //             ->map(fn($group) => $group->sum())
-    //             ->toArray();
-
-    //         $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
-    //             ->get()
-    //             ->flatMap(fn($item) => $item->input_quantities)
-    //             ->groupBy(fn($value, $key) => strtolower($key))
-    //             ->map(fn($group) => $group->sum())
-    //             ->toArray();
-
-    //         foreach ($allSizes as $size) {
-    //             $sizeName = strtolower($size->name);
-    //             $received = $receiveQuantities[$sizeName] ?? 0;
-    //             $input = $inputQuantities[$sizeName] ?? 0;
-    //             $maxQuantities[$sizeName] = max(0, $received - $input);
-    //         }
-    //     }
-
-    //     return $maxQuantities;
-    // }
-    // public function getAvailableQuantities(ProductCombination $productCombination)
-    // {
-    //     $maxQuantities = $this->getMaxInputQuantities($productCombination);
-    //     $sizes = Size::where('is_active', 1)->get();
-
-    //     return response()->json([
-    //         'availableQuantities' => $maxQuantities,
-    //         'sizes' => $sizes
-    //     ]);
-    // }
 }

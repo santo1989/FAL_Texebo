@@ -29,7 +29,7 @@
                     <!-- text input -->
                     <div class="form-group">
                         <label>Role Name</label>
-                        <input type="text" class="form-control" placeholder="Enter role Name" name="name">
+                        <input type="text" class="form-control" placeholder="Enter role Name" name="name" required>
                     </div>
                     <button type="submit" class="btn btn-outline-info btn-sm"><i
                             class="bi bi-save-fill"></i>Save</button>

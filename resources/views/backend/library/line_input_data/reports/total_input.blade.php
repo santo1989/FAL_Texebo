@@ -23,18 +23,23 @@
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
                         </div>
-                        <div class="card-body">
-                            <table class="table table-bordered table-hover">
+                        <div class="card-body" style="overflow-x: auto;">
+                            <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
-                                        <th>Style</th>
-                                        <th>Color</th>
+                                        <th rowspan="2">Style</th>
+                                        <th rowspan="2">Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ strtoupper($size->name) }}</th>
-                                            <th>Waste {{ strtoupper($size->name) }}</th>
+                                            <th colspan="2">{{ strtoupper($size->name) }}</th>
                                         @endforeach
-                                        <th>Total Input</th>
-                                        <th>Total Waste</th>
+                                        <th rowspan="2">Total Input</th>
+                                        <th rowspan="2">Total Waste</th>
+                                    </tr>
+                                    <tr>
+                                        @foreach ($allSizes as $size)
+                                            <th>Input</th>
+                                            <th>Waste</th>
+                                        @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -55,6 +60,18 @@
                                             </td>
                                         </tr>
                                     @endforelse
+                                    
+                                    @if(!empty($reportData))
+                                    <tr>
+                                        <td colspan="2" class="text-center"><strong>Total</strong></td>
+                                        @foreach ($allSizes as $size)
+                                            <td><strong>{{ $totalInputBySize[strtolower($size->name)] ?? 0 }}</strong></td>
+                                            <td><strong>{{ $totalWasteBySize[strtolower($size->name)] ?? 0 }}</strong></td>
+                                        @endforeach
+                                        <td><strong>{{ $grandTotalInput }}</strong></td>
+                                        <td><strong>{{ $grandTotalWaste }}</strong></td>
+                                    </tr>
+                                    @endif
                                 </tbody>
                             </table>
                         </div>

@@ -30,7 +30,7 @@
                                 <button class="btn btn-outline-success" type="submit">Filter</button>
                             </form>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body" style="overflow-x: auto;">
                             <table class="table table-bordered table-hover">
                                 <thead>
                                     <tr>

@@ -20,7 +20,7 @@
                 <div class="form-group">
                     <label for="buyer_id">Buyer</label>
                     <select name="buyer_id" id="buyer_id" class="form-control" required>
-                        <option value="">Select Buyer</option>
+                        {{-- <option value="">Select Buyer</option> --}}
                         @foreach ($buyers as $buyer)
                             <option value="{{ $buyer->id }}">{{ $buyer->name }}</option>
                         @endforeach
@@ -74,7 +74,8 @@
                 </div>
             </div>
         </div>
-
+        <!--cancel button-->
+        <button type="button" class="btn btn-secondary mt-3" onclick="window.history.back();">Cancel</button>
         <button type="submit" class="btn btn-primary mt-3">Create Combinations</button>
     </form>
     

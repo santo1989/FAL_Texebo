@@ -23,7 +23,7 @@
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body" style="overflow-x: auto;">
                             <table class="table table-bordered table-hover">
                                 <thead>
                                     <tr>
@@ -58,10 +58,18 @@
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['sizes'][strtolower($size->name)]['available'] ?? 0 }}</td>
-                                                <td>{{ $data['sizes'][strtolower($size->name)]['input'] ?? 0 }}</td>
-                                                <td>{{ $data['sizes'][strtolower($size->name)]['waste'] ?? 0 }}</td>
-                                                <td>{{ $data['sizes'][strtolower($size->name)]['balance'] ?? 0 }}</td>
+                                                @php
+                                                    $sizeData = collect($data['sizes'])->firstWhere('name', $size->name) ?? [
+                                                        'available' => 0,
+                                                        'input' => 0,
+                                                        'waste' => 0,
+                                                        'balance' => 0
+                                                    ];
+                                                @endphp
+                                                <td>{{ $sizeData['available'] }}</td>
+                                                <td>{{ $sizeData['input'] }}</td>
+                                                <td>{{ $sizeData['waste'] }}</td>
+                                                <td>{{ $sizeData['balance'] }}</td>
                                             @endforeach
                                             <td>{{ $data['total_available'] }}</td>
                                             <td>{{ $data['total_input'] }}</td>

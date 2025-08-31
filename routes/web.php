@@ -178,15 +178,6 @@ Route::middleware('auth')->group(function () {
     Route::get('sublimation_print_receive_data/report/balance_quantity', [SublimationPrintReceiveController::class, 'totalPrintEmbBalanceReport'])->name('sublimation_print_receive_data.report.balance_quantity');
 
 
-
-
-
-
-
-
-
-
-
     // Print/Send Data Routes
     Route::get('print_send_data/find', [PrintSendDataController::class, 'find'])->name('print_send_data.find');
     Route::prefix('print_send_data')->group(function () {
@@ -205,7 +196,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/ready', [PrintSendDataController::class, 'readyToInputReport'])->name('print_send_data.report.ready');
     });
 
-    //create for print_send_data/available_quantities/{product_combination_id}
+    
     Route::get('/print_send_data/available_quantities/{product_combination_id}', [PrintSendDataController::class, 'getAvailableSendQuantities'])->name('print_send_data.available_quantities');
 
     //Print Receive Data
@@ -223,7 +214,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/print_receive_data/available_quantities/{product_combination_id}', [PrintReceiveDataController::class, 'getAvailableReceiveQuantities'])->name('print_receive_data.available_quantities');
 
-    //line_input_data
+    //sewing line_input_data
 
     Route::get('line_input_data/find', [LineInputDataController::class, 'find'])->name('line_input_data.find');
 
@@ -236,13 +227,17 @@ Route::middleware('auth')->group(function () {
     });
 
     // Output Finishing Data Routes
-    Route::resource('output_finishing_data', OutputFinishingDataController::class);
+
+  
+    Route::get('output_finishing_data/find', [OutputFinishingDataController::class, 'find'])->name('output_finishing_data.find');
+    
     Route::get('output_finishing_data/max_quantities/{id}', [OutputFinishingDataController::class, 'maxQuantities'])
         ->name('output_finishing_data.max_quantities');
     Route::get('output_finishing_data/report/total_balance', [OutputFinishingDataController::class, 'totalBalanceReport'])->name('output_finishing_data.report.total_balance');
     Route::get('/output_finishing_data/sewing-wip', [OutputFinishingDataController::class, 'sewingWipReport'])->name('sewing_wip');
     Route::get('output_finishing_data/max_quantities/{id}', [OutputFinishingDataController::class, 'maxQuantities'])
         ->name('output_finishing_data.max_quantities');
+    Route::resource('output_finishing_data', OutputFinishingDataController::class);
 
 // Finish Packing Data Routes
     Route::resource('finish_packing_data', FinishPackingDataController::class);

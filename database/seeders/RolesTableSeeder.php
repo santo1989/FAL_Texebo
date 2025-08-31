@@ -67,7 +67,11 @@ class RolesTableSeeder extends Seeder
         Role::create([
             'name' => 'HR'
         ]);
- 
+
+        //11
+        Role::create([
+            'name' => 'Supervisor'
+        ]);
 
         
     }

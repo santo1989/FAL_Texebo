@@ -70,6 +70,8 @@
                                         <tr>
                                             <th>Size</th>
                                             <th>Order Qty</th>
+                                            <th>Max Allowed (Order + 5%)</th>
+                                            <th>Already Cut (Other Records)</th>
                                             <th>Available Qty</th>
                                             <th>Cut Quantity</th>
                                             <th>Waste Quantity</th>
@@ -85,32 +87,41 @@
                                                     continue;
                                                 }
 
-                                                // The correct available quantity is passed from the controller, which already
-                                                // excludes the current record's data.
-                                                $availableQty = $availableQuantities[$sizeId] ?? 0;
+                                                // Calculate 5% extra
+                                                $maxAllowed = ceil($orderQty * 1.05);
+                                                
+                                                // Get already cut from other records
+                                                $alreadyCut = $totalExistingCutQuantities[$sizeId] ?? 0;
+                                                
+                                                // Calculate available quantity
+                                                $availableQty = max(0, $maxAllowed - $alreadyCut);
+                                                
                                                 $currentCutQty = $cuttingDatum->cut_quantities[$sizeId] ?? 0;
                                                 $currentWasteQty = $cuttingDatum->cut_waste_quantities[$sizeId] ?? 0;
                                             @endphp
                                             <tr>
                                                 <td>{{ strtoupper($size->name) }}</td>
                                                 <td>{{ $orderQty }}</td>
+                                                <td>{{ $maxAllowed }}</td>
+                                                <td>{{ $alreadyCut }}</td>
                                                 <td class="available-qty"
-                                                    data-initial-available="{{ $availableQty }}"
+                                                    data-max-allowed="{{ $maxAllowed }}"
+                                                    data-already-cut="{{ $alreadyCut }}"
                                                     data-current-cut="{{ $currentCutQty }}"
                                                     data-current-waste="{{ $currentWasteQty }}">
-                                                    {{ $availableQty + $currentCutQty + $currentWasteQty }}
+                                                    {{ $availableQty }}
                                                 </td>
                                                 <td>
                                                     <input type="number" name="cut_quantities[{{ $sizeId }}]"
                                                         class="form-control form-control-sm cut-qty-input"
                                                         value="{{ old('cut_quantities.' . $sizeId, $currentCutQty) }}"
-                                                        min="0">
+                                                        min="0" max="{{ $availableQty + $currentCutQty }}">
                                                 </td>
                                                 <td>
                                                     <input type="number" name="waste_quantities[{{ $sizeId }}]"
                                                         class="form-control form-control-sm waste-qty-input"
                                                         value="{{ old('waste_quantities.' . $sizeId, $currentWasteQty) }}"
-                                                        min="0">
+                                                        min="0" max="{{ $availableQty + $currentWasteQty }}">
                                                 </td>
                                             </tr>
                                         @endforeach
@@ -142,20 +153,21 @@
             const cutQtyInput = row.querySelector('.cut-qty-input');
             const wasteQtyInput = row.querySelector('.waste-qty-input');
 
-            // Get the initial values from the data attributes
-            const initialAvailable = parseInt(availableQtyCell.dataset.initialAvailable, 10);
-            const initialCut = parseInt(availableQtyCell.dataset.currentCut, 10);
-            const initialWaste = parseInt(availableQtyCell.dataset.currentWaste, 10);
-
-            // Get the current values from the input fields
+            // Get the values from the data attributes
+            const maxAllowed = parseInt(availableQtyCell.dataset.maxAllowed, 10);
+            const alreadyCut = parseInt(availableQtyCell.dataset.alreadyCut, 10);
             const currentCut = parseInt(cutQtyInput.value) || 0;
             const currentWaste = parseInt(wasteQtyInput.value) || 0;
 
             // Calculate the new available quantity
-            const newAvailable = initialAvailable - (currentCut - initialCut) - (currentWaste - initialWaste);
+            const newAvailable = maxAllowed - alreadyCut - currentCut - currentWaste;
 
             // Update the cell text with the new value
-            availableQtyCell.textContent = newAvailable;
+            availableQtyCell.textContent = Math.max(0, newAvailable);
+            
+            // Update the max attributes for the inputs
+            cutQtyInput.setAttribute('max', Math.max(0, newAvailable + currentCut));
+            wasteQtyInput.setAttribute('max', Math.max(0, newAvailable + currentWaste));
         }
 
         // Get all rows in the table body
