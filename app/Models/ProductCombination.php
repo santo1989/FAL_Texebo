@@ -86,6 +86,12 @@ class ProductCombination extends Model
         return $this->hasMany(LineInputData::class);
     }
 
+    public function outputFinishingData()
+    {
+        return $this->hasMany(OutputFinishingData::class);
+    }
+
+
     public function finishPackingData()
     {
         return $this->hasMany(FinishPackingData::class);

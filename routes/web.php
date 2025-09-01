@@ -239,15 +239,24 @@ Route::middleware('auth')->group(function () {
         ->name('output_finishing_data.max_quantities');
     Route::resource('output_finishing_data', OutputFinishingDataController::class);
 
-// Finish Packing Data Routes
-    Route::resource('finish_packing_data', FinishPackingDataController::class);
-    Route::get('finish_packing_data/available_quantities/{productCombination}', [FinishPackingDataController::class, 'getAvailablePackingQuantities'])->name('finish_packing_data.available_quantities');
+    // Finish Packing Data Routes
+    // Route::resource('finish_packing_data', FinishPackingDataController::class);
+    // Route::get('finish_packing_data/available_quantities/{productCombination}', [FinishPackingDataController::class, 'getAvailablePackingQuantities'])->name('finish_packing_data.available_quantities');
 
-    Route::prefix('finish_packing_data/reports')->name('finish_packing_data.report.')->group(function () {
-        Route::get('/total-packing', [FinishPackingDataController::class, 'totalPackingReport'])->name('total_packing');
-        Route::get('/sewing-wip', [FinishPackingDataController::class, 'sewingWipReport'])->name('sewing_wip');
-        Route::get('/balance', [FinishPackingDataController::class, 'balanceReport'])->name('balance');
-    });
+    // Route::prefix('finish_packing_data/reports')->name('finish_packing_data.report.')->group(function () {
+    //     Route::get('/total-packing', [FinishPackingDataController::class, 'totalPackingReport'])->name('total_packing');
+    //     Route::get('/sewing-wip', [FinishPackingDataController::class, 'sewingWipReport'])->name('sewing_wip');
+    //     Route::get('/balance', [FinishPackingDataController::class, 'balanceReport'])->name('balance');
+    // });
+    // Finish Packing Data routes
+    Route::get('finish_packing_data/find', [FinishPackingDataController::class, 'find'])->name('finish_packing_data.find');
+    Route::resource('finish_packing_data', FinishPackingDataController::class);
+
+    // Report routes
+    Route::get('finish_packing_data/report/total_packing', [FinishPackingDataController::class, 'totalPackingReport'])->name('finish_packing_data.report.total_packing');
+    Route::get('finish_packing_data/report/sewing_wip', [FinishPackingDataController::class, 'sewingWipReport'])->name('finish_packing_data.report.sewing_wip');
+    Route::get('finish_packing_data/report/balance', [FinishPackingDataController::class, 'balanceReport'])->name('finish_packing_data.report.balance');
+
 
     // Shipment Data Routes
     Route::resource('shipment_data', ShipmentDataController::class);
