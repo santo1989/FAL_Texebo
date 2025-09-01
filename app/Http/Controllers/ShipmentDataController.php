@@ -43,190 +43,214 @@ class ShipmentDataController extends Controller
 
     public function create()
     {
-        $productCombinations = ProductCombination::whereHas('finishPackingData')
-            ->with('buyer', 'style', 'color')
-            ->get();
-
+        // Get distinct PO numbers from FinishPackingData
+        $distinctPoNumbers = FinishPackingData::distinct()->pluck('po_number')->filter()->values();
         $sizes = Size::where('is_active', 1)->get();
 
-        return view('backend.library.shipment_data.create', compact('productCombinations', 'sizes'));
+        return view('backend.library.shipment_data.create', compact('distinctPoNumbers', 'sizes'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'date' => 'required|date',
-            'product_combination_id' => 'required|exists:product_combinations,id',
-            'quantities.*' => 'nullable|integer|min:0',
+            'po_number' => 'required|array',
+            'po_number.*' => 'required|string',
+            'rows' => 'required|array',
+            'rows.*.product_combination_id' => 'required|exists:product_combinations,id',
+            'rows.*.shipment_quantities.*' => 'nullable|integer|min:0',
+            'rows.*.shipment_waste_quantities.*' => 'nullable|integer|min:0',
         ]);
 
-        $productCombination = ProductCombination::findOrFail($request->product_combination_id);
-        $availableQuantities = $this->getAvailableQuantitiesArray($productCombination);
+        try {
+            DB::beginTransaction();
 
-        $shipmentQuantities = [];
-        $totalShipmentQuantity = 0;
-        $errors = [];
+            foreach ($request->rows as $row) {
+                $shipmentQuantities = [];
+                $wasteQuantities = [];
+                $totalShipmentQuantity = 0;
+                $totalWasteQuantity = 0;
 
-        foreach ($request->input('quantities', []) as $sizeId => $quantity) {
-            $size = Size::where('is_active', 1)->find($sizeId);
-            if ($size && $quantity > 0) {
-                $sizeName = strtolower($size->name);
-                $available = $availableQuantities[$sizeName] ?? 0;
-
-                if ($quantity > $available) {
-                    $errors["quantities.$sizeId"] = "Quantity for {$size->name} exceeds available limit ($available)";
-                    continue;
+                // Process shipment quantities
+                foreach ($row['shipment_quantities'] as $sizeId => $quantity) {
+                    if ($quantity !== null && (int)$quantity > 0) {
+                        $size = Size::find($sizeId);
+                        if ($size) {
+                            $shipmentQuantities[$size->id] = (int)$quantity;
+                            $totalShipmentQuantity += (int)$quantity;
+                        }
+                    }
                 }
 
-                $shipmentQuantities[$size->name] = (int)$quantity;
-                $totalShipmentQuantity += (int)$quantity;
+                // Process waste quantities
+                foreach ($row['shipment_waste_quantities'] as $sizeId => $quantity) {
+                    if ($quantity !== null && (int)$quantity > 0) {
+                        $size = Size::find($sizeId);
+                        if ($size) {
+                            $wasteQuantities[$size->id] = (int)$quantity;
+                            $totalWasteQuantity += (int)$quantity;
+                        }
+                    }
+                }
+
+                // Only create a record if there's at least one valid shipment or waste quantity
+                if (!empty($shipmentQuantities) || !empty($wasteQuantities)) {
+                    ShipmentData::create([
+                        'date' => $request->date,
+                        'product_combination_id' => $row['product_combination_id'],
+                        'po_number' => implode(',', $request->po_number),
+                        'shipment_quantities' => $shipmentQuantities,
+                        'total_shipment_quantity' => $totalShipmentQuantity,
+                        'shipment_waste_quantities' => $wasteQuantities,
+                        'total_shipment_waste_quantity' => $totalWasteQuantity,
+                    ]);
+                }
             }
+
+            DB::commit();
+
+            return redirect()->route('shipment_data.index')
+                ->with('success', 'Shipment data added successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Error occurred: ' . $e->getMessage())
+                ->withInput();
         }
-
-        if (!empty($errors)) {
-            return redirect()->back()->withErrors($errors)->withInput();
-        }
-
-        ShipmentData::create([
-            'date' => $request->date,
-            'product_combination_id' => $request->product_combination_id,
-            'shipment_quantities' => $shipmentQuantities,
-            'total_shipment_quantity' => $totalShipmentQuantity,
-        ]);
-
-        return redirect()->route('shipment_data.index')->with('success', 'Shipment data added successfully.');
     }
 
-    // Replace the existing getAvailableQuantities method with these two methods:
-
-    protected function getAvailableQuantitiesArray(ProductCombination $productCombination)
-    {
-        $availableQuantities = [];
-        $allSizes = Size::where('is_active', 1)->get();
-
-        $packedQuantities = FinishPackingData::where('product_combination_id', $productCombination->id)
-            ->get()
-            ->flatMap(fn($item) => $item->packing_quantities)
-            ->groupBy(fn($value, $key) => strtolower($key))
-            ->map(fn($group) => $group->sum())
-            ->toArray();
-
-        $shippedQuantities = ShipmentData::where('product_combination_id', $productCombination->id)
-            ->get()
-            ->flatMap(fn($item) => $item->shipment_quantities)
-            ->groupBy(fn($value, $key) => strtolower($key))
-            ->map(fn($group) => $group->sum())
-            ->toArray();
-
-        foreach ($allSizes as $size) {
-            $sizeName = strtolower($size->name);
-            $packed = $packedQuantities[$sizeName] ?? 0;
-            $shipped = $shippedQuantities[$sizeName] ?? 0;
-            $availableQuantities[$sizeName] = max(0, $packed - $shipped);
-        }
-
-        return $availableQuantities;
-    }
-
-    public function getAvailableQuantities(ProductCombination $productCombination)
-    {
-        $availableQuantities = $this->getAvailableQuantitiesArray($productCombination);
-        $allSizes = Size::where('is_active', 1)->get();
-
-        return response()->json([
-            'availableQuantities' => $availableQuantities,
-            'sizes' => $allSizes->map(fn($size) => [
-                'id' => $size->id,
-                'name' => $size->name
-            ])->toArray()
-        ]);
-    }
     public function show(ShipmentData $shipmentDatum)
     {
-        return view('backend.library.shipment_data.show', compact('shipmentDatum'));
+        $shipmentDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+        // Only valid sizes
+        $validSizes = $allSizes->filter(function ($size) use ($shipmentDatum) {
+            return isset($shipmentDatum->shipment_quantities[$size->id]) ||
+                isset($shipmentDatum->shipment_waste_quantities[$size->id]);
+        });
+
+        $allSizes = $validSizes->values();
+
+        return view('backend.library.shipment_data.show', compact('shipmentDatum', 'allSizes'));
     }
 
     public function edit(ShipmentData $shipmentDatum)
     {
-        $shipmentDatum->load('productCombination.style', 'productCombination.color');
-        $sizes = Size::where('is_active', 1)->get();
-        // In edit method
-        // In edit() method:
-        $availableQuantities = $this->getAvailableQuantitiesArray($shipmentDatum->productCombination);
+        $shipmentDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        // Add back current shipment quantities to available
-        foreach ($shipmentDatum->shipment_quantities as $size => $quantity) {
-            $sizeName = strtolower($size);
-            if (isset($availableQuantities[$sizeName])) {
-                $availableQuantities[$sizeName] += $quantity;
+        // Only valid sizes
+        $validSizes = $allSizes->filter(function ($size) use ($shipmentDatum) {
+            return isset($shipmentDatum->shipment_quantities[$size->id]) ||
+                isset($shipmentDatum->shipment_waste_quantities[$size->id]);
+        });
+
+        $allSizes = $validSizes->values();
+
+        // Get the PO numbers from the record
+        $poNumbers = explode(',', $shipmentDatum->po_number);
+
+        // Get max available quantities for this product combination and specific PO numbers
+        $maxQuantities = $this->getMaxShipmentQuantities($shipmentDatum->productCombination, $poNumbers);
+
+        // Get order quantities from order_data table
+        $orderQuantities = [];
+        foreach ($poNumbers as $poNumber) {
+            $orderData = FinishPackingData::where('product_combination_id', $shipmentDatum->product_combination_id)
+                ->where('po_number', 'like', '%' . $poNumber . '%')
+                ->first();
+
+            if ($orderData && $orderData->packing_quantities) {
+                foreach ($orderData->packing_quantities as $sizeId => $qty) {
+                    $orderQuantities[$sizeId] = ($orderQuantities[$sizeId] ?? 0) + $qty;
+                }
             }
         }
 
-        $sizeData = $sizes->map(function ($size) use ($shipmentDatum, $availableQuantities) {
-            $sizeName = strtolower($size->name);
-            return [
+        // Prepare size data with max available quantities and order quantities
+        $sizeData = [];
+        foreach ($allSizes as $size) {
+            $shipmentQty = $shipmentDatum->shipment_quantities[$size->id] ?? 0;
+            $wasteQty = $shipmentDatum->shipment_waste_quantities[$size->id] ?? 0;
+            $maxAvailable = $maxQuantities[$size->id] ?? 0;
+            $orderQty = $orderQuantities[$size->id] ?? 0;
+
+            // Calculate the maximum allowed (available + current shipment)
+            $maxAllowed = $maxAvailable + $shipmentQty;
+
+            $sizeData[] = [
                 'id' => $size->id,
                 'name' => $size->name,
-                'available' => $availableQuantities[$sizeName] ?? 0,
-                'current_quantity' => $shipmentDatum->shipment_quantities[$size->name] ?? 0
+                'shipment_quantity' => $shipmentQty,
+                'waste_quantity' => $wasteQty,
+                'max_available' => $maxAvailable,
+                'max_allowed' => $maxAllowed,
+                'order_quantity' => $orderQty,
             ];
-        });
+        }
 
-        return view('backend.library.shipment_data.edit', [
-            'shipmentDatum' => $shipmentDatum,
-            'sizeData' => $sizeData
-        ]);
+        // Get distinct PO numbers from FinishPackingData
+        $allPoNumbers = FinishPackingData::pluck('po_number')->toArray();
+        $distinctPoNumbers = collect($allPoNumbers)
+            ->flatMap(function ($poNumbers) {
+                return explode(',', $poNumbers);
+            })
+            ->unique()
+            ->filter()
+            ->values();
+
+        return view('backend.library.shipment_data.edit', compact('shipmentDatum', 'sizeData', 'distinctPoNumbers', 'poNumbers'));
     }
 
     public function update(Request $request, ShipmentData $shipmentDatum)
     {
         $request->validate([
             'date' => 'required|date',
-            'quantities.*' => 'nullable|integer|min:0',
+            'po_number' => 'required|array',
+            'po_number.*' => 'required|string',
+            'shipment_quantities.*' => 'nullable|integer|min:0',
+            'shipment_waste_quantities.*' => 'nullable|integer|min:0',
         ]);
 
-        $productCombination = $shipmentDatum->productCombination;
-        $availableQuantities = $this->getAvailableQuantitiesArray($productCombination);
+        try {
+            $shipmentQuantities = [];
+            $wasteQuantities = [];
+            $totalShipmentQuantity = 0;
+            $totalWasteQuantity = 0;
 
-        // Add back current shipment quantities to available
-        foreach ($shipmentDatum->shipment_quantities as $size => $quantity) {
-            $sizeName = strtolower($size);
-            if (isset($availableQuantities[$sizeName])) {
-                $availableQuantities[$sizeName] += $quantity;
-            }
-        }
-
-        $shipmentQuantities = [];
-        $totalShipmentQuantity = 0;
-        $errors = [];
-
-        foreach ($request->input('quantities', []) as $sizeId => $quantity) {
-            $size = Size::where('is_active', 1)->find($sizeId);
-            if ($size && $quantity > 0) {
-                $sizeName = strtolower($size->name);
-                $available = $availableQuantities[$sizeName] ?? 0;
-
-                if ($quantity > $available) {
-                    $errors["quantities.$sizeId"] = "Quantity for {$size->name} exceeds available limit ($available)";
-                    continue;
+            // Process shipment quantities
+            foreach ($request->shipment_quantities as $sizeId => $quantity) {
+                if ($quantity !== null && (int)$quantity > 0) {
+                    $shipmentQuantities[$sizeId] = (int)$quantity;
+                    $totalShipmentQuantity += (int)$quantity;
                 }
-
-                $shipmentQuantities[$size->name] = (int)$quantity;
-                $totalShipmentQuantity += (int)$quantity;
             }
+
+            // Process waste quantities
+            foreach ($request->shipment_waste_quantities as $sizeId => $quantity) {
+                if ($quantity !== null && (int)$quantity > 0) {
+                    $wasteQuantities[$sizeId] = (int)$quantity;
+                    $totalWasteQuantity += (int)$quantity;
+                }
+            }
+
+            $shipmentDatum->update([
+                'date' => $request->date,
+                'po_number' => implode(',', $request->po_number),
+                'shipment_quantities' => $shipmentQuantities,
+                'total_shipment_quantity' => $totalShipmentQuantity,
+                'shipment_waste_quantities' => $wasteQuantities,
+                'total_shipment_waste_quantity' => $totalWasteQuantity,
+            ]);
+
+            return redirect()->route('shipment_data.index')
+                ->with('success', 'Shipment data updated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Error occurred: ' . $e->getMessage())
+                ->withInput();
         }
-
-        if (!empty($errors)) {
-            return redirect()->back()->withErrors($errors)->withInput();
-        }
-
-        $shipmentDatum->update([
-            'date' => $request->date,
-            'shipment_quantities' => $shipmentQuantities,
-            'total_shipment_quantity' => $totalShipmentQuantity,
-        ]);
-
-        return redirect()->route('shipment_data.index')->with('success', 'Shipment data updated successfully.');
     }
 
     public function destroy(ShipmentData $shipmentDatum)
@@ -234,6 +258,348 @@ class ShipmentDataController extends Controller
         $shipmentDatum->delete();
         return redirect()->route('shipment_data.index')->with('success', 'Shipment data deleted successfully.');
     }
+
+    private function getAvailablePoNumbers()
+    {
+        $poNumbers = [];
+
+        // Get PO numbers from FinishPackingData
+        $finishPackingPoNumbers = FinishPackingData::distinct()->pluck('po_number')->filter()->values();
+        $poNumbers = array_merge($poNumbers, $finishPackingPoNumbers->toArray());
+
+        return array_unique($poNumbers);
+    }
+
+    public function getMaxShipmentQuantities(ProductCombination $pc, $poNumbers = [])
+    {
+        $maxQuantities = [];
+        $allSizes = Size::where('is_active', 1)->get();
+
+        // Build query for packing quantities with PO number filter
+        $packingQuery = FinishPackingData::where('product_combination_id', $pc->id);
+        if (!empty($poNumbers)) {
+            $packingQuery->where(function ($query) use ($poNumbers) {
+                foreach ($poNumbers as $poNumber) {
+                    $query->orWhere('po_number', 'like', '%' . $poNumber . '%');
+                }
+            });
+        }
+
+        // Get total packing quantities for the specific PO numbers
+        $packingQuantities = $packingQuery->get()
+            ->flatMap(function ($item) {
+                return $item->packing_quantities;
+            })
+            ->groupBy(function ($value, $key) {
+                return $key; // Use size ID as key
+            })
+            ->map(function ($group) {
+                return $group->sum();
+            })
+            ->toArray();
+
+        // Build query for shipped quantities with PO number filter
+        $shippedQuery = ShipmentData::where('product_combination_id', $pc->id);
+        if (!empty($poNumbers)) {
+            $shippedQuery->where(function ($query) use ($poNumbers) {
+                foreach ($poNumbers as $poNumber) {
+                    $query->orWhere('po_number', 'like', '%' . $poNumber . '%');
+                }
+            });
+        }
+
+        // Get total shipped quantities for the specific PO numbers
+        $shippedQuantities = $shippedQuery->get()
+            ->flatMap(function ($item) {
+                return $item->shipment_quantities;
+            })
+            ->groupBy(function ($value, $key) {
+                return $key; // Use size ID as key
+            })
+            ->map(function ($group) {
+                return $group->sum();
+            })
+            ->toArray();
+
+        foreach ($allSizes as $size) {
+            $packed = $packingQuantities[$size->id] ?? 0;
+            $shipped = $shippedQuantities[$size->id] ?? 0;
+            $maxQuantities[$size->id] = max(0, $packed - $shipped);
+        }
+
+        return $maxQuantities;
+    }
+
+    public function find(Request $request)
+    {
+        $poNumbers = $request->input('po_numbers', []);
+
+        if (empty($poNumbers)) {
+            return response()->json([]);
+        }
+
+        $result = [];
+        $processedCombinations = [];
+
+        foreach ($poNumbers as $poNumber) {
+            // Get data for the selected PO number from FinishPackingData
+            $productCombinations = ProductCombination::whereHas('finishPackingData', function ($query) use ($poNumber) {
+                $query->where('po_number', 'like', '%' . $poNumber . '%');
+            })
+                ->with('style', 'color', 'size')
+                ->get();
+
+            foreach ($productCombinations as $pc) {
+                // Skip if product combination doesn't have style or color
+                if (!$pc->style || !$pc->color) {
+                    continue;
+                }
+
+                // Create a unique key for this combination
+                $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+
+                // Skip if we've already processed this combination
+                if (in_array($combinationKey, $processedCombinations)) {
+                    continue;
+                }
+
+                // Mark this combination as processed
+                $processedCombinations[] = $combinationKey;
+
+                // Pass the PO numbers to getMaxShipmentQuantities
+                $availableQuantities = $this->getMaxShipmentQuantities($pc, $poNumbers);
+
+                $result[$poNumber][] = [
+                    'combination_id' => $pc->id,
+                    'style' => $pc->style->name,
+                    'color' => $pc->color->name,
+                    'available_quantities' => $availableQuantities,
+                    'size_ids' => $pc->sizes->pluck('id')->toArray()
+                ];
+            }
+        }
+
+        return response()->json($result);
+    }
+
+
+    // public function index(Request $request)
+    // {
+    //     $query = ShipmentData::with('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+
+    //     if ($request->filled('search')) {
+    //         $search = $request->input('search');
+    //         $query->whereHas('productCombination.style', function ($q) use ($search) {
+    //             $q->where('name', 'like', '%' . $search . '%');
+    //         })->orWhereHas('productCombination.color', function ($q) use ($search) {
+    //             $q->where('name', 'like', '%' . $search . '%');
+    //         });
+    //     }
+    //     if ($request->filled('date')) {
+    //         $query->whereDate('date', $request->input('date'));
+    //     }
+
+    //     $shipmentData = $query->orderBy('date', 'desc')->paginate(10);
+    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+
+    //     return view('backend.library.shipment_data.index', compact('shipmentData', 'allSizes'));
+    // }
+
+    // public function create()
+    // {
+    //     $productCombinations = ProductCombination::whereHas('finishPackingData')
+    //         ->with('buyer', 'style', 'color')
+    //         ->get();
+
+    //     $sizes = Size::where('is_active', 1)->get();
+
+    //     return view('backend.library.shipment_data.create', compact('productCombinations', 'sizes'));
+    // }
+
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'date' => 'required|date',
+    //         'product_combination_id' => 'required|exists:product_combinations,id',
+    //         'quantities.*' => 'nullable|integer|min:0',
+    //     ]);
+
+    //     $productCombination = ProductCombination::findOrFail($request->product_combination_id);
+    //     $availableQuantities = $this->getAvailableQuantitiesArray($productCombination);
+
+    //     $shipmentQuantities = [];
+    //     $totalShipmentQuantity = 0;
+    //     $errors = [];
+
+    //     foreach ($request->input('quantities', []) as $sizeId => $quantity) {
+    //         $size = Size::where('is_active', 1)->find($sizeId);
+    //         if ($size && $quantity > 0) {
+    //             $sizeName = strtolower($size->name);
+    //             $available = $availableQuantities[$sizeName] ?? 0;
+
+    //             if ($quantity > $available) {
+    //                 $errors["quantities.$sizeId"] = "Quantity for {$size->name} exceeds available limit ($available)";
+    //                 continue;
+    //             }
+
+    //             $shipmentQuantities[$size->name] = (int)$quantity;
+    //             $totalShipmentQuantity += (int)$quantity;
+    //         }
+    //     }
+
+    //     if (!empty($errors)) {
+    //         return redirect()->back()->withErrors($errors)->withInput();
+    //     }
+
+    //     ShipmentData::create([
+    //         'date' => $request->date,
+    //         'product_combination_id' => $request->product_combination_id,
+    //         'shipment_quantities' => $shipmentQuantities,
+    //         'total_shipment_quantity' => $totalShipmentQuantity,
+    //     ]);
+
+    //     return redirect()->route('shipment_data.index')->with('success', 'Shipment data added successfully.');
+    // }
+
+    // // Replace the existing getAvailableQuantities method with these two methods:
+
+    // protected function getAvailableQuantitiesArray(ProductCombination $productCombination)
+    // {
+    //     $availableQuantities = [];
+    //     $allSizes = Size::where('is_active', 1)->get();
+
+    //     $packedQuantities = FinishPackingData::where('product_combination_id', $productCombination->id)
+    //         ->get()
+    //         ->flatMap(fn($item) => $item->packing_quantities)
+    //         ->groupBy(fn($value, $key) => strtolower($key))
+    //         ->map(fn($group) => $group->sum())
+    //         ->toArray();
+
+    //     $shippedQuantities = ShipmentData::where('product_combination_id', $productCombination->id)
+    //         ->get()
+    //         ->flatMap(fn($item) => $item->shipment_quantities)
+    //         ->groupBy(fn($value, $key) => strtolower($key))
+    //         ->map(fn($group) => $group->sum())
+    //         ->toArray();
+
+    //     foreach ($allSizes as $size) {
+    //         $sizeName = strtolower($size->name);
+    //         $packed = $packedQuantities[$sizeName] ?? 0;
+    //         $shipped = $shippedQuantities[$sizeName] ?? 0;
+    //         $availableQuantities[$sizeName] = max(0, $packed - $shipped);
+    //     }
+
+    //     return $availableQuantities;
+    // }
+
+    // public function getAvailableQuantities(ProductCombination $productCombination)
+    // {
+    //     $availableQuantities = $this->getAvailableQuantitiesArray($productCombination);
+    //     $allSizes = Size::where('is_active', 1)->get();
+
+    //     return response()->json([
+    //         'availableQuantities' => $availableQuantities,
+    //         'sizes' => $allSizes->map(fn($size) => [
+    //             'id' => $size->id,
+    //             'name' => $size->name
+    //         ])->toArray()
+    //     ]);
+    // }
+    // public function show(ShipmentData $shipmentDatum)
+    // {
+    //     return view('backend.library.shipment_data.show', compact('shipmentDatum'));
+    // }
+
+    // public function edit(ShipmentData $shipmentDatum)
+    // {
+    //     $shipmentDatum->load('productCombination.style', 'productCombination.color');
+    //     $sizes = Size::where('is_active', 1)->get();
+    //     // In edit method
+    //     // In edit() method:
+    //     $availableQuantities = $this->getAvailableQuantitiesArray($shipmentDatum->productCombination);
+
+    //     // Add back current shipment quantities to available
+    //     foreach ($shipmentDatum->shipment_quantities as $size => $quantity) {
+    //         $sizeName = strtolower($size);
+    //         if (isset($availableQuantities[$sizeName])) {
+    //             $availableQuantities[$sizeName] += $quantity;
+    //         }
+    //     }
+
+    //     $sizeData = $sizes->map(function ($size) use ($shipmentDatum, $availableQuantities) {
+    //         $sizeName = strtolower($size->name);
+    //         return [
+    //             'id' => $size->id,
+    //             'name' => $size->name,
+    //             'available' => $availableQuantities[$sizeName] ?? 0,
+    //             'current_quantity' => $shipmentDatum->shipment_quantities[$size->name] ?? 0
+    //         ];
+    //     });
+
+    //     return view('backend.library.shipment_data.edit', [
+    //         'shipmentDatum' => $shipmentDatum,
+    //         'sizeData' => $sizeData
+    //     ]);
+    // }
+
+    // public function update(Request $request, ShipmentData $shipmentDatum)
+    // {
+    //     $request->validate([
+    //         'date' => 'required|date',
+    //         'quantities.*' => 'nullable|integer|min:0',
+    //     ]);
+
+    //     $productCombination = $shipmentDatum->productCombination;
+    //     $availableQuantities = $this->getAvailableQuantitiesArray($productCombination);
+
+    //     // Add back current shipment quantities to available
+    //     foreach ($shipmentDatum->shipment_quantities as $size => $quantity) {
+    //         $sizeName = strtolower($size);
+    //         if (isset($availableQuantities[$sizeName])) {
+    //             $availableQuantities[$sizeName] += $quantity;
+    //         }
+    //     }
+
+    //     $shipmentQuantities = [];
+    //     $totalShipmentQuantity = 0;
+    //     $errors = [];
+
+    //     foreach ($request->input('quantities', []) as $sizeId => $quantity) {
+    //         $size = Size::where('is_active', 1)->find($sizeId);
+    //         if ($size && $quantity > 0) {
+    //             $sizeName = strtolower($size->name);
+    //             $available = $availableQuantities[$sizeName] ?? 0;
+
+    //             if ($quantity > $available) {
+    //                 $errors["quantities.$sizeId"] = "Quantity for {$size->name} exceeds available limit ($available)";
+    //                 continue;
+    //             }
+
+    //             $shipmentQuantities[$size->name] = (int)$quantity;
+    //             $totalShipmentQuantity += (int)$quantity;
+    //         }
+    //     }
+
+    //     if (!empty($errors)) {
+    //         return redirect()->back()->withErrors($errors)->withInput();
+    //     }
+
+    //     $shipmentDatum->update([
+    //         'date' => $request->date,
+    //         'shipment_quantities' => $shipmentQuantities,
+    //         'total_shipment_quantity' => $totalShipmentQuantity,
+    //     ]);
+
+    //     return redirect()->route('shipment_data.index')->with('success', 'Shipment data updated successfully.');
+    // }
+
+    // public function destroy(ShipmentData $shipmentDatum)
+    // {
+    //     $shipmentDatum->delete();
+    //     return redirect()->route('shipment_data.index')->with('success', 'Shipment data deleted successfully.');
+    // }
+
+
 
     // Reports
     public function totalShipmentReport(Request $request)
@@ -485,136 +851,4 @@ class ShipmentDataController extends Controller
             'colorId' => $colorId,
         ]);
     }
-
-    // Controller Method
-    // public function finalbalanceReport(Request $request)
-    // {
-    //     // Get filter parameters
-    //     $style = $request->input('style');
-    //     $color = $request->input('color');
-    //     $date = $request->input('date');
-
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
-    //     $reportData = [];
-
-    //     $productCombinations = ProductCombination::query()
-    //         ->when($style, function ($query) use ($style) {
-    //             $query->whereHas('style', function ($q) use ($style) {
-    //                 $q->where('name', $style);
-    //             });
-    //         })
-    //         ->when($color, function ($query) use ($color) {
-    //             $query->whereHas('color', function ($q) use ($color) {
-    //                 $q->where('name', $color);
-    //             });
-    //         })
-    //         ->whereHas('shipmentData')
-    //         ->with('style', 'color')
-    //         ->get();
-
-    //     foreach ($productCombinations as $pc) {
-    //         $styleName = $pc->style->name;
-    //         $colorName = $pc->color->name;
-
-    //         // Get sizes for this product combination
-    //         $pcSizes = Size::whereIn('id', $pc->size_ids)->get();
-
-    //         foreach ($pcSizes as $size) {
-    //             $sizeName = strtolower($size->name);
-
-    //             // Apply date filter if provided
-    //             $cutting = CuttingData::when($date, function ($query) use ($date) {
-    //                 $query->where('date', '<=', $date);
-    //             })
-    //                 ->where('product_combination_id', $pc->id)
-    //                 ->get()
-    //                 ->sum(function ($item) use ($sizeName) {
-    //                     return $item->cut_quantities[$sizeName] ?? 0;
-    //                 });
-
-    //             $printSend = PrintSendData::when($date, function ($query) use ($date) {
-    //                 $query->where('date', '<=', $date);
-    //             })
-    //                 ->where('product_combination_id', $pc->id)
-    //                 ->get()
-    //                 ->sum(function ($item) use ($sizeName) {
-    //                     return $item->send_quantities[$sizeName] ?? 0;
-    //                 });
-
-    //             $printReceive = PrintReceiveData::when($date, function ($query) use ($date) {
-    //                 $query->where('date', '<=', $date);
-    //             })
-    //                 ->where('product_combination_id', $pc->id)
-    //                 ->get()
-    //                 ->sum(function ($item) use ($sizeName) {
-    //                     return $item->receive_quantities[$sizeName] ?? 0;
-    //                 });
-
-    //             $lineInput = LineInputData::when($date, function ($query) use ($date) {
-    //                 $query->where('date', '<=', $date);
-    //             })
-    //                 ->where('product_combination_id', $pc->id)
-    //                 ->get()
-    //                 ->sum(function ($item) use ($sizeName) {
-    //                     return $item->input_quantities[$sizeName] ?? 0;
-    //                 });
-
-    //             $packing = FinishPackingData::when($date, function ($query) use ($date) {
-    //                 $query->where('date', '<=', $date);
-    //             })
-    //                 ->where('product_combination_id', $pc->id)
-    //                 ->get()
-    //                 ->sum(function ($item) use ($sizeName) {
-    //                     return $item->packing_quantities[$sizeName] ?? 0;
-    //                 });
-
-    //             $shipment = ShipmentData::when($date, function ($query) use ($date) {
-    //                 $query->where('date', '<=', $date);
-    //             })
-    //                 ->where('product_combination_id', $pc->id)
-    //                 ->get()
-    //                 ->sum(function ($item) use ($sizeName) {
-    //                     return $item->shipment_quantities[$sizeName] ?? 0;
-    //                 });
-
-    //             // Calculate balances
-    //             $printSendBalance = $cutting - $printSend;
-    //             $printReceiveBalance = $printReceive - $printSend;
-    //             $sewingInputBalance = $printReceive - $lineInput;
-    //             $packingBalance = $lineInput - $packing;
-    //             $readyGoods = $packing - $shipment;
-
-    //             $reportData[] = [
-    //                 'style' => $styleName,
-    //                 'color' => $colorName,
-    //                 'size' => $size->name,
-    //                 'cutting' => $cutting,
-    //                 'print_send' => $printSend,
-    //                 'print_send_balance' => max(0, $printSendBalance),
-    //                 'print_receive' => $printReceive,
-    //                 'print_receive_balance' => max(0, $printReceiveBalance),
-    //                 'sewing_input' => $lineInput,
-    //                 'sewing_input_balance' => max(0, $sewingInputBalance),
-    //                 'packing' => $packing,
-    //                 'packing_balance' => max(0, $packingBalance),
-    //                 'shipment' => $shipment,
-    //                 'ready_goods' => max(0, $readyGoods),
-    //             ];
-    //         }
-    //     }
-
-    //     // Get distinct styles and colors for filters
-    //     $styles = Style::where('is_active', 1)->pluck('name', 'name');
-    //     $colors = Color::where('is_active', 1)->pluck('name', 'name');
-
-    //     return view('backend.library.shipment_data.reports.balance', [
-    //         'reportData' => $reportData,
-    //         'styles' => $styles,
-    //         'colors' => $colors,
-    //         'allSizes' => $allSizes,
-    //         'selectedStyle' => $style,
-    //         'selectedColor' => $color,
-    //         'selectedDate' => $date
-    //     ]);
-    // }
 }

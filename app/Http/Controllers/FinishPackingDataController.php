@@ -132,6 +132,64 @@ class FinishPackingDataController extends Controller
         return view('backend.library.finish_packing_data.show', compact('finishPackingDatum', 'allSizes'));
     }
 
+    // public function edit(FinishPackingData $finishPackingDatum)
+    // {
+    //     $finishPackingDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+    //     // Only valid sizes
+    //     $validSizes = $allSizes->filter(function ($size) use ($finishPackingDatum) {
+    //         return isset($finishPackingDatum->packing_quantities[$size->id]) ||
+    //             isset($finishPackingDatum->packing_waste_quantities[$size->id]);
+    //     });
+
+    //     $allSizes = $validSizes->values();
+
+    //     // Get max available quantities for this product combination
+    //     $maxQuantities = $this->getMaxPackingQuantities($finishPackingDatum->productCombination);
+
+    //     // Get order quantities from order_data table
+    //     $poNumbers = explode(',', $finishPackingDatum->po_number);
+    //     $orderQuantities = [];
+
+    //     foreach ($poNumbers as $poNumber) {
+    //         $orderData = OrderData::where('product_combination_id', $finishPackingDatum->product_combination_id)
+    //             ->where('po_number', $poNumber)
+    //             ->first();
+
+    //         if ($orderData && $orderData->order_quantities) {
+    //             foreach ($orderData->order_quantities as $sizeId => $qty) {
+    //                 $orderQuantities[$sizeId] = ($orderQuantities[$sizeId] ?? 0) + $qty;
+    //             }
+    //         }
+    //     }
+
+    //     // Prepare size data with max available quantities and order quantities
+    //     $sizeData = [];
+    //     foreach ($allSizes as $size) {
+    //         $packingQty = $finishPackingDatum->packing_quantities[$size->id] ?? 0;
+    //         $wasteQty = $finishPackingDatum->packing_waste_quantities[$size->id] ?? 0;
+    //         $maxAvailable = $maxQuantities[$size->id] ?? 0;
+    //         $orderQty = $orderQuantities[$size->id] ?? 0;
+
+    //         // Calculate the maximum allowed (available + current packing)
+    //         $maxAllowed = $maxAvailable + $packingQty;
+
+    //         $sizeData[] = [
+    //             'id' => $size->id,
+    //             'name' => $size->name,
+    //             'packing_quantity' => $packingQty,
+    //             'waste_quantity' => $wasteQty,
+    //             'max_available' => $maxAvailable,
+    //             'max_allowed' => $maxAllowed,
+    //             'order_quantity' => $orderQty,
+    //         ];
+    //     }
+
+    //     return view('backend.library.finish_packing_data.edit', compact('finishPackingDatum', 'sizeData'));
+    // }
+
+
     public function edit(FinishPackingData $finishPackingDatum)
     {
         $finishPackingDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
@@ -145,13 +203,14 @@ class FinishPackingDataController extends Controller
 
         $allSizes = $validSizes->values();
 
-        // Get max available quantities for this product combination
-        $maxQuantities = $this->getMaxPackingQuantities($finishPackingDatum->productCombination);
+        // Get the PO numbers from the record
+        $poNumbers = explode(',', $finishPackingDatum->po_number);
+
+        // Get max available quantities for this product combination and specific PO numbers
+        $maxQuantities = $this->getMaxPackingQuantities($finishPackingDatum->productCombination, $poNumbers);
 
         // Get order quantities from order_data table
-        $poNumbers = explode(',', $finishPackingDatum->po_number);
         $orderQuantities = [];
-
         foreach ($poNumbers as $poNumber) {
             $orderData = OrderData::where('product_combination_id', $finishPackingDatum->product_combination_id)
                 ->where('po_number', $poNumber)
@@ -188,7 +247,6 @@ class FinishPackingDataController extends Controller
 
         return view('backend.library.finish_packing_data.edit', compact('finishPackingDatum', 'sizeData'));
     }
-
     public function update(Request $request, FinishPackingData $finishPackingDatum)
     {
         $request->validate([
@@ -337,14 +395,127 @@ class FinishPackingDataController extends Controller
         ]);
     }
 
-    public function getMaxPackingQuantities(ProductCombination $pc)
+    // public function getMaxPackingQuantities(ProductCombination $pc)
+    // {
+    //     $maxQuantities = [];
+    //     $allSizes = Size::where('is_active', 1)->get();
+
+    //     // Get total output quantities from OutputFinishingData
+    //     $outputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
+    //         ->get()
+    //         ->flatMap(function ($item) {
+    //             return $item->output_quantities;
+    //         })
+    //         ->groupBy(function ($value, $key) {
+    //             return $key; // Use size ID as key
+    //         })
+    //         ->map(function ($group) {
+    //             return $group->sum();
+    //         })
+    //         ->toArray();
+
+    //     // Get total packed quantities
+    //     $packedQuantities = FinishPackingData::where('product_combination_id', $pc->id)
+    //         ->get()
+    //         ->flatMap(function ($item) {
+    //             return $item->packing_quantities;
+    //         })
+    //         ->groupBy(function ($value, $key) {
+    //             return $key; // Use size ID as key
+    //         })
+    //         ->map(function ($group) {
+    //             return $group->sum();
+    //         })
+    //         ->toArray();
+
+    //     foreach ($allSizes as $size) {
+    //         $output = $outputQuantities[$size->id] ?? 0;
+    //         $packed = $packedQuantities[$size->id] ?? 0;
+    //         $maxQuantities[$size->id] = max(0, $output - $packed);
+    //     }
+
+    //     return $maxQuantities;
+    // }
+
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     $result = [];
+    //     $processedCombinations = [];
+
+    //     foreach ($poNumbers as $poNumber) {
+    //         // Get data for the selected PO number from OutputFinishingData
+    //         $productCombinations = ProductCombination::whereHas('outputFinishingData', function ($query) use ($poNumber) {
+    //             $query->where('po_number', 'like', '%' . $poNumber . '%');
+    //         })
+    //             ->with('style', 'color', 'size')
+    //             ->get();
+
+    //         foreach ($productCombinations as $pc) {
+    //             // Skip if product combination doesn't have style or color
+    //             if (!$pc->style || !$pc->color) {
+    //                 continue;
+    //             }
+
+    //             // Create a unique key for this combination
+    //             $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+
+    //             // Skip if we've already processed this combination
+    //             if (in_array($combinationKey, $processedCombinations)) {
+    //                 continue;
+    //             }
+
+    //             // Mark this combination as processed
+    //             $processedCombinations[] = $combinationKey;
+
+    //             $availableQuantities = $this->getMaxPackingQuantities($pc);
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $pc->id,
+    //                 'style' => $pc->style->name,
+    //                 'color' => $pc->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => $pc->sizes->pluck('id')->toArray()
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
+    private function getAvailablePoNumbers()
+    {
+        $poNumbers = [];
+
+        // Get PO numbers from OutputFinishingData
+        $outputFinishingPoNumbers = OutputFinishingData::distinct()->pluck('po_number')->filter()->values();
+        $poNumbers = array_merge($poNumbers, $outputFinishingPoNumbers->toArray());
+
+        return array_unique($poNumbers);
+    }
+
+    public function getMaxPackingQuantities(ProductCombination $pc, $poNumbers = [])
     {
         $maxQuantities = [];
         $allSizes = Size::where('is_active', 1)->get();
 
-        // Get total output quantities from OutputFinishingData
-        $outputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
-            ->get()
+        // Build query for output quantities with PO number filter
+        $outputQuery = OutputFinishingData::where('product_combination_id', $pc->id);
+        if (!empty($poNumbers)) {
+            $outputQuery->where(function ($query) use ($poNumbers) {
+                foreach ($poNumbers as $poNumber) {
+                    $query->orWhere('po_number', 'like', '%' . $poNumber . '%');
+                }
+            });
+        }
+
+        // Get total output quantities for the specific PO numbers
+        $outputQuantities = $outputQuery->get()
             ->flatMap(function ($item) {
                 return $item->output_quantities;
             })
@@ -356,9 +527,18 @@ class FinishPackingDataController extends Controller
             })
             ->toArray();
 
-        // Get total packed quantities
-        $packedQuantities = FinishPackingData::where('product_combination_id', $pc->id)
-            ->get()
+        // Build query for packed quantities with PO number filter
+        $packedQuery = FinishPackingData::where('product_combination_id', $pc->id);
+        if (!empty($poNumbers)) {
+            $packedQuery->where(function ($query) use ($poNumbers) {
+                foreach ($poNumbers as $poNumber) {
+                    $query->orWhere('po_number', 'like', '%' . $poNumber . '%');
+                }
+            });
+        }
+
+        // Get total packed quantities for the specific PO numbers
+        $packedQuantities = $packedQuery->get()
             ->flatMap(function ($item) {
                 return $item->packing_quantities;
             })
@@ -415,7 +595,8 @@ class FinishPackingDataController extends Controller
                 // Mark this combination as processed
                 $processedCombinations[] = $combinationKey;
 
-                $availableQuantities = $this->getMaxPackingQuantities($pc);
+                // Pass the PO numbers to getMaxPackingQuantities
+                $availableQuantities = $this->getMaxPackingQuantities($pc, $poNumbers);
 
                 $result[$poNumber][] = [
                     'combination_id' => $pc->id,
@@ -429,19 +610,6 @@ class FinishPackingDataController extends Controller
 
         return response()->json($result);
     }
-
-    private function getAvailablePoNumbers()
-    {
-        $poNumbers = [];
-
-        // Get PO numbers from OutputFinishingData
-        $outputFinishingPoNumbers = OutputFinishingData::distinct()->pluck('po_number')->filter()->values();
-        $poNumbers = array_merge($poNumbers, $outputFinishingPoNumbers->toArray());
-
-        return array_unique($poNumbers);
-    }
-
-
 
 
     // public function index(Request $request)

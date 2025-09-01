@@ -259,6 +259,9 @@ Route::middleware('auth')->group(function () {
 
 
     // Shipment Data Routes
+
+    Route::get('/shipment_data/find', [ShipmentDataController::class, 'find'])->name('shipment_data.find');
+
     Route::resource('shipment_data', ShipmentDataController::class);
     // Route::get('shipment_data/available_quantities/{product_combination}', [ShipmentDataController::class, 'getAvailableShipmentQuantities'])->name('shipment_data.available_quantities');
 
