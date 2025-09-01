@@ -52,6 +52,11 @@
                                         </select>
                                     </div>
                                     <div class="col-md-3">
+                                        <label>PO Number</label>
+                                        <input type="text" name="po_number" class="form-control"
+                                            value="{{ request('po_number') }}" placeholder="Enter PO Number">
+                                    </div>
+                                    <div class="col-md-3">
                                         <label>Start Date</label>
                                         <input type="date" name="start_date" class="form-control"
                                             value="{{ $start_date }}">
@@ -78,6 +83,7 @@
                             <table class="table table-bordered table-hover table-sm" id="balance-report-table">
                                 <thead>
                                     <tr class="text-center">
+                                        <th rowspan="2">PO Number</th>
                                         <th rowspan="2">Style</th>
                                         <th rowspan="2">Color</th>
                                         <th rowspan="2">Size</th>
@@ -86,7 +92,7 @@
                                         <th colspan="2">Print Receive</th>
                                         <th colspan="2">Sewing Input</th>
                                         <th colspan="2">Packing</th>
-                                        <th rowspan="2">Shipment Qty</th>
+                                        <th colspan="2">Shipment</th>
                                         <th rowspan="2">Ready Goods Qty</th>
                                     </tr>
                                     <tr class="text-center">
@@ -99,6 +105,8 @@
                                         <th>Balance<br>(Receive-Input)</th>
                                         <th>Packing Qty</th>
                                         <th>Balance<br>(Input-Packing)</th>
+                                        <th>Shipped Qty</th>
+                                        <th>Waste Qty</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -106,10 +114,9 @@
                                         @foreach ($group['rows'] as $index => $row)
                                             <tr>
                                                 @if ($index == 0)
-                                                    <td rowspan="{{ count($group['rows']) }}">{{ $group['style'] }}
-                                                    </td>
-                                                    <td rowspan="{{ count($group['rows']) }}">{{ $group['color'] }}
-                                                    </td>
+                                                    <td rowspan="{{ count($group['rows']) }}">{{ $group['po_number'] ?? 'N/A' }}</td>
+                                                    <td rowspan="{{ count($group['rows']) }}">{{ $group['style'] }}</td>
+                                                    <td rowspan="{{ count($group['rows']) }}">{{ $group['color'] }}</td>
                                                 @endif
                                                 <td>{{ $row['size'] }}</td>
                                                 <td class="text-right">{{ $row['cutting'] }}</td>
@@ -122,6 +129,7 @@
                                                 <td class="text-right">{{ $row['packing'] }}</td>
                                                 <td class="text-right">{{ $row['packing_balance'] }}</td>
                                                 <td class="text-right">{{ $row['shipment'] }}</td>
+                                                <td class="text-right">{{ $row['shipment_waste'] ?? 0 }}</td>
                                                 <td class="text-right">{{ $row['ready_goods'] }}</td>
                                             </tr>
                                         @endforeach
@@ -133,7 +141,7 @@
                                     @endphp
 
                                     <tr>
-                                        <td colspan="3" class="text-center font-weight-bold">Total</td>
+                                        <td colspan="4" class="text-center font-weight-bold">Total</td>
                                         <td class="text-right">{{ $allRows->sum('cutting') }}</td>
                                         <td class="text-right">{{ $allRows->sum('print_send') }}</td>
                                         <td class="text-right">{{ $allRows->sum('print_send_balance') }}</td>
@@ -144,6 +152,7 @@
                                         <td class="text-right">{{ $allRows->sum('packing') }}</td>
                                         <td class="text-right">{{ $allRows->sum('packing_balance') }}</td>
                                         <td class="text-right">{{ $allRows->sum('shipment') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('shipment_waste') }}</td>
                                         <td class="text-right">{{ $allRows->sum('ready_goods') }}</td>
                                     </tr>
                                 </tbody>
@@ -161,6 +170,7 @@
                                 {{ $productCombinations->appends([
                                     'style_id' => $styleId,
                                     'color_id' => $colorId,
+                                    'po_number' => request('po_number'),
                                     'start_date' => $start_date,
                                     'end_date' => $end_date
                                 ])->links() }}

@@ -54,36 +54,39 @@
                             <table class="table table-bordered table-hover">
                                 <thead>
                                     <tr>
+                                        <th>PO Number</th>
                                         <th>Style</th>
                                         <th>Color</th>
                                         @foreach ($allSizes as $size)
                                             <th>{{ $size->name }}</th>
                                         @endforeach
                                         <th>Total Shipped</th>
+                                        <th>Total Waste</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($reportData as $data)
                                         <tr>
+                                            <td>{{ $data['po_number'] }}</td>
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['sizes'][strtolower($size->name)] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data['total'] }}</td>
+                                            <td>{{ $data['total_waste'] }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        <th colspan="2">Grand Total</th>
+                                        <th colspan="3">Grand Total</th>
                                         @foreach ($allSizes as $size)
                                             <th>
                                                 @php
                                                     $totalSizeShipped = 0;
                                                     foreach ($reportData as $data) {
-                                                        $totalSizeShipped +=
-                                                            $data['sizes'][strtolower($size->name)] ?? 0;
+                                                        $totalSizeShipped += $data['sizes'][$size->id] ?? 0;
                                                     }
                                                     echo $totalSizeShipped;
                                                 @endphp
@@ -96,6 +99,15 @@
                                                     $grandTotalShipped += $data['total'];
                                                 }
                                                 echo $grandTotalShipped;
+                                            @endphp
+                                        </th>
+                                        <th>
+                                            @php
+                                                $grandTotalWaste = 0;
+                                                foreach ($reportData as $data) {
+                                                    $grandTotalWaste += $data['total_waste'];
+                                                }
+                                                echo $grandTotalWaste;
                                             @endphp
                                         </th>
                                     </tr>
