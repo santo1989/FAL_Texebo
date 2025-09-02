@@ -18,6 +18,12 @@
                     <div class="col-md-12 col-lg-12 col-sm-12">
                         <h1 class="text-danger"> <strong>Currently No Information Available!</strong> </h1>
                     </div>
+                    <!--back to previous page button-->
+                    <div class="col-md-12 col-lg-12 col-sm-12">
+                        <a href="{{ route('sizes.index') }}" class="btn btn-lg btn-outline-primary">
+                            <i class="fas fa-arrow-left"></i> Back to Sizes
+                        </a>
+                    </div>
                 </div>
             @else
                 <div class="row">

@@ -28,7 +28,7 @@ class OrderDataController extends Controller
             $query->whereDate('date', $request->input('date'));
         }
 
-        $orderData = $query->orderBy('date', 'desc')->paginate(10);
+        $orderData = $query->orderBy('created_at', 'desc')->paginate(10);
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         // dd($allSizes, $orderData);
@@ -155,11 +155,26 @@ class OrderDataController extends Controller
 
     public function destroy(OrderData $orderDatum)
     {
-        $orderDatum->delete();
+        // $orderDatum->delete();
+        //if any related data exists in any table then delete it as well
+        DB::transaction(function () use ($orderDatum) {
+            $orderDatum->sublimationPrintSends()->delete();
+            $orderDatum->sublimationPrintReceives()->delete();
+            $orderDatum->printSends()->delete();
+            $orderDatum->printReceives()->delete();
+            $orderDatum->lineInputData()->delete();
+            $orderDatum->outputFinishingData()->delete();
+            $orderDatum->finishPackingData()->delete();
+            $orderDatum->packedData()->delete();
+            $orderDatum->shipmentData()->delete();
+
+            $orderDatum->delete();
+        });
+
         return redirect()->route('order_data.index')->with('success', 'Order data deleted successfully.');
     }
 
-    // Report
+    // totalOrderReport
     public function totalOrderReport(Request $request)
     {
         $query = OrderData::with('style', 'color');
@@ -215,4 +230,16 @@ class OrderDataController extends Controller
             'distinctPoNumbers' => $distinctPoNumbers,
         ]);
     }
+
+    //old_data_create
+    public function old_data_create()
+    {
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $distinctPoNumbers = OrderData::where('po_status', 'running')->distinct()->pluck('po_number');
+
+        return view('backend.library.old_data.create', compact('allSizes', 'distinctPoNumbers'));
+    }
+
+   
+
 }

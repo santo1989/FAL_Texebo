@@ -20,8 +20,11 @@
                     <a href="{{ route('shipment_data.index') }}" class="btn btn-secondary mb-3 float-right">
                         <i class="fas fa-arrow-left"></i> Close
                     </a>
+                    <button id="export-excel" class="btn btn-success mb-3 float-left">
+                                    <i class="fas fa-file-excel"></i> Export to Excel
+                                </button>
                 </div>
-                <div class="card-body">
+                <div class="card-body" style="overflow-x: auto;">
                     <!-- Search Form -->
                     <div class="row mb-3">
                         <div class="col-md-12">
@@ -87,15 +90,18 @@
                                         <th rowspan="2">Style</th>
                                         <th rowspan="2">Color</th>
                                         <th rowspan="2">Size</th>
+                                        <th rowspan="1">Order</th>
                                         <th rowspan="1">Cutting</th>
                                         <th colspan="2">Print Send</th>
                                         <th colspan="2">Print Receive</th>
                                         <th colspan="2">Sewing Input</th>
+                                        <th colspan="2">Finishing Output</th> <!-- New column -->
                                         <th colspan="2">Packing</th>
                                         <th colspan="2">Shipment</th>
                                         <th rowspan="2">Ready Goods Qty</th>
                                     </tr>
                                     <tr class="text-center">
+                                        <th>Qty</th>
                                         <th>Qty</th>
                                         <th>Send Qty</th>
                                         <th>Balance<br>(Cutting-Print Send)</th>
@@ -103,45 +109,24 @@
                                         <th>Balance<br>(Send-Receive)</th>
                                         <th>Input Qty</th>
                                         <th>Balance<br>(Receive-Input)</th>
+                                        <th>Output Qty</th> <!-- New column -->
+                                        <th>Balance<br>(Input-Output)</th> <!-- New column -->
                                         <th>Packing Qty</th>
-                                        <th>Balance<br>(Input-Packing)</th>
+                                        <th>Balance<br>(Output-Packing)</th>
                                         <th>Shipped Qty</th>
                                         <th>Waste Qty</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($groupedData as $groupKey => $group)
-                                        @foreach ($group['rows'] as $index => $row)
-                                            <tr>
-                                                @if ($index == 0)
-                                                    <td rowspan="{{ count($group['rows']) }}">{{ $group['po_number'] ?? 'N/A' }}</td>
-                                                    <td rowspan="{{ count($group['rows']) }}">{{ $group['style'] }}</td>
-                                                    <td rowspan="{{ count($group['rows']) }}">{{ $group['color'] }}</td>
-                                                @endif
-                                                <td>{{ $row['size'] }}</td>
-                                                <td class="text-right">{{ $row['cutting'] }}</td>
-                                                <td class="text-right">{{ $row['print_send'] }}</td>
-                                                <td class="text-right">{{ $row['print_send_balance'] }}</td>
-                                                <td class="text-right">{{ $row['print_receive'] }}</td>
-                                                <td class="text-right">{{ $row['print_receive_balance'] }}</td>
-                                                <td class="text-right">{{ $row['sewing_input'] }}</td>
-                                                <td class="text-right">{{ $row['sewing_input_balance'] }}</td>
-                                                <td class="text-right">{{ $row['packing'] }}</td>
-                                                <td class="text-right">{{ $row['packing_balance'] }}</td>
-                                                <td class="text-right">{{ $row['shipment'] }}</td>
-                                                <td class="text-right">{{ $row['shipment_waste'] ?? 0 }}</td>
-                                                <td class="text-right">{{ $row['ready_goods'] }}</td>
-                                            </tr>
-                                        @endforeach
-                                    @endforeach
-                                    @php
+                                     @php
                                         $allRows = collect($groupedData)->flatMap(function ($group) {
                                             return $group['rows'];
                                         });
                                     @endphp
 
-                                    <tr>
-                                        <td colspan="4" class="text-center font-weight-bold">Total</td>
+                                    <tr class="font-weight-bold">
+                                        <td colspan="4" class="text-center">Total</td>
+                                        <td class="text-right">{{ $allRows->sum('order') }}</td>
                                         <td class="text-right">{{ $allRows->sum('cutting') }}</td>
                                         <td class="text-right">{{ $allRows->sum('print_send') }}</td>
                                         <td class="text-right">{{ $allRows->sum('print_send_balance') }}</td>
@@ -149,6 +134,64 @@
                                         <td class="text-right">{{ $allRows->sum('print_receive_balance') }}</td>
                                         <td class="text-right">{{ $allRows->sum('sewing_input') }}</td>
                                         <td class="text-right">{{ $allRows->sum('sewing_input_balance') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('finish_output') }}</td>
+                                        <!-- New column -->
+                                        <td class="text-right">{{ $allRows->sum('finish_balance') }}</td>
+                                        <!-- New column -->
+                                        <td class="text-right">{{ $allRows->sum('packing') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('packing_balance') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('shipment') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('shipment_waste') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('ready_goods') }}</td>
+                                    </tr>
+                                    @foreach ($groupedData as $groupKey => $group)
+                                        @foreach ($group['rows'] as $index => $row)
+                                            <tr>
+                                                @if ($index == 0)
+                                                    <td rowspan="{{ count($group['rows']) }}">
+                                                        {{ $group['po_number'] ?? 'N/A' }}</td>
+                                                    <td rowspan="{{ count($group['rows']) }}">{{ $group['style'] }}
+                                                    </td>
+                                                    <td rowspan="{{ count($group['rows']) }}">{{ $group['color'] }}
+                                                    </td>
+                                                @endif
+                                                <td>{{ $row['size'] }}</td>
+                                                <td class="text-right">{{ $row['order'] }}</td>
+                                                <td class="text-right">{{ $row['cutting'] }}</td>
+                                                <td class="text-right">{{ $row['print_send'] }}</td>
+                                                <td class="text-right">{{ $row['print_send_balance'] }}</td>
+                                                <td class="text-right">{{ $row['print_receive'] }}</td>
+                                                <td class="text-right">{{ $row['print_receive_balance'] }}</td>
+                                                <td class="text-right">{{ $row['sewing_input'] }}</td>
+                                                <td class="text-right">{{ $row['sewing_input_balance'] }}</td>
+                                                <td class="text-right">{{ $row['finish_output'] }}</td>
+                                                <!-- New column -->
+                                                <td class="text-right">{{ $row['finish_balance'] }}</td>
+                                                <!-- New column -->
+                                                <td class="text-right">{{ $row['packing'] }}</td>
+                                                <td class="text-right">{{ $row['packing_balance'] }}</td>
+
+                                                <td class="text-right">{{ $row['shipment'] }}</td>
+                                                <td class="text-right">{{ $row['shipment_waste'] ?? 0 }}</td>
+                                                <td class="text-right">{{ $row['ready_goods'] }}</td>
+                                            </tr>
+                                        @endforeach
+                                    @endforeach 
+
+                                    <tr class="font-weight-bold">
+                                        <td colspan="4" class="text-center">Total</td>
+                                        <td class="text-right">{{ $allRows->sum('order') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('cutting') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('print_send') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('print_send_balance') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('print_receive') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('print_receive_balance') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('sewing_input') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('sewing_input_balance') }}</td>
+                                        <td class="text-right">{{ $allRows->sum('finish_output') }}</td>
+                                        <!-- New column -->
+                                        <td class="text-right">{{ $allRows->sum('finish_balance') }}</td>
+                                        <!-- New column -->
                                         <td class="text-right">{{ $allRows->sum('packing') }}</td>
                                         <td class="text-right">{{ $allRows->sum('packing_balance') }}</td>
                                         <td class="text-right">{{ $allRows->sum('shipment') }}</td>
@@ -168,12 +211,12 @@
                             </div>
                             <div>
                                 {{ $productCombinations->appends([
-                                    'style_id' => $styleId,
-                                    'color_id' => $colorId,
-                                    'po_number' => request('po_number'),
-                                    'start_date' => $start_date,
-                                    'end_date' => $end_date
-                                ])->links() }}
+                                        'style_id' => $styleId,
+                                        'color_id' => $colorId,
+                                        'po_number' => request('po_number'),
+                                        'start_date' => $start_date,
+                                        'end_date' => $end_date,
+                                    ])->links() }}
                             </div>
                         </div>
                     @endif
@@ -189,7 +232,7 @@
             // Create a new table without rowspans for Excel
             const originalTable = document.getElementById('balance-report-table');
             const clonedTable = originalTable.cloneNode(true);
-            
+
             // Process rowspans by duplicating cells
             const rows = clonedTable.getElementsByTagName('tr');
             for (let i = 0; i < rows.length; i++) {
@@ -212,18 +255,18 @@
                     }
                 }
             }
-            
+
             // Create workbook and worksheet
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.table_to_sheet(clonedTable);
-            
+
             // Add worksheet to workbook
             XLSX.utils.book_append_sheet(wb, ws, "Balance Report");
-            
+
             // Generate filename with date
             const dateStr = new Date().toISOString().slice(0, 10);
             const fileName = `balance_report_${dateStr}.xlsx`;
-            
+
             // Export to Excel
             XLSX.writeFile(wb, fileName);
         });

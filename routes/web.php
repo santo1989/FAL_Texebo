@@ -300,6 +300,14 @@ Route::get('/get-size-name/{sizeId}', function ($sizeId) {
 
 //create print_receive_data/available_quantities/{product_combination_id}
 
+//privious old data update stage wise
+
+Route::get('old_data_create', [OrderDataController::class, 'old_data_create'])->name('old_data_create');
+
+// old_data_store
+Route::post('old_data_store', [ShipmentDataController::class, 'old_data_store'])->name('old_data_store');
+
+Route::get('old_data_index', [ShipmentDataController::class, 'old_data_index'])->name('old_data_index');
 
 
 

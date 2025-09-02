@@ -688,6 +688,13 @@
                             @canany(['Admin', 'General', 'Supervisor'])
                                 <div class="col-3 pt-1 pb-1">
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
+                                        href="{{ route('old_data_index') }}">
+                                        <div class="sb-nav-link-icon"><i class="fas fa-tshirt"></i></div>
+                                        Old Data Entry
+                                    </a>
+                                </div>
+                                <div class="col-3 pt-1 pb-1">
+                                    <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
                                         href="{{ route('styles.index') }}">
                                         <div class="sb-nav-link-icon"><i class="fas fa-tshirt"></i></div>
                                         Styles Entry
@@ -825,10 +832,10 @@
                                 </div>
                                 <div class="col-3 pt-1 pb-1">
                                     <a href="{{ route('shipment_data.report.final_balance') }}"
-                                            class="btn btn-outline-info btn-block">
-                                            <div class="sb-nav-link-icon"><i class="fas fa-balance-scale"></i></div>
-                                            Final Balance Report
-                                        </a>
+                                        class="btn btn-outline-info btn-block">
+                                        <div class="sb-nav-link-icon"><i class="fas fa-balance-scale"></i></div>
+                                        Final Balance Report
+                                    </a>
                                 </div>
                             @endcanany
 

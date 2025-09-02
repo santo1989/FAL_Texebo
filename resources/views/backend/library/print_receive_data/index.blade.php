@@ -38,6 +38,7 @@
                                 <input class="form-control me-2" type="date" name="date"
                                     value="{{ request('date') }}">
                                 <button class="btn btn-outline-success" type="submit">Search</button>
+                                <a href="{{ route('print_receive_data.index') }}" class="btn btn-outline-secondary">Reset</a>
                             </form>
                         </div>
                         <div class="card-body" style="overflow-x: auto;">

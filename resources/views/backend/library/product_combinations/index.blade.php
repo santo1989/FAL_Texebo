@@ -29,6 +29,7 @@
                                 <input class="form-control me-2" type="search" name="search"
                                     placeholder="Search by name" value="{{ request('search') }}">
                                 <button class="btn btn-outline-success" type="submit">Search</button>
+                                <a href="{{ route('product-combinations.index') }}" class="btn btn-outline-secondary">Reset</a>
                             </form>
                         </div>
                         <div class="card-body">

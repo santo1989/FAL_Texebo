@@ -18,15 +18,30 @@ class ProductCombinationController extends Controller
         // Search and filter logic
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
-            $query->whereHas('buyer', function ($q) use ($search) {
-                $q->where('buyer_id', 'like', '%' . $search . '%');
-            })->orWhereHas('style', function ($q) use ($search) {
-                $q->where('style_id', 'like', '%' . $search . '%');
-            })->orWhereHas('color', function ($q) use ($search) {
-                $q->where('color_id', 'like', '%' . $search . '%');
-            })->orWhereHas('size', function ($q) use ($search) {
-                $q->where('size_id', 'like', '%' . $search . '%');
-            });
+
+            // If search term is numeric, search in ID fields
+            if (is_numeric($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('buyer', function ($subQ) use ($search) {
+                        $subQ->where('id', $search);
+                    })->orWhereHas('style', function ($subQ) use ($search) {
+                        $subQ->where('id', $search);
+                    })->orWhereHas('color', function ($subQ) use ($search) {
+                        $subQ->where('id', $search);
+                    });
+                });
+            } else {
+                // If search term is text, search in name fields
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('buyer', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', '%' . $search . '%');
+                    })->orWhereHas('style', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', '%' . $search . '%');
+                    })->orWhereHas('color', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', '%' . $search . '%');
+                    });
+                });
+            }
         }
 
         $combinations = $query->paginate(10);
