@@ -81,6 +81,8 @@
             <thead>
                 <tr>
                     <th>Size</th>
+                    <th>Order Quantity</th>
+                    <th>Cutting Quantity</th>
                     <th>Available Quantity</th>
                     <th>Send Quantity</th>
                     <th>Waste Quantity</th>
@@ -95,9 +97,18 @@
                         $currentSendQty = $sendQuantities[$sizeId] ?? 0;
                         $currentWasteQty = $wasteQuantities[$sizeId] ?? 0;
                         $maxAllowed = $availableQty + $currentSendQty;
+                        $orderQty = App\Models\OrderData::where('product_combination_id', $sublimationPrintSendDatum->productCombination->id)->get()
+                            ->flatMap(fn($data) => $data->order_quantities)
+                            ->get($sizeId) ?? 0;
+                        $cuttingQty = App\Models\CuttingData::where('product_combination_id', $sublimationPrintSendDatum->productCombination->id)->get()
+                            ->flatMap(fn($data) => $data->cut_quantities)
+                            ->get($sizeId) ?? 0;
                     @endphp
                     <tr>
                         <td>{{ $sizeName }}</td>
+                        
+                        <td>{{ $orderQty }}</td>
+                        <td>{{ $cuttingQty }}</td>
                         <td>{{ $availableQty }}</td>
                         <td>
                             <input type="number" name="sublimation_print_send_quantities[{{ $sizeName }}]"

@@ -54,7 +54,7 @@ class OrderDataController extends Controller
     {
         $productCombinations = ProductCombination::with('buyer', 'style', 'color')->get();
         $sizes = Size::where('is_active', 1)->get();
-        $styles = Style::all();
+        $styles = Style::where('is_active', 1)->get();
         $colors = Color::all();
 
         return view('backend.library.order_data.create', compact('productCombinations', 'sizes', 'styles', 'colors'));
@@ -175,17 +175,97 @@ class OrderDataController extends Controller
     }
 
     // totalOrderReport
+    // public function totalOrderReport(Request $request)
+    // {
+    //     $query = OrderData::with('style', 'color');
+
+    //     // Filter by PO Number if selected
+    //     if ($request->filled('po_number')) {
+    //         $query->where('po_number', $request->po_number);
+    //     }
+
+    //     if ($request->filled('start_date') && $request->filled('end_date')) {
+    //         $query->whereBetween('date', [$request->start_date, $request->end_date]);
+    //     }
+
+    //     // Filter by style if selected
+    //     if ($request->filled('style_id')) {
+    //         $query->where('style_id', $request->style_id);
+    //     }
+
+    //     // Filter by color if selected
+    //     if ($request->filled('color_id')) {
+    //         $query->where('color_id', $request->color_id);
+    //     }
+
+    //     $orderData = $query->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+    //     $reportData = [];
+
+    //     foreach ($orderData as $data) {
+    //         $style = $data->style->name ?? 'N/A';
+    //         $color = $data->color->name ?? 'N/A';
+    //         // Using a combination of Style and Color to group rows
+    //         $key = $style . '-' . $color;
+
+    //         // Initialize report data for the style-color combination if it doesn't exist
+    //         if (!isset($reportData[$key])) {
+    //             $reportData[$key] = [
+    //                 'style' => $style,
+    //                 'color' => $color,
+    //                 // Use size IDs as keys for initialization
+    //                 'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+    //                 'total' => 0
+    //             ];
+    //         }
+
+    //         // Aggregate quantities based on size IDs
+    //         // $data->order_quantities will be an array because of the model cast
+    //         foreach ($data->order_quantities as $sizeId => $qty) {
+    //             // Ensure the size ID exists in our initialized array
+    //             if (array_key_exists($sizeId, $reportData[$key]['sizes'])) {
+    //                 $reportData[$key]['sizes'][$sizeId] += $qty;
+    //             }
+    //         }
+    //         $reportData[$key]['total'] += $data->total_order_quantity;
+    //     }
+
+    //     // Add filtering for distinct PO numbers to the view
+    //     $distinctPoNumbers = OrderData::distinct()->pluck('po_number');
+    //     $allStyles = Style::where('is_active', 1)->orderBy('id', 'asc')->get();
+    //     $allColors = Color::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+    //     return view('backend.library.order_data.total_order', [
+    //         'reportData' => array_values($reportData),
+    //         'allSizes' => $allSizes,
+    //         'orderData' => $orderData, // Pass the original query results for the PO filter in the view
+    //         'distinctPoNumbers' => $distinctPoNumbers,
+    //         'allStyles' => $allStyles,
+    //         'allColors' => $allColors,
+    //     ]);
+    // }
+
     public function totalOrderReport(Request $request)
     {
         $query = OrderData::with('style', 'color');
 
         // Filter by PO Number if selected
-        if ($request->filled('po_number')) {
-            $query->where('po_number', $request->po_number);
+        if ($request->has('po_number') && is_array($request->po_number)) {
+            $query->whereIn('po_number', $request->po_number);
         }
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('date', [$request->start_date, $request->end_date]);
+        }
+
+        // Filter by style if selected
+        if ($request->has('style_id') && is_array($request->style_id)) {
+            $query->whereIn('style_id', $request->style_id);
+        }
+
+        // Filter by color if selected
+        if ($request->has('color_id') && is_array($request->color_id)) {
+            $query->whereIn('color_id', $request->color_id);
         }
 
         $orderData = $query->get();
@@ -195,24 +275,18 @@ class OrderDataController extends Controller
         foreach ($orderData as $data) {
             $style = $data->style->name ?? 'N/A';
             $color = $data->color->name ?? 'N/A';
-            // Using a combination of Style and Color to group rows
             $key = $style . '-' . $color;
 
-            // Initialize report data for the style-color combination if it doesn't exist
             if (!isset($reportData[$key])) {
                 $reportData[$key] = [
                     'style' => $style,
                     'color' => $color,
-                    // Use size IDs as keys for initialization
                     'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
                     'total' => 0
                 ];
             }
 
-            // Aggregate quantities based on size IDs
-            // $data->order_quantities will be an array because of the model cast
             foreach ($data->order_quantities as $sizeId => $qty) {
-                // Ensure the size ID exists in our initialized array
                 if (array_key_exists($sizeId, $reportData[$key]['sizes'])) {
                     $reportData[$key]['sizes'][$sizeId] += $qty;
                 }
@@ -220,14 +294,17 @@ class OrderDataController extends Controller
             $reportData[$key]['total'] += $data->total_order_quantity;
         }
 
-        // Add filtering for distinct PO numbers to the view
         $distinctPoNumbers = OrderData::distinct()->pluck('po_number');
+        $allStyles = Style::orderBy('id', 'asc')->get();
+        $allColors = Color::orderBy('id', 'asc')->get();
 
         return view('backend.library.order_data.total_order', [
             'reportData' => array_values($reportData),
             'allSizes' => $allSizes,
-            'orderData' => $orderData, // Pass the original query results for the PO filter in the view
+            'orderData' => $orderData,
             'distinctPoNumbers' => $distinctPoNumbers,
+            'allStyles' => $allStyles,
+            'allColors' => $allColors,
         ]);
     }
 

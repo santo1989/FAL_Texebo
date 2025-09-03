@@ -15,8 +15,10 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <x-backend.layouts.elements.errors />
+     <div class="card" style="overflow-x: auto;">
     <form action="{{ route('old_data_store') }}" method="post">
         @csrf
+       
         <div class="row">
             <div class="col-md-3">
                 <div class="form-group">
@@ -66,24 +68,24 @@
             </div>
         </div>
 
-        <table class="table table-bordered mt-4 text-center text-wrap" style="width: 100%; table-layout: responsive;">
+        <table class="table table-bordered mt-4 text-center text-nowrap">
             <thead>
                 <tr>
                     <th rowspan="2">PO Number</th>
                     <th rowspan="2">Style</th>
                     <th rowspan="2">Color</th>
                     @foreach ($allSizes as $size)
-                        <th colspan="2">
-                            {{ $size->name }}
+                        <th colspan="1">
+                            {{ $size->name }} 
                         </th>
                     @endforeach
                     <th rowspan="2">Total Qty</th>
-                    <th rowspan="2">Waste Qty</th>
+                    {{-- <th rowspan="2">Waste Qty</th> --}}
                 </tr>
                 <tr>
                     @foreach ($allSizes as $size)
                         <td>Qty</td>
-                        <td>Waste Qty</td>
+                        {{-- <td>Waste Qty</td> --}}
                     @endforeach
                 </tr>
             </thead>
@@ -201,30 +203,31 @@
                                         row.appendChild(qtyCell);
 
                                         // Waste cell
-                                        const wasteCell = document.createElement('td');
-                                        if (isSizeAvailable && availableQty > 0) {
-                                            wasteCell.innerHTML = `
-                                                <div class="input-group input-group-sm">
-                                                    <input type="number"
-                                                        name="rows[${rowIndex}][Old_data_waste][${sizeId}]"
-                                                        class="form-control waste-input"
-                                                        min="0"
-                                                        max="${availableQty}"
-                                                        value="${savedWaste}"
-                                                        placeholder="Waste">
-                                                </div>
-                                            `;
-                                        } else {
-                                            wasteCell.innerHTML = `<span class="text-muted text-center">N/A</span>`;
-                                        }
-                                        row.appendChild(wasteCell);
+                                        // const wasteCell = document.createElement('td');
+                                        // if (isSizeAvailable && availableQty > 0) {
+                                        //     wasteCell.innerHTML = `
+                                        //         <div class="input-group input-group-sm">
+                                        //             <input type="number"
+                                        //                 name="rows[${rowIndex}][Old_data_waste][${sizeId}]"
+                                        //                 class="form-control waste-input"
+                                        //                 min="0"
+                                        //                 max="${availableQty}"
+                                        //                 value="${savedWaste}"
+                                        //                 placeholder="Waste">
+                                        //         </div>
+                                        //     `;
+                                        // } else {
+                                        //     wasteCell.innerHTML = `<span class="text-muted text-center">N/A</span>`;
+                                        // }
+                                        // row.appendChild(wasteCell);
                                     }
                                 @endforeach
 
                                 // Add total quantity and total waste cells
+                                // // <td class="total-waste-cell"><span class="total-waste-span">0</span></td>
                                 row.innerHTML += `
                                     <td class="total-qty-cell"><span class="total-qty-span">0</span></td>
-                                    <td class="total-waste-cell"><span class="total-waste-span">0</span></td>
+                                    
                                 `;
 
                                 cuttingDataBody.appendChild(row);
@@ -319,4 +322,5 @@
             }
         });
     </script>
+    </div>
 </x-backend.layouts.master>

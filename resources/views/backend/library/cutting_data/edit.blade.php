@@ -92,10 +92,13 @@
                                                 
                                                 // Get already cut from other records
                                                 $alreadyCut = $totalExistingCutQuantities[$sizeId] ?? 0;
-                                                
+
+                                                // Get current cut quantity
+                                                $currentCutQty = $cuttingDatum->cut_quantities[$sizeId] ?? 0;
+
                                                 // Calculate available quantity
-                                                $availableQty = max(0, $maxAllowed - $alreadyCut);
-                                                
+                                                $availableQty = max(0, $maxAllowed - $alreadyCut - $currentCutQty);
+
                                                 $currentCutQty = $cuttingDatum->cut_quantities[$sizeId] ?? 0;
                                                 $currentWasteQty = $cuttingDatum->cut_waste_quantities[$sizeId] ?? 0;
                                             @endphp
@@ -168,6 +171,8 @@
             // Update the max attributes for the inputs
             cutQtyInput.setAttribute('max', Math.max(0, newAvailable + currentCut));
             wasteQtyInput.setAttribute('max', Math.max(0, newAvailable + currentWaste));
+
+            
         }
 
         // Get all rows in the table body

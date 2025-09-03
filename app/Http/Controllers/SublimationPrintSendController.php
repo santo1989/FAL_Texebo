@@ -129,33 +129,151 @@ class SublimationPrintSendController extends Controller
         return view('backend.library.sublimation_print_send_data.show', compact('sublimationPrintSendDatum', 'allSizes'));
     }
 
+    // public function edit(SublimationPrintSend $sublimationPrintSendDatum)
+    // {
+    //     $sublimationPrintSendDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color', 'productCombination.size');
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+
+
+    //     // Get available quantities for this product combination
+    //     $availableQuantitiesResponse = $this->getAvailableSendQuantities($sublimationPrintSendDatum->productCombination);
+    //     $availableQuantities = (array) $availableQuantitiesResponse->getData()->availableQuantities;
+    //     $availableQuantities = array_filter($availableQuantities);
+
+    //     //filter the available quantities to remove zero quantities from allSizes
+    //     $allSizes = $allSizes->filter(function ($size) use ($availableQuantities) {
+    //         return isset($availableQuantities[$size->name]);
+    //     });
+
+    //     // Ensure the quantities are arrays, not objects
+    //     $sendQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_quantities;
+    //     $wasteQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_waste_quantities;
+
+    //     return view('backend.library.sublimation_print_send_data.edit', [
+    //         'sublimationPrintSendDatum' => $sublimationPrintSendDatum,
+    //         'allSizes' => $allSizes,
+    //         'availableQuantities' => $availableQuantities,
+    //         'sendQuantities' => $sendQuantities,
+    //         'wasteQuantities' => $wasteQuantities
+    //     ]);
+    // }
+
+    // public function update(Request $request, SublimationPrintSend $sublimationPrintSendDatum)
+    // {
+    //     $request->validate([
+    //         'date' => 'required|date',
+    //         'sublimation_print_send_quantities.*' => 'nullable|integer|min:0',
+    //         'sublimation_print_send_waste_quantities.*' => 'nullable|integer|min:0',
+    //     ]);
+
+    //     try {
+    //         $productCombination = $sublimationPrintSendDatum->productCombination;
+    //         $availableQuantitiesResponse = $this->getAvailableSendQuantities($productCombination);
+    //         $availableQuantities = (array) $availableQuantitiesResponse->getData()->availableQuantities;
+
+    //         // Ensure send and waste quantities are arrays
+    //         $sendQuantities = [];
+    //         $wasteQuantities = [];
+    //         $totalSendQuantity = 0;
+    //         $totalWasteQuantity = 0;
+    //         $errors = [];
+
+    //         // Process send quantities with validation
+    //         foreach ($request->sublimation_print_send_quantities as $sizeName => $quantity) {
+    //             $quantity = (int)$quantity;
+    //             if ($quantity > 0) {
+    //                 // Calculate max allowed (available + current quantity in this record)
+    //                 $currentSendQty = isset($sublimationPrintSendDatum->sublimation_print_send_quantities[$sizeName])
+    //                     ? (int)$sublimationPrintSendDatum->sublimation_print_send_quantities[$sizeName]
+    //                     : 0;
+
+    //                 $maxAllowed = ($availableQuantities[$sizeName] ?? 0) + $currentSendQty;
+
+    //                 if ($quantity > $maxAllowed) {
+    //                     $errors["sublimation_print_send_quantities.$sizeName"] = "Quantity for $sizeName exceeds available ($maxAllowed)";
+    //                 } else {
+    //                     // Convert size name to ID for storage
+    //                     $sizeId = $this->getSizeIdByName($sizeName);
+    //                     if ($sizeId) {
+    //                         $sendQuantities[$sizeId] = $quantity;
+    //                         $totalSendQuantity += $quantity;
+    //                     }
+    //                 }
+    //             }
+    //         }
+
+    //         // Process waste quantities
+    //         foreach ($request->sublimation_print_send_waste_quantities as $sizeName => $quantity) {
+    //             $quantity = (int)$quantity;
+    //             if ($quantity > 0) {
+    //                 // Convert size name to ID for storage
+    //                 $sizeId = $this->getSizeIdByName($sizeName);
+    //                 if ($sizeId) {
+    //                     $wasteQuantities[$sizeId] = $quantity;
+    //                     $totalWasteQuantity += $quantity;
+    //                 }
+    //             }
+    //         }
+
+    //         if (!empty($errors)) {
+    //             return redirect()->back()->withErrors($errors)->withInput();
+    //         }
+
+    //         $sublimationPrintSendDatum->update([
+    //             'date' => $request->date,
+    //             'sublimation_print_send_quantities' => $sendQuantities,
+    //             'total_sublimation_print_send_quantity' => $totalSendQuantity,
+    //             'sublimation_print_send_waste_quantities' => $wasteQuantities,
+    //             'total_sublimation_print_send_waste_quantity' => $totalWasteQuantity,
+    //         ]);
+
+    //         return redirect()->route('sublimation_print_send_data.index')
+    //             ->with('success', 'Sublimation Print/Send data updated successfully.');
+    //     } catch (\Exception $e) {
+    //         return redirect()->back()
+    //             ->with('error', 'Error occurred: ' . $e->getMessage())
+    //             ->withInput();
+    //     }
+    // }
+
+
     public function edit(SublimationPrintSend $sublimationPrintSendDatum)
     {
         $sublimationPrintSendDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color', 'productCombination.size');
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        
-
         // Get available quantities for this product combination
         $availableQuantitiesResponse = $this->getAvailableSendQuantities($sublimationPrintSendDatum->productCombination);
         $availableQuantities = (array) $availableQuantitiesResponse->getData()->availableQuantities;
-        $availableQuantities = array_filter($availableQuantities);
 
-        //filter the available quantities to remove zero quantities from allSizes
-        $allSizes = $allSizes->filter(function ($size) use ($availableQuantities) {
-            return isset($availableQuantities[$size->name]);
-        });
+        // Add current quantities to available for editing (since we're editing existing record)
+        $sendQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_quantities;
+        foreach ($sendQuantities as $sizeId => $qty) {
+            $sizeName = $this->getSizeNameById($sizeId);
+            if ($sizeName && isset($availableQuantities[$sizeName])) {
+                $availableQuantities[$sizeName] += $qty;
+            }
+        }
 
         // Ensure the quantities are arrays, not objects
-        $sendQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_quantities;
         $wasteQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_waste_quantities;
+
+        // Get distinct PO numbers for dropdown
+        $sublimationProductIds = ProductCombination::where('sublimation_print', true)->pluck('id');
+        $distinctPoNumbers = CuttingData::whereIn('product_combination_id', $sublimationProductIds)
+            ->distinct()
+            ->pluck('po_number')
+            ->filter()
+            ->values();
 
         return view('backend.library.sublimation_print_send_data.edit', [
             'sublimationPrintSendDatum' => $sublimationPrintSendDatum,
             'allSizes' => $allSizes,
             'availableQuantities' => $availableQuantities,
             'sendQuantities' => $sendQuantities,
-            'wasteQuantities' => $wasteQuantities
+            'wasteQuantities' => $wasteQuantities,
+            'distinctPoNumbers' => $distinctPoNumbers
         ]);
     }
 
@@ -163,56 +281,59 @@ class SublimationPrintSendController extends Controller
     {
         $request->validate([
             'date' => 'required|date',
+            'po_number' => 'required|array',
+            'po_number.*' => 'required|string',
+            'old_order' => 'required|in:yes,no',
+            'sublimation_print_send_quantities' => 'required|array',
             'sublimation_print_send_quantities.*' => 'nullable|integer|min:0',
+            'sublimation_print_send_waste_quantities' => 'required|array',
             'sublimation_print_send_waste_quantities.*' => 'nullable|integer|min:0',
         ]);
 
         try {
+            DB::beginTransaction();
+
             $productCombination = $sublimationPrintSendDatum->productCombination;
             $availableQuantitiesResponse = $this->getAvailableSendQuantities($productCombination);
             $availableQuantities = (array) $availableQuantitiesResponse->getData()->availableQuantities;
 
-            // Ensure send and waste quantities are arrays
+            // Add back the current quantities to available for validation
+            $currentSendQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_quantities;
+            foreach ($currentSendQuantities as $sizeId => $qty) {
+                $sizeName = $this->getSizeNameById($sizeId);
+                if ($sizeName && isset($availableQuantities[$sizeName])) {
+                    $availableQuantities[$sizeName] += $qty;
+                }
+            }
+
+            // Process send quantities with validation
             $sendQuantities = [];
             $wasteQuantities = [];
             $totalSendQuantity = 0;
             $totalWasteQuantity = 0;
             $errors = [];
 
-            // Process send quantities with validation
-            foreach ($request->sublimation_print_send_quantities as $sizeName => $quantity) {
+            foreach ($request->sublimation_print_send_quantities as $sizeId => $quantity) {
                 $quantity = (int)$quantity;
                 if ($quantity > 0) {
-                    // Calculate max allowed (available + current quantity in this record)
-                    $currentSendQty = isset($sublimationPrintSendDatum->sublimation_print_send_quantities[$sizeName])
-                        ? (int)$sublimationPrintSendDatum->sublimation_print_send_quantities[$sizeName]
-                        : 0;
-
-                    $maxAllowed = ($availableQuantities[$sizeName] ?? 0) + $currentSendQty;
+                    $sizeName = $this->getSizeNameById($sizeId);
+                    $maxAllowed = $availableQuantities[$sizeName] ?? 0;
 
                     if ($quantity > $maxAllowed) {
-                        $errors["sublimation_print_send_quantities.$sizeName"] = "Quantity for $sizeName exceeds available ($maxAllowed)";
+                        $errors["sublimation_print_send_quantities.$sizeId"] = "Quantity for $sizeName exceeds available ($maxAllowed)";
                     } else {
-                        // Convert size name to ID for storage
-                        $sizeId = $this->getSizeIdByName($sizeName);
-                        if ($sizeId) {
-                            $sendQuantities[$sizeId] = $quantity;
-                            $totalSendQuantity += $quantity;
-                        }
+                        $sendQuantities[$sizeId] = $quantity;
+                        $totalSendQuantity += $quantity;
                     }
                 }
             }
 
             // Process waste quantities
-            foreach ($request->sublimation_print_send_waste_quantities as $sizeName => $quantity) {
+            foreach ($request->sublimation_print_send_waste_quantities as $sizeId => $quantity) {
                 $quantity = (int)$quantity;
                 if ($quantity > 0) {
-                    // Convert size name to ID for storage
-                    $sizeId = $this->getSizeIdByName($sizeName);
-                    if ($sizeId) {
-                        $wasteQuantities[$sizeId] = $quantity;
-                        $totalWasteQuantity += $quantity;
-                    }
+                    $wasteQuantities[$sizeId] = $quantity;
+                    $totalWasteQuantity += $quantity;
                 }
             }
 
@@ -222,15 +343,20 @@ class SublimationPrintSendController extends Controller
 
             $sublimationPrintSendDatum->update([
                 'date' => $request->date,
+                'po_number' => implode(',', $request->po_number),
+                'old_order' => $request->old_order,
                 'sublimation_print_send_quantities' => $sendQuantities,
                 'total_sublimation_print_send_quantity' => $totalSendQuantity,
                 'sublimation_print_send_waste_quantities' => $wasteQuantities,
                 'total_sublimation_print_send_waste_quantity' => $totalWasteQuantity,
             ]);
 
+            DB::commit();
+
             return redirect()->route('sublimation_print_send_data.index')
                 ->with('success', 'Sublimation Print/Send data updated successfully.');
         } catch (\Exception $e) {
+            DB::rollBack();
             return redirect()->back()
                 ->with('error', 'Error occurred: ' . $e->getMessage())
                 ->withInput();
