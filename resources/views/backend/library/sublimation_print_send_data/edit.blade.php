@@ -18,10 +18,14 @@
             <span class="close" data-dismiss="alert">&times;</span>
             <strong>{{ session('message') }}.</strong>
         </div>
+    @elseif (session('error'))
+        <div class="alert alert-danger">
+            <span class="close" data-dismiss="alert">&times;</span>
+            <strong>{{ session('error') }}.</strong>
+        </div>
     @endif
 
     <x-backend.layouts.elements.errors />
-
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -97,29 +101,64 @@
                         $currentSendQty = $sendQuantities[$sizeId] ?? 0;
                         $currentWasteQty = $wasteQuantities[$sizeId] ?? 0;
                         $maxAllowed = $availableQty + $currentSendQty;
-                        $orderQty = App\Models\OrderData::where('product_combination_id', $sublimationPrintSendDatum->productCombination->id)->get()
-                            ->flatMap(fn($data) => $data->order_quantities)
-                            ->get($sizeId) ?? 0;
-                        $cuttingQty = App\Models\CuttingData::where('product_combination_id', $sublimationPrintSendDatum->productCombination->id)->get()
-                            ->flatMap(fn($data) => $data->cut_quantities)
-                            ->get($sizeId) ?? 0;
+                        
+                        // Fixed: Properly retrieve order and cutting quantities
+                        $orderQty = 0;
+                        $cuttingQty = 0;
+                        
+                        // Get order quantities
+                        $orderData = App\Models\OrderData::where('product_combination_id', $sublimationPrintSendDatum->productCombination->id)->get();
+                        foreach ($orderData as $data) {
+                            $orderQuantities = (array) $data->order_quantities;
+                            foreach ($orderQuantities as $key => $value) {
+                                if (is_numeric($key)) {
+                                    // If key is numeric (size ID), check if it matches current size ID
+                                    if ($key == $sizeId) {
+                                        $orderQty += $value;
+                                    }
+                                } else {
+                                    // If key is string (size name), check if it matches current size name
+                                    if (strtolower(trim($key)) == strtolower(trim($sizeName))) {
+                                        $orderQty += $value;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Get cutting quantities
+                        $cuttingData = App\Models\CuttingData::where('product_combination_id', $sublimationPrintSendDatum->productCombination->id)->get();
+                        foreach ($cuttingData as $data) {
+                            $cutQuantities = (array) $data->cut_quantities;
+                            foreach ($cutQuantities as $key => $value) {
+                                if (is_numeric($key)) {
+                                    // If key is numeric (size ID), check if it matches current size ID
+                                    if ($key == $sizeId) {
+                                        $cuttingQty += $value;
+                                    }
+                                } else {
+                                    // If key is string (size name), check if it matches current size name
+                                    if (strtolower(trim($key)) == strtolower(trim($sizeName))) {
+                                        $cuttingQty += $value;
+                                    }
+                                }
+                            }
+                        }
                     @endphp
                     <tr>
                         <td>{{ $sizeName }}</td>
-                        
                         <td>{{ $orderQty }}</td>
                         <td>{{ $cuttingQty }}</td>
                         <td>{{ $availableQty }}</td>
                         <td>
-                            <input type="number" name="sublimation_print_send_quantities[{{ $sizeName }}]"
+                            <input type="number" name="sublimation_print_send_quantities[{{ $sizeId }}]"
                                 class="form-control send-qty-input" min="0" max="{{ $maxAllowed }}"
-                                value="{{ old('sublimation_print_send_quantities.' . $sizeName, $currentSendQty) }}"
+                                value="{{ old('sublimation_print_send_quantities.' . $sizeId, $currentSendQty) }}"
                                 placeholder="Send Qty">
                         </td>
                         <td>
-                            <input type="number" name="sublimation_print_send_waste_quantities[{{ $sizeName }}]"
+                            <input type="number" name="sublimation_print_send_waste_quantities[{{ $sizeId }}]"
                                 class="form-control waste-qty-input" min="0"
-                                value="{{ old('sublimation_print_send_waste_quantities.' . $sizeName, $currentWasteQty) }}"
+                                value="{{ old('sublimation_print_send_waste_quantities.' . $sizeId, $currentWasteQty) }}"
                                 placeholder="Waste Qty">
                         </td>
                     </tr>
@@ -127,7 +166,7 @@
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="2"><strong>Totals</strong></td>
+                    <td colspan="4"><strong>Totals</strong></td>
                     <td><span
                             id="total-send-qty">{{ $sublimationPrintSendDatum->total_sublimation_print_send_quantity }}</span>
                     </td>

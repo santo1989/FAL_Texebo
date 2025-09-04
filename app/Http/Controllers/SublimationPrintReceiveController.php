@@ -72,6 +72,11 @@ class SublimationPrintReceiveController extends Controller
                 $totalReceiveQuantity = 0;
                 $totalWasteQuantity = 0;
 
+                //skip if no quantities provided
+                if (empty(array_filter($row['sublimation_print_receive_quantities'])) && empty(array_filter($row['sublimation_print_receive_waste_quantities']))) {
+                    continue;
+                }
+
                 // Process receive quantities
                 foreach ($row['sublimation_print_receive_quantities'] as $sizeId => $quantity) {
                     if ($quantity > 0) {
@@ -139,29 +144,61 @@ class SublimationPrintReceiveController extends Controller
         ]);
 
         try {
+            DB::beginTransaction();
+
             $receiveQuantities = [];
             $wasteQuantities = [];
             $totalReceiveQuantity = 0;
             $totalWasteQuantity = 0;
 
-            // Process receive quantities
+            // Get the corresponding send data
+            $sendData = SublimationPrintSend::where('po_number', $sublimationPrintReceiveDatum->po_number)
+                ->where('product_combination_id', $sublimationPrintReceiveDatum->product_combination_id)
+                ->first();
+
+            if (!$sendData) {
+                throw new \Exception('No send data found for this PO and product combination');
+            }
+
+            // Calculate already received quantities for this product combination and PO (excluding current record)
+            $alreadyReceived = SublimationPrintReceive::where('po_number', $sublimationPrintReceiveDatum->po_number)
+                ->where('product_combination_id', $sublimationPrintReceiveDatum->product_combination_id)
+                ->where('id', '!=', $sublimationPrintReceiveDatum->id)
+                ->get()
+                ->reduce(function ($carry, $receive) {
+                    foreach ($receive->sublimation_print_receive_quantities as $sizeId => $qty) {
+                        $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+                    }
+                    return $carry;
+                }, []);
+
+            // Process receive quantities with validation
             foreach ($request->sublimation_print_receive_quantities as $sizeId => $quantity) {
+                $quantity = (int)$quantity;
                 if ($quantity > 0) {
-                    $receiveQuantities[$sizeId] = (int)$quantity;
-                    $totalReceiveQuantity += (int)$quantity;
+                    $sentQty = $sendData->sublimation_print_send_quantities[$sizeId] ?? 0;
+                    $alreadyReceivedQty = $alreadyReceived[$sizeId] ?? 0;
+                    $availableQty = max(0, $sentQty - $alreadyReceivedQty);
+
+                    // The maximum allowed for this size is the available quantity
+                    if ($quantity > $availableQty) {
+                        $sizeName = Size::find($sizeId)->name;
+                        throw new \Exception("Receive quantity for size $sizeName cannot exceed $availableQty");
+                    }
+
+                    $receiveQuantities[$sizeId] = $quantity;
+                    $totalReceiveQuantity += $quantity;
                 }
             }
 
             // Process waste quantities
             foreach ($request->sublimation_print_receive_waste_quantities as $sizeId => $quantity) {
+                $quantity = (int)$quantity;
                 if ($quantity > 0) {
-                    $wasteQuantities[$sizeId] = (int)$quantity;
-                    $totalWasteQuantity += (int)$quantity;
+                    $wasteQuantities[$sizeId] = $quantity;
+                    $totalWasteQuantity += $quantity;
                 }
             }
-
-            //first calculate the size wise max available qty if requested qty is big then throw error message and return back
-        
 
             $sublimationPrintReceiveDatum->update([
                 'date' => $request->date,
@@ -171,9 +208,12 @@ class SublimationPrintReceiveController extends Controller
                 'total_sublimation_print_receive_waste_quantity' => $totalWasteQuantity,
             ]);
 
+            DB::commit();
+
             return redirect()->route('sublimation_print_receive_data.index')
                 ->with('success', 'Sublimation Print/Receive data updated successfully.');
         } catch (\Exception $e) {
+            DB::rollBack();
             return redirect()->back()
                 ->with('error', 'Error occurred: ' . $e->getMessage())
                 ->withInput();
