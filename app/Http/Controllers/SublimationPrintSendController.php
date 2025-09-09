@@ -1062,13 +1062,139 @@ class SublimationPrintSendController extends Controller
         return view('backend.library.sublimation_print_send_data.show', compact('sublimationPrintSendDatum', 'allSizes'));
     }
 
+    // public function edit(SublimationPrintSend $sublimationPrintSendDatum)
+    // {
+    //     $sublimationPrintSendDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color', 'productCombination.size');
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+    //     // Get available quantities for this product combination
+    //     $availableQuantitiesResponse = $this->getAvailableSendQuantities($sublimationPrintSendDatum->productCombination);
+    //     $availableQuantities = (array) $availableQuantitiesResponse->getData()->availableQuantities;
+
+    //     // Add current quantities to available for editing (since we're editing existing record)
+    //     $sendQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_quantities;
+    //     foreach ($sendQuantities as $sizeId => $qty) {
+    //         $sizeName = $this->getSizeNameById($sizeId);
+    //         if ($sizeName && isset($availableQuantities[$sizeName])) {
+    //             $availableQuantities[$sizeName] += $qty;
+    //         }
+    //     }
+
+    //     // Ensure the quantities are arrays, not objects
+    //     $wasteQuantities = (array) $sublimationPrintSendDatum->sublimation_print_send_waste_quantities;
+
+    //     // Get distinct PO numbers for dropdown
+    //     $sublimationProductIds = ProductCombination::where('sublimation_print', true)->pluck('id');
+    //     $distinctPoNumbers = CuttingData::whereIn('product_combination_id', $sublimationProductIds)
+    //         ->distinct()
+    //         ->pluck('po_number')
+    //         ->filter()
+    //         ->values();
+
+    //     return view('backend.library.sublimation_print_send_data.edit', [
+    //         'sublimationPrintSendDatum' => $sublimationPrintSendDatum,
+    //         'allSizes' => $allSizes,
+    //         'availableQuantities' => $availableQuantities,
+    //         'sendQuantities' => $sendQuantities,
+    //         'wasteQuantities' => $wasteQuantities,
+    //         'distinctPoNumbers' => $distinctPoNumbers
+    //     ]);
+    // }
+
+    // public function update(Request $request, SublimationPrintSend $sublimationPrintSendDatum)
+    // {
+    //     $request->validate([
+    //         'date' => 'required|date',
+    //         'sublimation_print_send_quantities' => 'required|array',
+    //         'sublimation_print_send_quantities.*' => 'nullable|integer|min:0',
+    //     ]);
+
+    //     try {
+    //         DB::beginTransaction();
+
+    //         $productCombination = $sublimationPrintSendDatum->productCombination;
+
+    //         // Get available quantities without the current record's quantities
+    //         $availableQuantitiesResponse = $this->getAvailableSendQuantities($productCombination);
+    //         $availableQuantities = (array) $availableQuantitiesResponse->getData()->availableQuantities;
+
+    //         // Process send quantities with validation
+    //         $sendQuantities = [];
+    //         $wasteQuantities = [];
+    //         $totalSendQuantity = 0;
+    //         $totalWasteQuantity = 0;
+    //         $errors = [];
+
+    //         foreach ($request->sublimation_print_send_quantities as $sizeName => $quantity) {
+    //             $quantity = (int)$quantity;
+    //             if ($quantity > 0) {
+    //                 $maxAllowed = $availableQuantities[$sizeName] ?? 0;
+
+    //                 // Add back the current quantity from this record
+    //                 $currentSizeId = $this->getSizeIdByName($sizeName);
+    //                 $currentQty = isset($sublimationPrintSendDatum->sublimation_print_send_quantities[$currentSizeId])
+    //                     ? (int)$sublimationPrintSendDatum->sublimation_print_send_quantities[$currentSizeId]
+    //                     : 0;
+
+    //                 $maxAllowed += $currentQty;
+
+    //                 if ($quantity > $maxAllowed) {
+    //                     $errors["sublimation_print_send_quantities.$sizeName"] = "Quantity for $sizeName exceeds available ($maxAllowed)";
+    //                 } else {
+    //                     $sizeId = $this->getSizeIdByName($sizeName);
+    //                     if ($sizeId) {
+    //                         $sendQuantities[$sizeId] = $quantity;
+    //                         $totalSendQuantity += $quantity;
+    //                     }
+    //                 }
+    //             }
+    //         }
+
+    //         // Process waste quantities
+    //         foreach ($request->sublimation_print_send_waste_quantities as $sizeName => $quantity) {
+    //             $quantity = (int)$quantity;
+    //             if ($quantity > 0) {
+    //                 $sizeId = $this->getSizeIdByName($sizeName);
+    //                 if ($sizeId) {
+    //                     $wasteQuantities[$sizeId] = $quantity;
+    //                     $totalWasteQuantity += $quantity;
+    //                 }
+    //             }
+    //         }
+
+    //         if (!empty($errors)) {
+    //             return redirect()->back()->withErrors($errors)->withInput();
+    //         }
+
+    //         $sublimationPrintSendDatum->update([
+    //             'date' => $request->date,
+    //             'po_number' => $request->po_number ? implode(',', $request->po_number) : $sublimationPrintSendDatum->po_number,
+    //             'old_order' => $request->old_order,
+    //             'sublimation_print_send_quantities' => $sendQuantities,
+    //             'total_sublimation_print_send_quantity' => $totalSendQuantity,
+    //             'sublimation_print_send_waste_quantities' => $wasteQuantities,
+    //             'total_sublimation_print_send_waste_quantity' => $totalWasteQuantity,
+    //         ]);
+
+    //         DB::commit();
+
+    //         return redirect()->route('sublimation_print_send_data.index')
+    //             ->with('success', 'Sublimation Print/Send data updated successfully.');
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return redirect()->back()
+    //             ->with('error', 'Error occurred: ' . $e->getMessage())
+    //             ->withInput();
+    //     }
+    // }
     public function edit(SublimationPrintSend $sublimationPrintSendDatum)
     {
         $sublimationPrintSendDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color', 'productCombination.size');
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        // Get available quantities for this product combination
-        $availableQuantitiesResponse = $this->getAvailableSendQuantities($sublimationPrintSendDatum->productCombination);
+        // Get available quantities for this product combination using the record's PO numbers
+        $poNumbers = explode(',', $sublimationPrintSendDatum->po_number);
+        $availableQuantitiesResponse = $this->getAvailableSendQuantities($sublimationPrintSendDatum->productCombination, $poNumbers);
         $availableQuantities = (array) $availableQuantitiesResponse->getData()->availableQuantities;
 
         // Add current quantities to available for editing (since we're editing existing record)
@@ -1101,92 +1227,8 @@ class SublimationPrintSendController extends Controller
         ]);
     }
 
-    public function update(Request $request, SublimationPrintSend $sublimationPrintSendDatum)
-    {
-        $request->validate([
-            'date' => 'required|date',
-            'sublimation_print_send_quantities' => 'required|array',
-            'sublimation_print_send_quantities.*' => 'nullable|integer|min:0',
-        ]);
+   
 
-        try {
-            DB::beginTransaction();
-
-            $productCombination = $sublimationPrintSendDatum->productCombination;
-
-            // Get available quantities without the current record's quantities
-            $availableQuantitiesResponse = $this->getAvailableSendQuantities($productCombination);
-            $availableQuantities = (array) $availableQuantitiesResponse->getData()->availableQuantities;
-
-            // Process send quantities with validation
-            $sendQuantities = [];
-            $wasteQuantities = [];
-            $totalSendQuantity = 0;
-            $totalWasteQuantity = 0;
-            $errors = [];
-
-            foreach ($request->sublimation_print_send_quantities as $sizeName => $quantity) {
-                $quantity = (int)$quantity;
-                if ($quantity > 0) {
-                    $maxAllowed = $availableQuantities[$sizeName] ?? 0;
-
-                    // Add back the current quantity from this record
-                    $currentSizeId = $this->getSizeIdByName($sizeName);
-                    $currentQty = isset($sublimationPrintSendDatum->sublimation_print_send_quantities[$currentSizeId])
-                        ? (int)$sublimationPrintSendDatum->sublimation_print_send_quantities[$currentSizeId]
-                        : 0;
-
-                    $maxAllowed += $currentQty;
-
-                    if ($quantity > $maxAllowed) {
-                        $errors["sublimation_print_send_quantities.$sizeName"] = "Quantity for $sizeName exceeds available ($maxAllowed)";
-                    } else {
-                        $sizeId = $this->getSizeIdByName($sizeName);
-                        if ($sizeId) {
-                            $sendQuantities[$sizeId] = $quantity;
-                            $totalSendQuantity += $quantity;
-                        }
-                    }
-                }
-            }
-
-            // Process waste quantities
-            foreach ($request->sublimation_print_send_waste_quantities as $sizeName => $quantity) {
-                $quantity = (int)$quantity;
-                if ($quantity > 0) {
-                    $sizeId = $this->getSizeIdByName($sizeName);
-                    if ($sizeId) {
-                        $wasteQuantities[$sizeId] = $quantity;
-                        $totalWasteQuantity += $quantity;
-                    }
-                }
-            }
-
-            if (!empty($errors)) {
-                return redirect()->back()->withErrors($errors)->withInput();
-            }
-
-            $sublimationPrintSendDatum->update([
-                'date' => $request->date,
-                'po_number' => $request->po_number ? implode(',', $request->po_number) : $sublimationPrintSendDatum->po_number,
-                'old_order' => $request->old_order,
-                'sublimation_print_send_quantities' => $sendQuantities,
-                'total_sublimation_print_send_quantity' => $totalSendQuantity,
-                'sublimation_print_send_waste_quantities' => $wasteQuantities,
-                'total_sublimation_print_send_waste_quantity' => $totalWasteQuantity,
-            ]);
-
-            DB::commit();
-
-            return redirect()->route('sublimation_print_send_data.index')
-                ->with('success', 'Sublimation Print/Send data updated successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->with('error', 'Error occurred: ' . $e->getMessage())
-                ->withInput();
-        }
-    }
 
     // Helper method to get size ID by name - FIXED VERSION
     private function getSizeIdByName($sizeName)
@@ -1216,6 +1258,57 @@ class SublimationPrintSendController extends Controller
         return redirect()->route('sublimation_print_send_data.index')
             ->with('success', 'Sublimation Print/Send data deleted successfully.');
     }
+
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     // Get product combinations with sublimation_print = true
+    //     $sublimationProductIds = ProductCombination::where('sublimation_print', true)->pluck('id');
+
+    //     // Get cutting data for the selected PO numbers and sublimation products
+    //     $cuttingData = CuttingData::whereIn('po_number', $poNumbers)
+    //         ->whereIn('product_combination_id', $sublimationProductIds)
+    //         ->with(['productCombination.style', 'productCombination.color', 'productCombination.size'])
+    //         ->get()
+    //         ->groupBy('po_number');
+
+    //     $result = [];
+
+    //     foreach ($cuttingData as $poNumber => $cuttingRecords) {
+    //         $result[$poNumber] = [];
+
+    //         // Group cutting records by product_combination_id
+    //         $groupedByCombination = $cuttingRecords->groupBy('product_combination_id');
+
+    //         foreach ($groupedByCombination as $combinationId => $records) {
+    //             // Get the product combination from the first record
+    //             $productCombination = $records->first()->productCombination;
+
+    //             if (!$productCombination) {
+    //                 continue;
+    //             }
+
+    //             $availableQuantities = $this->getAvailableSendQuantities($productCombination)->getData()->availableQuantities;
+
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $productCombination->id,
+    //                 'style' => $productCombination->style->name,
+    //                 'color' => $productCombination->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => $productCombination->sizes->pluck('id')->toArray()
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
 
     public function find(Request $request)
     {
@@ -1251,8 +1344,8 @@ class SublimationPrintSendController extends Controller
                     continue;
                 }
 
-                $availableQuantities = $this->getAvailableSendQuantities($productCombination)->getData()->availableQuantities;
-               
+                // Pass the specific PO number to get available quantities
+                $availableQuantities = $this->getAvailableSendQuantities($productCombination, [$poNumber])->getData()->availableQuantities;
 
                 $result[$poNumber][] = [
                     'combination_id' => $productCombination->id,
@@ -1266,8 +1359,8 @@ class SublimationPrintSendController extends Controller
 
         return response()->json($result);
     }
-
-    public function getAvailableSendQuantities(ProductCombination $productCombination)
+    
+    public function getAvailableSendQuantities(ProductCombination $productCombination, $poNumbers = [])
     {
         $sizes = Size::where('is_active', 1)->get();
         $availableQuantities = [];
@@ -1278,9 +1371,14 @@ class SublimationPrintSendController extends Controller
             $sizeIdToName[$size->id] = $size->name;
         }
 
-        // Sum cut quantities per size using original case
-        $cutQuantities = CuttingData::where('product_combination_id', $productCombination->id)
-            ->get()
+        // Sum cut quantities per size using original case, with PO number filter
+        $cutQuantitiesQuery = CuttingData::where('product_combination_id', $productCombination->id);
+
+        if (!empty($poNumbers)) {
+            $cutQuantitiesQuery->whereIn('po_number', $poNumbers);
+        }
+
+        $cutQuantities = $cutQuantitiesQuery->get()
             ->pluck('cut_quantities')
             ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
                 foreach ($quantities as $key => $qty) {
@@ -1294,9 +1392,18 @@ class SublimationPrintSendController extends Controller
                 return $carry;
             }, []);
 
-        // Sum sent quantities per size using original case
-        $sentQuantities = SublimationPrintSend::where('product_combination_id', $productCombination->id)
-            ->get()
+        // Sum sent quantities per size using original case, with PO number filter
+        $sentQuantitiesQuery = SublimationPrintSend::where('product_combination_id', $productCombination->id);
+
+        if (!empty($poNumbers)) {
+            $sentQuantitiesQuery->where(function ($query) use ($poNumbers) {
+                foreach ($poNumbers as $po) {
+                    $query->orWhere('po_number', 'like', '%' . $po . '%');
+                }
+            });
+        }
+
+        $sentQuantities = $sentQuantitiesQuery->get()
             ->pluck('sublimation_print_send_quantities')
             ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
                 foreach ($quantities as $key => $qty) {
@@ -1323,6 +1430,68 @@ class SublimationPrintSendController extends Controller
             'sizes' => $sizes
         ]);
     }
+
+    // public function getAvailableSendQuantities(ProductCombination $productCombination)
+
+    // {
+    //     $sizes = Size::where('is_active', 1)->get();
+    //     $availableQuantities = [];
+
+    //     // Create a mapping of size IDs to size names
+    //     $sizeIdToName = [];
+    //     foreach ($sizes as $size) {
+    //         $sizeIdToName[$size->id] = $size->name;
+    //     }
+
+    //     // Sum cut quantities per size using original case
+    //     $cutQuantities = CuttingData::where('product_combination_id', $productCombination->id)
+    //         ->get()
+    //         ->pluck('cut_quantities')
+    //         ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+    //             foreach ($quantities as $key => $qty) {
+    //                 // Handle both numeric keys (size IDs) and string keys (size names)
+    //                 $sizeName = is_numeric($key) ? ($sizeIdToName[$key] ?? null) : $key;
+
+    //                 if ($sizeName && $qty > 0) {
+    //                     $carry[$sizeName] = ($carry[$sizeName] ?? 0) + $qty;
+    //                 }
+    //             }
+    //             return $carry;
+    //         }, []);
+
+    //     // Sum sent quantities per size using original case
+    //     $sentQuantities = SublimationPrintSend::where('product_combination_id', $productCombination->id)
+    //         ->get()
+    //         ->pluck('sublimation_print_send_quantities')
+    //         ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+    //             foreach ($quantities as $key => $qty) {
+    //                 // Handle both numeric keys (size IDs) and string keys (size names)
+    //                 $sizeName = is_numeric($key) ? ($sizeIdToName[$key] ?? null) : $key;
+
+    //                 if ($sizeName && $qty > 0) {
+    //                     $carry[$sizeName] = ($carry[$sizeName] ?? 0) + $qty;
+    //                 }
+    //             }
+    //             return $carry;
+    //         }, []);
+
+    //     // Calculate available quantities
+    //     foreach ($sizes as $size) {
+    //         $sizeName = $size->name;
+    //         $cut = $cutQuantities[$sizeName] ?? 0;
+    //         $sent = $sentQuantities[$sizeName] ?? 0;
+    //         $availableQuantities[$sizeName] = max(0, $cut - $sent);
+    //     }
+
+    //     return response()->json([
+    //         'availableQuantities' => $availableQuantities,
+    //         'sizes' => $sizes
+    //     ]);
+    // }
+
+
+
+
 
     // Reports
     public function totalPrintEmbSendReport(Request $request)

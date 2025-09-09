@@ -55,8 +55,6 @@
                     <th>PO Number</th>
                     <th>Style</th>
                     <th>Color</th>
-                    <th>PO Qty</th>
-                    <th>Cutting Qty</th>
                     @foreach ($allSizes as $size)
                         <th>
                             {{ $size->name }}
@@ -147,8 +145,6 @@
                                     </td>
                                     <td class="text-center">${combination.style}</td>
                                     <td class="text-center">${combination.color}</td>
-                                    <td class="text-center">${combination.po_qty}</td>
-                                    <td class="text-center">${combination.cutting_qty}</td>
                                 `;
 
                                 // Available sizes for this PO
