@@ -282,6 +282,59 @@ class OutputFinishingDataController extends Controller
         return $maxQuantities;
     }
 
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     $result = [];
+    //     $processedCombinations = [];
+
+    //     foreach ($poNumbers as $poNumber) {
+    //         // Get data for the selected PO number from LineInputData
+    //         $productCombinations = ProductCombination::whereHas('lineInputData', function ($query) use ($poNumber) {
+    //             $query->where('po_number', 'like', '%' . $poNumber . '%');
+    //         })
+    //             ->with('style', 'color', 'size')
+    //             ->get();
+
+    //         foreach ($productCombinations as $pc) {
+    //             // Skip if product combination doesn't have style or color
+    //             if (!$pc->style || !$pc->color) {
+    //                 continue;
+    //             }
+
+    //             // Create a unique key for this combination
+    //             $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+
+    //             // Skip if we've already processed this combination
+    //             if (in_array($combinationKey, $processedCombinations)) {
+    //                 continue;
+    //             }
+
+    //             // Mark this combination as processed
+    //             $processedCombinations[] = $combinationKey;
+
+    //             $availableQuantities = $this->getMaxOutputQuantities($pc);
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $pc->id,
+    //                 'style' => $pc->style->name,
+    //                 'color' => $pc->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => $pc->sizes->pluck('id')->toArray()
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
+
+
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
@@ -294,45 +347,60 @@ class OutputFinishingDataController extends Controller
         $processedCombinations = [];
 
         foreach ($poNumbers as $poNumber) {
-            // Get data for the selected PO number from LineInputData
+            // Get product combinations with LineInputData for the PO
             $productCombinations = ProductCombination::whereHas('lineInputData', function ($query) use ($poNumber) {
                 $query->where('po_number', 'like', '%' . $poNumber . '%');
             })
-                ->with('style', 'color', 'size')
+                ->with(['style', 'color', 'size', 'lineInputData' => function ($query) use ($poNumber) {
+                    $query->where('po_number', 'like', '%' . $poNumber . '%');
+                }])
                 ->get();
 
             foreach ($productCombinations as $pc) {
-                // Skip if product combination doesn't have style or color
-                if (!$pc->style || !$pc->color) {
-                    continue;
-                }
+                if (!$pc->style || !$pc->color) continue;
 
-                // Create a unique key for this combination
                 $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+                if (in_array($combinationKey, $processedCombinations)) continue;
 
-                // Skip if we've already processed this combination
-                if (in_array($combinationKey, $processedCombinations)) {
-                    continue;
-                }
-
-                // Mark this combination as processed
                 $processedCombinations[] = $combinationKey;
 
-                $availableQuantities = $this->getMaxOutputQuantities($pc);
+                // Calculate total input quantities from LineInputData
+                $inputQuantities = [];
+                foreach ($pc->lineInputData as $input) {
+                    foreach ($input->input_quantities as $sizeId => $qty) {
+                        $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $qty;
+                    }
+                }
+
+                // Subtract already outputted quantities from OutputFinishingData
+                $outputQuantities = [];
+                OutputFinishingData::where('product_combination_id', $pc->id)
+                    ->where('po_number', 'like', '%' . $poNumber . '%')
+                    ->get()
+                    ->each(function ($item) use (&$outputQuantities) {
+                        foreach ($item->output_quantities as $sizeId => $qty) {
+                            $outputQuantities[$sizeId] = ($outputQuantities[$sizeId] ?? 0) + $qty;
+                        }
+                    });
+
+                $availableQuantities = [];
+                foreach ($inputQuantities as $sizeId => $qty) {
+                    $availableQuantities[$sizeId] = $qty - ($outputQuantities[$sizeId] ?? 0);
+                }
 
                 $result[$poNumber][] = [
                     'combination_id' => $pc->id,
                     'style' => $pc->style->name,
                     'color' => $pc->color->name,
                     'available_quantities' => $availableQuantities,
-                    'size_ids' => $pc->sizes->pluck('id')->toArray()
+                    'size_ids' => array_keys($availableQuantities)
                 ];
             }
         }
 
         return response()->json($result);
     }
-
+    
     private function getAvailablePoNumbers()
     {
         $poNumbers = [];

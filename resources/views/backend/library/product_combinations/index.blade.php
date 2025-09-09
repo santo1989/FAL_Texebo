@@ -16,7 +16,7 @@
             <div class="row">
                 <div class="col-12">
                     <div class="card">
-                        <div class="card-header">
+                        {{-- <div class="card-header">
                             <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
@@ -26,12 +26,102 @@
 
                             <form class="d-flex float-right" action="{{ route('product-combinations.index') }}"
                                 method="GET">
-                                <input class="form-control me-2" type="search" name="search"
-                                    placeholder="Search by name" value="{{ request('search') }}">
-                                <button class="btn btn-outline-success" type="submit">Search</button>
-                                <a href="{{ route('product-combinations.index') }}" class="btn btn-outline-secondary">Reset</a>
+                                <div class="row">
+
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="style_id">Style</label>
+                                            <select name="style_id[]" id="style_id" class="form-control" multiple>
+                                                <option value="">Select Style</option>
+                                                @foreach ($allStyles as $style)
+                                                    <option value="{{ $style->id }}"
+                                                        {{ in_array($style->id, (array) request('style_id')) ? 'selected' : '' }}>
+                                                        {{ $style->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label for="color_id">Color</label>
+                                            <select name="color_id[]" id="color_id" class="form-control" multiple>
+                                                <option value="">Select Color</option>
+                                                @foreach ($allColors as $color)
+                                                    <option value="{{ $color->id }}"
+                                                        {{ in_array($color->id, (array) request('color_id')) ? 'selected' : '' }}>
+                                                        {{ $color->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 d-flex align-items-end">
+                                        <input class="form-control me-2" type="search" name="search"
+                                            placeholder="Search by name" value="{{ request('search') }}">
+                                        <button class="btn btn-outline-success" type="submit">Search</button>
+                                        <a href="{{ route('product-combinations.index') }}"
+                                            class="btn btn-outline-secondary">Reset</a>
+                                    </div>
+
+                                </div>
+
                             </form>
-                        </div>
+                        </div> --}}
+                        <div class="card-header d-flex align-items-center flex-wrap justify-content-between">
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
+            <i class="fas fa-arrow-left"></i> Close
+        </a>
+        <a href="{{ route('product-combinations.create') }}" class="btn btn-lg btn-outline-primary">
+            <i class="fas fa-plus"></i> Create
+        </a>
+    </div>
+
+    <form class="d-flex flex-wrap gap-2 mt-2 mt-md-0" action="{{ route('product-combinations.index') }}" method="GET">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="style_id">Style</label>
+                    <select name="style_id[]" id="style_id" class="form-control" multiple>
+                        <option value="">Select Style</option>
+                        @foreach ($allStyles as $style)
+                            <option value="{{ $style->id }}"
+                                {{ in_array($style->id, (array) request('style_id')) ? 'selected' : '' }}>
+                                {{ $style->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="color_id">Color</label>
+                    <select name="color_id[]" id="color_id" class="form-control" multiple>
+                        <option value="">Select Color</option>
+                        @foreach ($allColors as $color)
+                            <option value="{{ $color->id }}"
+                                {{ in_array($color->id, (array) request('color_id')) ? 'selected' : '' }}>
+                                {{ $color->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-md-6 d-flex align-items-end">
+                <input class="form-control me-2" type="search" name="search"
+                    placeholder="Search by name" value="{{ request('search') }}">
+                <button class="btn btn-outline-success" type="submit">Search</button>
+                <a href="{{ route('product-combinations.index') }}"
+                    class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </div>
+    </form>
+</div>
                         <div class="card-body">
                             <table class="table table-bordered table-hover">
                                 <thead>
@@ -55,7 +145,7 @@
                                             <td>{{ $combination->style->name }}</td>
                                             <td>{{ $combination->color->name }}</td>
                                             <td>
-                                                
+
                                                 @foreach ($combination->size_ids as $sizeId)
                                                     <span class="badge bg-info">
                                                         {{ \App\Models\Size::find($sizeId)?->name }}
@@ -74,7 +164,7 @@
                                                     </button>
                                                 </form>
                                             </td>
-                                             <!--sublimation print button-->
+                                            <!--sublimation print button-->
                                             <td>
                                                 <form
                                                     action="{{ route('product-combinations.sublimation_print', $combination->id) }}"
@@ -98,7 +188,7 @@
                                                     </button>
                                                 </form>
                                             </td>
-                                           
+
                                             <td>
                                                 <a href="{{ route('product-combinations.edit', $combination->id) }}"
                                                     class="btn btn-sm btn-outline-primary">

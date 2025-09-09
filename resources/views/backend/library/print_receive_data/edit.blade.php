@@ -47,13 +47,19 @@
                                     <div class="row">
                                         @foreach ($allSizes as $size)
                                             @php
-                                                $receiveQty = $printReceiveDatum->receive_quantities[$size->id] ?? 0;
-                                                $wasteQty = $printReceiveDatum->receive_waste_quantities[$size->id] ?? 0;
-                                            @endphp
+    // Convert to array if it's an object
+    $receiveQty = is_object($printReceiveDatum->receive_quantities) ? 
+        ($printReceiveDatum->receive_quantities->{$size->id} ?? 0) : 
+        ($printReceiveDatum->receive_quantities[$size->id] ?? 0);
+        
+    $wasteQty = is_object($printReceiveDatum->receive_waste_quantities) ? 
+        ($printReceiveDatum->receive_waste_quantities->{$size->id} ?? 0) : 
+        ($printReceiveDatum->receive_waste_quantities[$size->id] ?? 0);
+@endphp
                                             <div class="col-md-3 mb-3">
-                                                <label for="receive_quantities_{{ $size->id }}">{{ $size->name }} Receive</label>
+                                                <label for="receive_quantities_{{ $size->id }}">{{ $size->name }} Receive| Max = {{ $availableQuantities[$size->id] ?? 0 }}</label>
                                                 <input type="number" name="receive_quantities[{{ $size->id }}]" id="receive_quantities_{{ $size->id }}"
-                                                    class="form-control" value="{{ old('receive_quantities.' . $size->id, $receiveQty) }}" min="0">
+                                                    class="form-control" value="{{ old('receive_quantities.' . $size->id, $receiveQty) }}" min="0" max="{{ $availableQuantities[$size->id] ?? 0 }}">
                                                 @error('receive_quantities.' . $size->id)
                                                     <div class="text-danger">{{ $message }}</div>
                                                 @enderror
@@ -80,4 +86,20 @@
             </div>
         </div>
     </section>
+    <script>
+        // prevent higher than max value input and if high then auto set to max value
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('input', function() {
+                const max = parseInt(this.max);
+                const min = parseInt(this.min) || 0;
+                let value = parseInt(this.value);
+
+                if (!isNaN(max) && value > max) {
+                    this.value = max;
+                } else if (value < min) {
+                    this.value = min;
+                }
+            });
+        });
+    </script>
 </x-backend.layouts.master>

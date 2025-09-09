@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Color;
 use App\Models\CuttingData;
+use App\Models\OrderData;
 use App\Models\ProductCombination;
 use App\Models\Size;
 use App\Models\Style;
@@ -958,9 +959,14 @@ class SublimationPrintSendController extends Controller
         }
 
         $printSendData = $query->orderBy('date', 'desc')->paginate(10);
-        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        return view('backend.library.sublimation_print_send_data.index', compact('printSendData', 'allSizes'));
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $alldata = OrderData::with('style', 'color')->distinct()->get(['po_number', 'style_id', 'color_id']);
+        $allStyles = $alldata->pluck('style')->unique('id')->values();
+        $allColors = $alldata->pluck('color')->unique('id')->values();
+        $distinctPoNumbers = $alldata->pluck('po_number')->unique()->values();
+
+        return view('backend.library.sublimation_print_send_data.index', compact('printSendData', 'allSizes', 'allStyles', 'allColors', 'distinctPoNumbers'));
     }
 
     public function create()
@@ -1246,6 +1252,7 @@ class SublimationPrintSendController extends Controller
                 }
 
                 $availableQuantities = $this->getAvailableSendQuantities($productCombination)->getData()->availableQuantities;
+               
 
                 $result[$poNumber][] = [
                     'combination_id' => $productCombination->id,

@@ -12,28 +12,61 @@ use Illuminate\Support\Facades\DB;
 
 class OrderDataController extends Controller
 {
+
     public function index(Request $request)
     {
         $query = OrderData::with('productCombination.buyer', 'style', 'color');
 
+        // Search logic for PO/Style/Color names
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->whereHas('style', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
-            })->orWhereHas('color', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
-            })->orWhere('po_number', 'like', '%' . $search . '%');
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', "%{$search}%")
+                  ->orWhereHas('style', function ($subQ) use ($search) {
+                      $subQ->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('color', function ($subQ) use ($search) {
+                      $subQ->where('name', 'like', "%{$search}%");
+                  });
+            });
         }
-        if ($request->filled('date')) {
-            $query->whereDate('date', $request->input('date'));
+
+        // Filter by multiple styles
+        if ($request->filled('style_id')) {
+            $query->whereIn('style_id', $request->input('style_id'));
+        }
+
+        // Filter by multiple colors
+        if ($request->filled('color_id')) {
+            $query->whereIn('color_id', $request->input('color_id'));
+        }
+
+        // Filter by multiple PO numbers
+        if ($request->filled('po_number')) {
+            $query->whereIn('po_number', $request->input('po_number'));
+        }
+
+        // Filter by date range
+        if ($request->filled('start_date')) {
+            $query->whereDate('date', '>=', $request->input('start_date'));
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('date', '<=', $request->input('end_date'));
         }
 
         $orderData = $query->orderBy('created_at', 'desc')->paginate(10);
+
+        $alldata = OrderData::with('productCombination.buyer', 'style', 'color')->distinct()->get(['po_number', 'style_id', 'color_id', 'product_combination_id']);
+        $allStyles = $alldata->pluck('style')->unique('id')->values();
+        $allColors = $alldata->pluck('color')->unique('id')->values();
+        $distinctPoNumbers = $alldata->pluck('po_number')->unique()->values();
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        // dd($allSizes, $orderData);
 
-        return view('backend.library.order_data.index', compact('orderData', 'allSizes'));
+
+
+        return view('backend.library.order_data.index', compact('orderData', 'allSizes', 'allStyles', 'allColors', 'distinctPoNumbers'));
     }
 
     // updateStatus

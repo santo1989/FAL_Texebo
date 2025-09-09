@@ -500,6 +500,7 @@ class LineInputDataController extends Controller
     {
         $maxQuantities = [];
         $allSizes = Size::where('is_active', 1)->get();
+        
 
         // Determine source based on product combination type
         if ($pc->print_embroidery && !$pc->sublimation_print) {
@@ -591,6 +592,25 @@ class LineInputDataController extends Controller
             'sizes' => $sizes
         ]);
     }
+
+    private function getAvailablePoNumbers()
+    {
+        $poNumbers = [];
+
+        // Get PO numbers from all relevant sources
+        $cuttingPoNumbers = CuttingData::distinct()->pluck('po_number')->filter()->values();
+        $printPoNumbers = PrintReceiveData::distinct()->pluck('po_number')->filter()->values();
+        $sublimationPoNumbers = SublimationPrintReceive::distinct()->pluck('po_number')->filter()->values();
+
+        $poNumbers = array_merge(
+            $cuttingPoNumbers->toArray(),
+            $printPoNumbers->toArray(),
+            $sublimationPoNumbers->toArray()
+        );
+
+        return array_unique($poNumbers);
+    }
+
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
@@ -603,44 +623,120 @@ class LineInputDataController extends Controller
         $processedCombinations = [];
 
         foreach ($poNumbers as $poNumber) {
-            // Get data for the selected PO number based on product combination type
+            // Get all product combinations that have data in any of the sources for this PO number
             $productCombinations = ProductCombination::where(function ($query) use ($poNumber) {
                 $query->whereHas('cuttingData', function ($q) use ($poNumber) {
                     $q->where('po_number', 'like', '%' . $poNumber . '%');
-                })->orWhereHas('printReceives', function ($q) use ($poNumber) {
-                    $q->where('po_number', 'like', '%' . $poNumber . '%');
-                })->orWhereHas('sublimationPrintReceives', function ($q) use ($poNumber) {
-                    $q->where('po_number', 'like', '%' . $poNumber . '%');
-                });
+                })
+                    ->orWhereHas('printReceives', function ($q) use ($poNumber) {
+                        $q->where('po_number', 'like', '%' . $poNumber . '%');
+                    })
+                    ->orWhereHas('sublimationPrintReceives', function ($q) use ($poNumber) {
+                        $q->where('po_number', 'like', '%' . $poNumber . '%');
+                    });
             })
                 ->with('style', 'color', 'size')
                 ->get();
 
             foreach ($productCombinations as $pc) {
-                // Skip if product combination doesn't have style or color
                 if (!$pc->style || !$pc->color) {
                     continue;
                 }
 
-                // Create a unique key for this combination
                 $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
 
-                // Skip if we've already processed this combination
                 if (in_array($combinationKey, $processedCombinations)) {
                     continue;
                 }
 
-                // Mark this combination as processed
                 $processedCombinations[] = $combinationKey;
 
-                $availableQuantities = $this->getMaxInputQuantities($pc);
+                // Get order quantities for this PO and product combination
+                $orderData = OrderData::where('product_combination_id', $pc->id)
+                    ->where('po_number', $poNumber)
+                    ->first();
+
+                if (!$orderData) {
+                    continue;
+                }
+
+                // Get available quantities from previous stages based on product combination type
+                $availableQuantities = [];
+
+                if ($pc->print_embroidery && !$pc->sublimation_print) {
+                    // Print/Embroidery
+                    PrintReceiveData::where('product_combination_id', $pc->id)
+                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->receive_quantities as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+                } elseif (!$pc->print_embroidery && $pc->sublimation_print) {
+                    // Sublimation
+                    SublimationPrintReceive::where('product_combination_id', $pc->id)
+                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->sublimation_print_receive_quantities as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+                } elseif ($pc->print_embroidery && $pc->sublimation_print) {
+                    // Both print and sublimation
+                    PrintReceiveData::where('product_combination_id', $pc->id)
+                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->receive_quantities as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+
+                    SublimationPrintReceive::where('product_combination_id', $pc->id)
+                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->sublimation_print_receive_quantities as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+                } else {
+                    // Cutting only
+                    CuttingData::where('product_combination_id', $pc->id)
+                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->cut_quantities as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+                }
+
+                // Subtract already input quantities
+                $inputQuantities = [];
+                LineInputData::where('product_combination_id', $pc->id)
+                    ->where('po_number', 'like', '%' . $poNumber . '%')
+                    ->get()
+                    ->each(function ($item) use (&$inputQuantities) {
+                        foreach ($item->input_quantities as $sizeId => $quantity) {
+                            $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $quantity;
+                        }
+                    });
+
+                foreach ($availableQuantities as $sizeId => &$qty) {
+                    $inputQty = $inputQuantities[$sizeId] ?? 0;
+                    $qty = max(0, $qty - $inputQty);
+                }
 
                 $result[$poNumber][] = [
                     'combination_id' => $pc->id,
                     'style' => $pc->style->name,
                     'color' => $pc->color->name,
                     'available_quantities' => $availableQuantities,
-                    'size_ids' => $pc->sizes->pluck('id')->toArray()
+                    'order_quantities' => $orderData->order_quantities ?? [],
+                    'size_ids' => array_keys($availableQuantities)
                 ];
             }
         }
@@ -648,22 +744,80 @@ class LineInputDataController extends Controller
         return response()->json($result);
     }
 
-    private function getAvailablePoNumbers()
-    {
-        $poNumbers = [];
 
-        // Get PO numbers from CuttingData
-        $cuttingPoNumbers = CuttingData::distinct()->pluck('po_number')->filter()->values();
-        $poNumbers = array_merge($poNumbers, $cuttingPoNumbers->toArray());
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
 
-        // Get PO numbers from PrintReceiveData
-        $printPoNumbers = PrintReceiveData::distinct()->pluck('po_number')->filter()->values();
-        $poNumbers = array_merge($poNumbers, $printPoNumbers->toArray());
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
 
-        // Get PO numbers from SublimationPrintReceive
-        $sublimationPoNumbers = SublimationPrintReceive::distinct()->pluck('po_number')->filter()->values();
-        $poNumbers = array_merge($poNumbers, $sublimationPoNumbers->toArray());
+    //     $result = [];
+    //     $processedCombinations = [];
 
-        return array_unique($poNumbers);
-    }
+    //     foreach ($poNumbers as $poNumber) {
+    //         // Get data for the selected PO number based on product combination type
+    //         $productCombinations = ProductCombination::where(function ($query) use ($poNumber) {
+    //             $query->whereHas('cuttingData', function ($q) use ($poNumber) {
+    //                 $q->where('po_number', 'like', '%' . $poNumber . '%');
+    //             })->orWhereHas('printReceives', function ($q) use ($poNumber) {
+    //                 $q->where('po_number', 'like', '%' . $poNumber . '%');
+    //             })->orWhereHas('sublimationPrintReceives', function ($q) use ($poNumber) {
+    //                 $q->where('po_number', 'like', '%' . $poNumber . '%');
+    //             });
+    //         })
+    //             ->with('style', 'color', 'size')
+    //             ->get();
+
+    //         foreach ($productCombinations as $pc) {
+    //             // Skip if product combination doesn't have style or color
+    //             if (!$pc->style || !$pc->color) {
+    //                 continue;
+    //             }
+
+    //             // Create a unique key for this combination
+    //             $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+
+    //             // Skip if we've already processed this combination
+    //             if (in_array($combinationKey, $processedCombinations)) {
+    //                 continue;
+    //             }
+
+    //             // Mark this combination as processed
+    //             $processedCombinations[] = $combinationKey;
+
+    //             $availableQuantities = $this->getMaxInputQuantities($pc);
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $pc->id,
+    //                 'style' => $pc->style->name,
+    //                 'color' => $pc->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => $pc->sizes->pluck('id')->toArray()
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
+    // private function getAvailablePoNumbers()
+    // {
+    //     $poNumbers = [];
+
+    //     // Get PO numbers from CuttingData
+    //     $cuttingPoNumbers = CuttingData::distinct()->pluck('po_number')->filter()->values();
+    //     $poNumbers = array_merge($poNumbers, $cuttingPoNumbers->toArray());
+
+    //     // Get PO numbers from PrintReceiveData
+    //     $printPoNumbers = PrintReceiveData::distinct()->pluck('po_number')->filter()->values();
+    //     $poNumbers = array_merge($poNumbers, $printPoNumbers->toArray());
+
+    //     // Get PO numbers from SublimationPrintReceive
+    //     $sublimationPoNumbers = SublimationPrintReceive::distinct()->pluck('po_number')->filter()->values();
+    //     $poNumbers = array_merge($poNumbers, $sublimationPoNumbers->toArray());
+
+    //     return array_unique($poNumbers);
+    // }
 }

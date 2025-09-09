@@ -132,12 +132,42 @@ class PrintReceiveDataController extends Controller
         return view('backend.library.print_receive_data.show', compact('printReceiveDatum', 'allSizes'));
     }
 
+    // public function edit(PrintReceiveData $printReceiveDatum)
+    // {
+    //     $printReceiveDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+    //     //only valid sizes
+    //     $validSizes = $allSizes->filter(function ($size) use ($printReceiveDatum) {
+    //         return isset($printReceiveDatum->receive_quantities[$size->id]) ||
+    //             isset($printReceiveDatum->receive_waste_quantities[$size->id]);
+    //     });
+
+    //     $allSizes = $validSizes->values();
+
+    //     $availableQuantities = $this->getAvailableReceiveQuantities($printReceiveDatum->productCombination)->getData()->availableQuantities;
+
+    //     // dd($availableQuantities);
+
+    //     return view('backend.library.print_receive_data.edit', compact('printReceiveDatum', 'allSizes', 'availableQuantities'));
+    // }
+
+
     public function edit(PrintReceiveData $printReceiveDatum)
     {
         $printReceiveDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        //only valid sizes
+        // Convert JSON objects to arrays if needed
+        if (is_object($printReceiveDatum->receive_quantities)) {
+            $printReceiveDatum->receive_quantities = (array) $printReceiveDatum->receive_quantities;
+        }
+
+        if (is_object($printReceiveDatum->receive_waste_quantities)) {
+            $printReceiveDatum->receive_waste_quantities = (array) $printReceiveDatum->receive_waste_quantities;
+        }
+
+        // Only show sizes that have data
         $validSizes = $allSizes->filter(function ($size) use ($printReceiveDatum) {
             return isset($printReceiveDatum->receive_quantities[$size->id]) ||
                 isset($printReceiveDatum->receive_waste_quantities[$size->id]);
@@ -145,9 +175,15 @@ class PrintReceiveDataController extends Controller
 
         $allSizes = $validSizes->values();
 
-        return view('backend.library.print_receive_data.edit', compact('printReceiveDatum', 'allSizes'));
-    }
+        $availableQuantities = $this->getAvailableReceiveQuantities($printReceiveDatum->productCombination)->getData()->availableQuantities;
 
+        // Ensure availableQuantities is an array
+        if (is_object($availableQuantities)) {
+            $availableQuantities = (array) $availableQuantities;
+        }
+
+        return view('backend.library.print_receive_data.edit', compact('printReceiveDatum', 'allSizes', 'availableQuantities'));
+    }
     public function update(Request $request, PrintReceiveData $printReceiveDatum)
     {
         $request->validate([

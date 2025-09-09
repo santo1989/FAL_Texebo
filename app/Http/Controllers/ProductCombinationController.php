@@ -15,37 +15,42 @@ class ProductCombinationController extends Controller
     {
         $query = ProductCombination::with(['buyer', 'style', 'color', 'size']);
 
-        // Search and filter logic
-        if ($request->has('search') && !empty($request->search)) {
+        // Search logic
+        if ($request->filled('search')) {
             $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('buyer', function ($subQ) use ($search) {
+                    $subQ->where('name', 'like', "%{$search}%");
+                })
+                    ->orWhereHas('style', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('color', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
 
-            // If search term is numeric, search in ID fields
-            if (is_numeric($search)) {
-                $query->where(function ($q) use ($search) {
-                    $q->whereHas('buyer', function ($subQ) use ($search) {
-                        $subQ->where('id', $search);
-                    })->orWhereHas('style', function ($subQ) use ($search) {
-                        $subQ->where('id', $search);
-                    })->orWhereHas('color', function ($subQ) use ($search) {
-                        $subQ->where('id', $search);
-                    });
-                });
-            } else {
-                // If search term is text, search in name fields
-                $query->where(function ($q) use ($search) {
-                    $q->whereHas('buyer', function ($subQ) use ($search) {
-                        $subQ->where('name', 'like', '%' . $search . '%');
-                    })->orWhereHas('style', function ($subQ) use ($search) {
-                        $subQ->where('name', 'like', '%' . $search . '%');
-                    })->orWhereHas('color', function ($subQ) use ($search) {
-                        $subQ->where('name', 'like', '%' . $search . '%');
-                    });
-                });
-            }
+        // Filter logic for multiple selected items
+        if ($request->filled('style_id')) {
+            $query->whereIn('style_id', $request->style_id);
+        }
+
+        if ($request->filled('color_id')) {
+            $query->whereIn('color_id', $request->color_id);
+        }
+
+        if ($request->filled('size_id')) {
+            $query->whereIn('size_id', $request->size_id);
         }
 
         $combinations = $query->paginate(10);
-        return view('backend.library.product_combinations.index', compact('combinations'));
+
+        $allStyles = Style::all();
+        $allColors = Color::all();
+        $allSizes = Size::all();
+
+        return view('backend.library.product_combinations.index', compact('combinations', 'allStyles', 'allColors', 'allSizes'));
     }
 
     public function create()

@@ -52,6 +52,11 @@ class ProductCombination extends Model
         return $this->size_ids ?? [];
     }
 
+    public function orderData()
+    {
+        return $this->hasMany(OrderData::class);
+    }
+
     
 
     public function cuttingData()

@@ -19,144 +19,81 @@
                     <a href="{{ route('order_data.index') }}" class="btn btn-secondary mb-3 float-right">
                         <i class="fas fa-arrow-left"></i> Close
                     </a>
-                </div>
-                <div class="card-body">
-                    {{-- <form action="{{ route('order_data.report.total_order') }}" method="GET" class="mb-4">
+
+
+                    <form action="{{ route('order_data.report.total_order') }}" method="GET" class="mb-4">
                         <div class="row">
-                            <!--style and color filters-->
-                            <div class="col-md-3">
+
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="style_id">Style</label>
-                                    <select name="style_id" id="style_id" class="form-control" multiple>
+                                    <select name="style_id[]" id="style_id" class="form-control" multiple>
                                         <option value="">Select Style</option>
                                         @foreach ($allStyles as $style)
                                             <option value="{{ $style->id }}"
-                                                {{ in_array($style->id, (array)request('style_id')) ? 'selected' : '' }}>
+                                                {{ in_array($style->id, (array) request('style_id')) ? 'selected' : '' }}>
                                                 {{ $style->name }}
                                             </option>
                                         @endforeach
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="color_id">Color</label>
-                                    <select name="color_id" id="color_id" class="form-control" multiple>
+                                    <select name="color_id[]" id="color_id" class="form-control" multiple>
                                         <option value="">Select Color</option>
                                         @foreach ($allColors as $color)
                                             <option value="{{ $color->id }}"
-                                                {{ in_array($color->id, (array)request('color_id')) ? 'selected' : '' }}>
+                                                {{ in_array($color->id, (array) request('color_id')) ? 'selected' : '' }}>
                                                 {{ $color->name }}
                                             </option>
                                         @endforeach
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="po_number">PO Number</label>
-                                    <select name="po_number" id="po_number" class="form-control" multiple>
+                                    <select name="po_number[]" id="po_number" class="form-control" multiple>
                                         <option value="">Select PO Number</option>
                                         @foreach ($distinctPoNumbers as $poNumber)
                                             <option value="{{ $poNumber }}"
-                                                {{ in_array($poNumber, (array)request('po_number')) ? 'selected' : '' }}>
+                                                {{ in_array($poNumber, (array) request('po_number')) ? 'selected' : '' }}>
                                                 {{ $poNumber }}
                                             </option>
                                         @endforeach
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="start_date">Start Date</label>
                                     <input type="date" name="start_date" id="start_date" class="form-control"
                                         value="{{ request('start_date') }}">
                                 </div>
-                            </div>
-                            <div class="col-md-3">
+
                                 <div class="form-group">
                                     <label for="end_date">End Date</label>
                                     <input type="date" name="end_date" id="end_date" class="form-control"
                                         value="{{ request('end_date') }}">
                                 </div>
                             </div>
+
+
                             <div class="col-md-3 d-flex align-items-end">
-                                <button type="submit" class="btn btn-info mr-2">Generate Report</button>
-                                <a href="{{ route('order_data.report.total_order') }}" class="btn btn-secondary">Reset
-                                    Dates</a>
+                                <button type="submit" class="btn btn-info mr-2">Search</button>
+                                <a href="{{ route('order_data.report.total_order') }}"
+                                    class="btn btn-secondary">Reset</a>
                             </div>
+
                         </div>
-                    </form> --}}
-
-                    <form action="{{ route('order_data.report.total_order') }}" method="GET" class="mb-4">
-    <div class="row">
-        <div class="col-md-3">
-            <div class="form-group">
-                <label for="style_id">Style</label>
-                <select name="style_id[]" id="style_id" class="form-control" multiple>
-                    <option value="">Select Style</option>
-                    @foreach ($allStyles as $style)
-                        <option value="{{ $style->id }}"
-                            {{ in_array($style->id, (array)request('style_id')) ? 'selected' : '' }}>
-                            {{ $style->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="form-group">
-                <label for="color_id">Color</label>
-                <select name="color_id[]" id="color_id" class="form-control" multiple>
-                    <option value="">Select Color</option>
-                    @foreach ($allColors as $color)
-                        <option value="{{ $color->id }}"
-                            {{ in_array($color->id, (array)request('color_id')) ? 'selected' : '' }}>
-                            {{ $color->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="form-group">
-                <label for="po_number">PO Number</label>
-                <select name="po_number[]" id="po_number" class="form-control" multiple>
-                    <option value="">Select PO Number</option>
-                    @foreach ($distinctPoNumbers as $poNumber)
-                        <option value="{{ $poNumber }}"
-                            {{ in_array($poNumber, (array)request('po_number')) ? 'selected' : '' }}>
-                            {{ $poNumber }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="form-group">
-                <label for="start_date">Start Date</label>
-                <input type="date" name="start_date" id="start_date" class="form-control"
-                    value="{{ request('start_date') }}">
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="form-group">
-                <label for="end_date">End Date</label>
-                <input type="date" name="end_date" id="end_date" class="form-control"
-                    value="{{ request('end_date') }}">
-            </div>
-        </div>
-
-        <div class="col-md-3 d-flex align-items-end">
-            <button type="submit" class="btn btn-info mr-2">Generate Report</button>
-            <a href="{{ route('order_data.report.total_order') }}" class="btn btn-secondary">Reset Dates</a>
-        </div>
-    </div>
-</form>
-
+                    </form>
+                </div>
+                <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover">
                             <thead>

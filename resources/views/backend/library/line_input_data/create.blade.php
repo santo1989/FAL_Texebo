@@ -68,197 +68,192 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const poNumberSelect = document.getElementById('po_number');
-            const lineInputDataBody = document.getElementById('line-input-data-body');
-            let savedInputs = {};
-            let processedCombinations = new Set();
+    const poNumberSelect = document.getElementById('po_number');
+    const lineInputDataBody = document.getElementById('line-input-data-body');
+    let savedInputs = {};
+    let processedCombinations = new Set();
 
-            const initialPoNumbers = Array.from(poNumberSelect.selectedOptions).map(option => option.value);
-            if (initialPoNumbers.length > 0) {
-                updateLineInputDataRows(initialPoNumbers);
-            }
+    const initialPoNumbers = Array.from(poNumberSelect.selectedOptions).map(option => option.value);
+    if (initialPoNumbers.length > 0) {
+        updateLineInputDataRows(initialPoNumbers);
+    }
 
-            poNumberSelect.addEventListener('change', function() {
-                const selectedPoNumbers = Array.from(poNumberSelect.selectedOptions).map(option => option
-                    .value);
-                processedCombinations.clear();
-                if (selectedPoNumbers.length > 0) {
-                    updateLineInputDataRows(selectedPoNumbers);
-                } else {
-                    lineInputDataBody.innerHTML = '';
-                    savedInputs = {};
+    poNumberSelect.addEventListener('change', function() {
+        const selectedPoNumbers = Array.from(poNumberSelect.selectedOptions).map(option => option.value);
+        processedCombinations.clear();
+        if (selectedPoNumbers.length > 0) {
+            updateLineInputDataRows(selectedPoNumbers);
+        } else {
+            lineInputDataBody.innerHTML = '';
+            savedInputs = {};
+        }
+    });
+
+    function updateLineInputDataRows(poNumbers) {
+        const url = '{{ route('line_input_data.find') }}?po_numbers[]=' + poNumbers.join('&po_numbers[]=');
+
+        fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 }
-            });
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
+                return response.json();
+            })
+            .then(data => {
+                lineInputDataBody.innerHTML = '';
+                let rowIndex = 0;
+                processedCombinations.clear();
 
-            function updateLineInputDataRows(poNumbers) {
-                const url = '{{ route('line_input_data.find') }}?po_numbers[]=' + poNumbers.join('&po_numbers[]=');
+                if (!data || Object.keys(data).length === 0) {
+                    lineInputDataBody.innerHTML = '<tr><td colspan="100%">No data found for selected PO numbers.</td></tr>';
+                    return;
+                }
 
-                fetch(url, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) throw new Error('Network response was not ok: ' + response
-                        .statusText);
-                        return response.json();
-                    })
-                    .then(data => {
-                        lineInputDataBody.innerHTML = '';
-                        let rowIndex = 0;
-                        processedCombinations.clear();
+                for (const poNumber in data) {
+                    if (!Array.isArray(data[poNumber])) continue;
 
-                        if (!data || Object.keys(data).length === 0) {
-                            lineInputDataBody.innerHTML =
-                                '<tr><td colspan="100%">No data found for selected PO numbers.</td></tr>';
+                    data[poNumber].forEach(combination => {
+                        if (!combination.combination_id || !combination.style || !combination.color ||
+                            !combination.available_quantities || !combination.size_ids) {
+                            console.error('Invalid combination data:', combination);
                             return;
                         }
 
-                        for (const poNumber in data) {
-                            if (!Array.isArray(data[poNumber])) continue;
+                        const combinationKey = `${combination.combination_id}-${combination.style}-${combination.color}`;
 
-                            data[poNumber].forEach(combination => {
-                                // Add validation to ensure all required fields exist
-                                if (!combination.combination_id || !combination.style || !combination
-                                    .color ||
-                                    !combination.available_quantities || !combination.size_ids) {
-                                    console.error('Invalid combination data:', combination);
-                                    return;
-                                }
-
-                                const combinationKey =
-                                    `${combination.combination_id}-${combination.style}-${combination.color}`;
-
-                                if (processedCombinations.has(combinationKey)) {
-                                    return;
-                                }
-
-                                processedCombinations.add(combinationKey);
-
-                                const row = document.createElement('tr');
-                                const key = `${poNumber}-${combination.combination_id}`;
-                                row.dataset.key = key;
-                                row.innerHTML = `
-                    <td class="text-center">
-                        <input type="hidden" name="rows[${rowIndex}][product_combination_id]" value="${combination.combination_id}">
-                        ${poNumber}
-                    </td>
-                    <td class="text-center">${combination.style}</td>
-                    <td class="text-center">${combination.color}</td>
-                `;
-
-                                const availableSizeIds = combination.size_ids.map(id => String(id));
-
-                             @foreach ($sizes as $size)
-    {
-        const sizeId = "{{ $size->id }}";
-        const sizeName = "{{ $size->name }}";
-        // Use size ID as key instead of size name
-        const availableQty = combination.available_quantities[sizeId] || 0;
-        const savedInput = (savedInputs[key] && savedInputs[key].input && savedInputs[key].input[sizeId]) || 0;
-        const savedWaste = (savedInputs[key] && savedInputs[key].waste && savedInputs[key].waste[sizeId]) || 0;
-        const isSizeAvailable = availableSizeIds.includes(sizeId);
-
-        const cell = document.createElement('td');
-        if (isSizeAvailable && availableQty > 0) {
-            cell.innerHTML = ` <label>Max = ${availableQty} Pcs </label> <br>
-                <div class="input-group input-group-sm">
-                    <input type="number" 
-                           name="rows[${rowIndex}][input_quantities][${sizeId}]" 
-                           class="form-control input-qty-input"
-                           min="0" 
-                           max="${availableQty}"
-                           value="${savedInput}"
-                           placeholder="Av: ${availableQty}">
-                    <input type="number" 
-                           name="rows[${rowIndex}][input_waste_quantities][${sizeId}]" 
-                           class="form-control waste-qty-input"
-                           min="0" 
-                           value="${savedWaste}"
-                           max="${availableQty}"
-                           placeholder="W: 0">
-                </div>
-            `;
-        } else {
-            cell.innerHTML = `<span class="text-muted text-center">N/A</span>`;
-        }
-        row.appendChild(cell);
-    }
-@endforeach
-
-                                row.innerHTML += `
-                    <td><span class="total-input-qty-span">0</span></td>
-                    <td><span class="total-waste-qty-span">0</span></td>
-                `;
-
-                                lineInputDataBody.appendChild(row);
-                                rowIndex++;
-                            });
+                        if (processedCombinations.has(combinationKey)) {
+                            return;
                         }
 
-                        lineInputDataBody.querySelectorAll('.input-qty-input, .waste-qty-input').forEach(
-                            input => {
-                                input.dispatchEvent(new Event('input'));
-                            });
-                    })
-                    .catch(error => {
-                        console.error('Error fetching data:', error);
-                        lineInputDataBody.innerHTML =
-                            '<tr><td colspan="100%">Error loading data. Error: ' + error.message + '</td></tr>';
+                        processedCombinations.add(combinationKey);
+
+                        const availableQuantitiesObj = combination.available_quantities;
+                        const availableSizeIds = combination.size_ids.map(id => parseInt(id));
+
+                        const row = document.createElement('tr');
+                        const key = `${poNumber}-${combination.combination_id}`;
+                        row.dataset.key = key;
+                        row.innerHTML = `
+                            <td class="text-center">
+                                <input type="hidden" name="rows[${rowIndex}][product_combination_id]" value="${combination.combination_id}">
+                                ${poNumber}
+                            </td>
+                            <td class="text-center">${combination.style}</td>
+                            <td class="text-center">${combination.color}</td>
+                        `;
+
+                        @foreach ($sizes as $size)
+                            {
+                                const sizeId = {{ $size->id }};
+                                const sizeName = "{{ $size->name }}";
+                                const availableQty = availableQuantitiesObj[sizeId] || 0;
+                                const orderQty = combination.order_quantities ? (combination.order_quantities[sizeId] || 0) : 0;
+                                const savedInput = (savedInputs[key] && savedInputs[key].input && savedInputs[key].input[sizeId]) || 0;
+                                const savedWaste = (savedInputs[key] && savedInputs[key].waste && savedInputs[key].waste[sizeId]) || 0;
+                                const isSizeAvailable = availableSizeIds.includes(sizeId);
+
+                                const cell = document.createElement('td');
+                                if (isSizeAvailable && availableQty > 0) {
+                                    cell.innerHTML = ` 
+                                        <strong>Order: ${orderQty} | Avail: ${availableQty}</strong> <br>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" 
+                                                   name="rows[${rowIndex}][input_quantities][${sizeId}]" 
+                                                   class="form-control input-qty-input"
+                                                   min="0" 
+                                                   max="${availableQty}"
+                                                   value="${savedInput}"
+                                                   placeholder="Input">
+                                                    <label>Waste Qty:</label> <br>
+                                            <input type="number" 
+                                                   name="rows[${rowIndex}][input_waste_quantities][${sizeId}]" 
+                                                   class="form-control waste-qty-input"
+                                                   min="0" 
+                                                   value="${savedWaste}"
+                                                   max="${availableQty}"
+                                                   placeholder="Waste">
+                                        </div>
+                                    `;
+                                } else {
+                                    cell.innerHTML = `<span class="text-muted text-center">N/A</span>`;
+                                }
+                                row.appendChild(cell);
+                            }
+                        @endforeach
+
+                        row.innerHTML += `
+                            <td><span class="total-input-qty-span">0</span></td>
+                            <td><span class="total-waste-qty-span">0</span></td>
+                        `;
+
+                        lineInputDataBody.appendChild(row);
+                        rowIndex++;
                     });
+                }
+
+                lineInputDataBody.querySelectorAll('.input-qty-input, .waste-qty-input').forEach(input => {
+                    input.dispatchEvent(new Event('input'));
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                lineInputDataBody.innerHTML = '<tr><td colspan="100%">Error loading data. Error: ' + error.message + '</td></tr>';
+            });
+    }
+
+    lineInputDataBody.addEventListener('input', function(e) {
+        const target = e.target;
+        const row = target.closest('tr');
+        const key = row.dataset.key;
+
+        if (!savedInputs[key]) {
+            savedInputs[key] = {
+                input: {},
+                waste: {}
+            };
+        }
+
+        let isInput = target.classList.contains('input-qty-input');
+        let isWaste = target.classList.contains('waste-qty-input');
+
+        if (isInput || isWaste) {
+            const name = target.name;
+            const sizeId = name.match(/\[(input_quantities|input_waste_quantities)\]\[(\d+)\]/)[2];
+            let value = parseInt(target.value) || 0;
+
+            if (isInput) {
+                const max = parseInt(target.getAttribute('max')) || 0;
+                if (value > max) {
+                    value = max;
+                    target.value = max;
+                }
             }
 
-            lineInputDataBody.addEventListener('input', function(e) {
-                const target = e.target;
-                const row = target.closest('tr');
-                const key = row.dataset.key;
+            if (isInput) {
+                savedInputs[key].input[sizeId] = value;
+            } else if (isWaste) {
+                savedInputs[key].waste[sizeId] = value;
+            }
 
-                if (!savedInputs[key]) {
-                    savedInputs[key] = {
-                        input: {},
-                        waste: {}
-                    };
-                }
+            let totalInput = 0;
+            let totalWaste = 0;
 
-                let isInput = target.classList.contains('input-qty-input');
-                let isWaste = target.classList.contains('waste-qty-input');
-
-                if (isInput || isWaste) {
-                    const name = target.name;
-                    const sizeId = name.match(/\[(input_quantities|input_waste_quantities)\]\[(\d+)\]/)[2];
-                    let value = parseInt(target.value) || 0;
-
-                    if (isInput) {
-                        const max = parseInt(target.getAttribute('max')) || 0;
-                        if (value > max) {
-                            value = max;
-                            target.value = max;
-                        }
-                    }
-
-                    if (isInput) {
-                        savedInputs[key].input[sizeId] = value;
-                    } else if (isWaste) {
-                        savedInputs[key].waste[sizeId] = value;
-                    }
-
-                    let totalInput = 0;
-                    let totalWaste = 0;
-
-                    row.querySelectorAll('.input-qty-input').forEach(input => {
-                        totalInput += parseInt(input.value) || 0;
-                    });
-
-                    row.querySelectorAll('.waste-qty-input').forEach(input => {
-                        totalWaste += parseInt(input.value) || 0;
-                    });
-
-                    row.querySelector('.total-input-qty-span').textContent = totalInput;
-                    row.querySelector('.total-waste-qty-span').textContent = totalWaste;
-                }
+            row.querySelectorAll('.input-qty-input').forEach(input => {
+                totalInput += parseInt(input.value) || 0;
             });
-        });
+
+            row.querySelectorAll('.waste-qty-input').forEach(input => {
+                totalWaste += parseInt(input.value) || 0;
+            });
+
+            row.querySelector('.total-input-qty-span').textContent = totalInput;
+            row.querySelector('.total-waste-qty-span').textContent = totalWaste;
+        }
+    });
+});
     </script>
 </x-backend.layouts.master>

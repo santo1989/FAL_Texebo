@@ -14,30 +14,62 @@ use Illuminate\Validation\ValidationException;
 
 class CuttingDataController extends Controller
 {
+
     public function index(Request $request)
     {
         $query = CuttingData::with('orderData', 'productCombination.style', 'productCombination.color');
 
+        // Search logic
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where('po_number', 'like', '%' . $search . '%')
-                ->orWhereHas('productCombination.style', function ($q) use ($search) {
-                    $q->where('name', 'like', '%' . $search . '%');
-                })
-                ->orWhereHas('productCombination.color', function ($q) use ($search) {
-                    $q->where('name', 'like', '%' . $search . '%');
-                });
-        }
-        if ($request->filled('date')) {
-            $query->whereDate('date', $request->input('date'));
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', "%{$search}%")
+                    ->orWhereHas('productCombination.style', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('productCombination.color', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    });
+            });
         }
 
-        $cuttingData = $query->orderBy('date', 'desc')->paginate(perPage: 10);
+        // Filter by multiple styles
+        if ($request->filled('style_id')) {
+            $query->whereHas('productCombination.style', function ($q) use ($request) {
+                $q->whereIn('id', $request->input('style_id'));
+            });
+        }
+
+        // Filter by multiple colors
+        if ($request->filled('color_id')) {
+            $query->whereHas('productCombination.color', function ($q) use ($request) {
+                $q->whereIn('id', $request->input('color_id'));
+            });
+        }
+
+        // Filter by multiple PO numbers
+        if ($request->filled('po_number')) {
+            $query->whereIn('po_number', $request->input('po_number'));
+        }
+
+        // Filter by date range
+        if ($request->filled('start_date')) {
+            $query->whereDate('date', '>=', $request->input('start_date'));
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('date', '<=', $request->input('end_date'));
+        }
+
+        $cuttingData = $query->orderBy('date', 'desc')->paginate(10);
+
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $alldata = OrderData::with('style', 'color')->distinct()->get(['po_number', 'style_id', 'color_id']);
+        $allStyles = $alldata->pluck('style')->unique('id')->values();
+        $allColors = $alldata->pluck('color')->unique('id')->values();
+        $distinctPoNumbers = $alldata->pluck('po_number')->unique()->values();
 
-        return view('backend.library.cutting_data.index', compact('cuttingData', 'allSizes'));
+        return view('backend.library.cutting_data.index', compact('cuttingData', 'allSizes', 'allStyles', 'allColors', 'distinctPoNumbers'));
     }
-
     public function create()
     {
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
@@ -206,8 +238,8 @@ class CuttingDataController extends Controller
             foreach ($data['order_quantities'] as $sizeName => $orderQty) {
                 $cutQty = $data['cut_quantities'][$sizeName] ?? 0;
 
-                // Calculate maximum allowed (order quantity + 5%)
-                $maxAllowed = ceil($orderQty * 1.05);
+                // Calculate maximum allowed (order quantity + 3%)
+                $maxAllowed = ceil($orderQty * 1.03);
 
                 // Calculate available quantity (max allowed minus already cut)
                 $available = max(0, $maxAllowed - $cutQty);
@@ -260,8 +292,8 @@ class CuttingDataController extends Controller
         foreach ($orderQuantities as $sizeId => $orderQty) {
             $existingCutQty = $totalExistingCutQuantities[$sizeId] ?? 0;
 
-            // Calculate maximum allowed (order quantity + 5%)
-            $maxAllowed = ceil($orderQty * 1.05);
+            // Calculate maximum allowed (order quantity + 3%)
+            $maxAllowed = ceil($orderQty * 1.03);
 
             // Calculate available quantity (max allowed minus already cut from other records)
             $availableQuantities[$sizeId] = max(0, $maxAllowed - $existingCutQty);
@@ -1016,4 +1048,6 @@ class CuttingDataController extends Controller
             'distinctPoNumbers'
         ));
     }
+
+    
 }
