@@ -5,7 +5,7 @@
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Line Input Data </x-slot>
+            <x-slot name="pageHeader"> Sewing Input Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
             <li class="breadcrumb-item active">Total Input Report</li>
         </x-backend.layouts.elements.breadcrumb>
@@ -56,21 +56,24 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ count($allSizes) * 2 + 4 }}" class="text-center">No data found.
+                                            <td colspan="{{ count($allSizes) * 2 + 4 }}" class="text-center">No data
+                                                found.
                                             </td>
                                         </tr>
                                     @endforelse
-                                    
-                                    @if(!empty($reportData))
-                                    <tr>
-                                        <td colspan="2" class="text-center"><strong>Total</strong></td>
-                                        @foreach ($allSizes as $size)
-                                            <td><strong>{{ $totalInputBySize[strtolower($size->name)] ?? 0 }}</strong></td>
-                                            <td><strong>{{ $totalWasteBySize[strtolower($size->name)] ?? 0 }}</strong></td>
-                                        @endforeach
-                                        <td><strong>{{ $grandTotalInput }}</strong></td>
-                                        <td><strong>{{ $grandTotalWaste }}</strong></td>
-                                    </tr>
+
+                                    @if (!empty($reportData))
+                                        <tr>
+                                            <td colspan="2" class="text-center"><strong>Total</strong></td>
+                                            @foreach ($allSizes as $size)
+                                                <td><strong>{{ $totalInputBySize[strtolower($size->name)] ?? 0 }}</strong>
+                                                </td>
+                                                <td><strong>{{ $totalWasteBySize[strtolower($size->name)] ?? 0 }}</strong>
+                                                </td>
+                                            @endforeach
+                                            <td><strong>{{ $grandTotalInput }}</strong></td>
+                                            <td><strong>{{ $grandTotalWaste }}</strong></td>
+                                        </tr>
                                     @endif
                                 </tbody>
                             </table>

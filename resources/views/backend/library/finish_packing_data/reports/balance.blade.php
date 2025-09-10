@@ -38,9 +38,9 @@
                                         <th colspan="{{ count($allSizes) }}" class="text-center bg-primary text-white">
                                             Print WIP (Sent - Received)</th>
                                         <th colspan="{{ count($allSizes) }}" class="text-center bg-warning text-dark">
-                                            Sewing WIP (Received from Print - Line Input)</th>
+                                            Sewing WIP (Received from Print - Sewing Input)</th>
                                         <th colspan="{{ count($allSizes) }}" class="text-center bg-success text-white">
-                                            Packing WIP (Line Input - Packed)</th>
+                                            Packing WIP (Sewing Input - Packed)</th>
                                     </tr>
                                     <tr>
                                         {{-- Size headers for Cutting --}}

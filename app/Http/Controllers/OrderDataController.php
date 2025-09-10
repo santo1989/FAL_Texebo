@@ -22,12 +22,12 @@ class OrderDataController extends Controller
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
                 $q->where('po_number', 'like', "%{$search}%")
-                  ->orWhereHas('style', function ($subQ) use ($search) {
-                      $subQ->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('color', function ($subQ) use ($search) {
-                      $subQ->where('name', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('style', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('color', function ($subQ) use ($search) {
+                        $subQ->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -183,7 +183,7 @@ class OrderDataController extends Controller
             'po_status' => $request->po_status,
         ]);
 
-        return redirect()->route('order_data.index')->with('success', 'Order data updated successfully.');
+        return redirect()->route('order_data.index')->withMessage('Order data updated successfully.');
     }
 
     public function destroy(OrderData $orderDatum)
@@ -204,7 +204,7 @@ class OrderDataController extends Controller
             $orderDatum->delete();
         });
 
-        return redirect()->route('order_data.index')->with('success', 'Order data deleted successfully.');
+        return redirect()->route('order_data.index')->withMessage('Order data deleted successfully.');
     }
 
     // totalOrderReport
@@ -349,7 +349,4 @@ class OrderDataController extends Controller
 
         return view('backend.library.old_data.create', compact('allSizes', 'distinctPoNumbers'));
     }
-
-   
-
 }

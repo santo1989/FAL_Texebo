@@ -107,7 +107,7 @@ class PrintReceiveDataController extends Controller
             DB::commit();
 
             return redirect()->route('print_receive_data.index')
-                ->with('success', 'Print/Embroidery Receive data added successfully.');
+                ->withMessage('Print/Embroidery Receive data added successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -153,37 +153,37 @@ class PrintReceiveDataController extends Controller
     // }
 
 
-    public function edit(PrintReceiveData $printReceiveDatum)
-    {
-        $printReceiveDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+    // public function edit(PrintReceiveData $printReceiveDatum)
+    // {
+    //     $printReceiveDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        // Convert JSON objects to arrays if needed
-        if (is_object($printReceiveDatum->receive_quantities)) {
-            $printReceiveDatum->receive_quantities = (array) $printReceiveDatum->receive_quantities;
-        }
+    //     // Convert JSON objects to arrays if needed
+    //     if (is_object($printReceiveDatum->receive_quantities)) {
+    //         $printReceiveDatum->receive_quantities = (array) $printReceiveDatum->receive_quantities;
+    //     }
 
-        if (is_object($printReceiveDatum->receive_waste_quantities)) {
-            $printReceiveDatum->receive_waste_quantities = (array) $printReceiveDatum->receive_waste_quantities;
-        }
+    //     if (is_object($printReceiveDatum->receive_waste_quantities)) {
+    //         $printReceiveDatum->receive_waste_quantities = (array) $printReceiveDatum->receive_waste_quantities;
+    //     }
 
-        // Only show sizes that have data
-        $validSizes = $allSizes->filter(function ($size) use ($printReceiveDatum) {
-            return isset($printReceiveDatum->receive_quantities[$size->id]) ||
-                isset($printReceiveDatum->receive_waste_quantities[$size->id]);
-        });
+    //     // Only show sizes that have data
+    //     $validSizes = $allSizes->filter(function ($size) use ($printReceiveDatum) {
+    //         return isset($printReceiveDatum->receive_quantities[$size->id]) ||
+    //             isset($printReceiveDatum->receive_waste_quantities[$size->id]);
+    //     });
 
-        $allSizes = $validSizes->values();
+    //     $allSizes = $validSizes->values();
 
-        $availableQuantities = $this->getAvailableReceiveQuantities($printReceiveDatum->productCombination)->getData()->availableQuantities;
+    //     $availableQuantities = $this->getAvailableReceiveQuantities($printReceiveDatum->productCombination)->getData()->availableQuantities;
 
-        // Ensure availableQuantities is an array
-        if (is_object($availableQuantities)) {
-            $availableQuantities = (array) $availableQuantities;
-        }
+    //     // Ensure availableQuantities is an array
+    //     if (is_object($availableQuantities)) {
+    //         $availableQuantities = (array) $availableQuantities;
+    //     }
 
-        return view('backend.library.print_receive_data.edit', compact('printReceiveDatum', 'allSizes', 'availableQuantities'));
-    }
+    //     return view('backend.library.print_receive_data.edit', compact('printReceiveDatum', 'allSizes', 'availableQuantities'));
+    // }
     public function update(Request $request, PrintReceiveData $printReceiveDatum)
     {
         $request->validate([
@@ -223,7 +223,7 @@ class PrintReceiveDataController extends Controller
             ]);
 
             return redirect()->route('print_receive_data.index')
-                ->with('success', 'Print/Embroidery Receive data updated successfully.');
+                ->withMessage('Print/Embroidery Receive data updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Error occurred: ' . $e->getMessage())
@@ -236,9 +236,160 @@ class PrintReceiveDataController extends Controller
         $printReceiveDatum->delete();
 
         return redirect()->route('print_receive_data.index')
-            ->with('success', 'Print/Embroidery Receive data deleted successfully.');
+            ->withMessage('Print/Embroidery Receive data deleted successfully.');
     }
 
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     $result = [];
+    //     $processedCombinations = [];
+
+    //     foreach ($poNumbers as $poNumber) {
+    //         // Get print send data for the selected PO number
+    //         $printSendData = PrintSendData::where('po_number', 'like', '%' . $poNumber . '%')
+    //             ->with(['productCombination.style', 'productCombination.color'])
+    //             ->get();
+
+    //         foreach ($printSendData as $data) {
+    //             if (!$data->productCombination) {
+    //                 continue;
+    //             }
+
+    //             // Create a unique key for this combination
+    //             $combinationKey = $data->productCombination->id . '-' .
+    //                 $data->productCombination->style->name . '-' .
+    //                 $data->productCombination->color->name;
+
+    //             // Skip if we've already processed this combination
+    //             if (in_array($combinationKey, $processedCombinations)) {
+    //                 continue;
+    //             }
+
+    //             // Mark this combination as processed
+    //             $processedCombinations[] = $combinationKey;
+
+    //             $availableQuantities = $this->getAvailableReceiveQuantities($data->productCombination)->getData()->availableQuantities;
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $data->productCombination->id,
+    //                 'style' => $data->productCombination->style->name,
+    //                 'color' => $data->productCombination->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => $data->productCombination->sizes->pluck('id')->toArray()
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
+    // public function getAvailableReceiveQuantities(ProductCombination $productCombination)
+    // {
+    //     $sizes = Size::where('is_active', 1)->get();
+    //     $availableQuantities = [];
+
+    //     // Sum sent quantities per size
+    //     $sentQuantities = PrintSendData::where('product_combination_id', $productCombination->id)
+    //         ->get()
+    //         ->pluck('send_quantities')
+    //         ->reduce(function ($carry, $quantities) {
+    //             foreach ($quantities as $sizeId => $qty) {
+    //                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+    //             }
+    //             return $carry;
+    //         }, []);
+
+    //     // Sum received quantities per size
+    //     $receivedQuantities = PrintReceiveData::where('product_combination_id', $productCombination->id)
+    //         ->get()
+    //         ->pluck('receive_quantities')
+    //         ->reduce(function ($carry, $quantities) {
+    //             foreach ($quantities as $sizeId => $qty) {
+    //                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+    //             }
+    //             return $carry;
+    //         }, []);
+
+    //     // Calculate available quantities
+    //     foreach ($sizes as $size) {
+    //         $sent = $sentQuantities[$size->id] ?? 0;
+    //         $received = $receivedQuantities[$size->id] ?? 0;
+    //         $availableQuantities[$size->id] = max(0, $sent - $received);
+    //     }
+
+    //     return response()->json([
+    //         'availableQuantities' => $availableQuantities,
+    //         'sizes' => $sizes
+    //     ]);
+    // }
+
+    // Existing report methods remain unchanged...
+    //     // Reports
+
+
+    // Update the getAvailableReceiveQuantities method to accept PO number filtering
+
+    public function getAvailableReceiveQuantities(ProductCombination $productCombination, $poNumber = null)
+    {
+        $sizes = Size::where('is_active', 1)->get();
+        $availableQuantities = [];
+
+        // Base query for sent quantities
+        $sentQuery = PrintSendData::where('product_combination_id', $productCombination->id);
+
+        // Filter by PO number if provided
+        if ($poNumber) {
+            $sentQuery->where('po_number', 'like', '%' . $poNumber . '%');
+        }
+
+        // Sum sent quantities per size
+        $sentQuantities = $sentQuery->get()
+            ->pluck('send_quantities')
+            ->reduce(function ($carry, $quantities) {
+                foreach ($quantities as $sizeId => $qty) {
+                    $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+                }
+                return $carry;
+            }, []);
+
+        // Base query for received quantities
+        $receivedQuery = PrintReceiveData::where('product_combination_id', $productCombination->id);
+
+        // Filter by PO number if provided
+        if ($poNumber) {
+            $receivedQuery->where('po_number', 'like', '%' . $poNumber . '%');
+        }
+
+        // Sum received quantities per size
+        $receivedQuantities = $receivedQuery->get()
+            ->pluck('receive_quantities')
+            ->reduce(function ($carry, $quantities) {
+                foreach ($quantities as $sizeId => $qty) {
+                    $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+                }
+                return $carry;
+            }, []);
+
+        // Calculate available quantities
+        foreach ($sizes as $size) {
+            $sent = $sentQuantities[$size->id] ?? 0;
+            $received = $receivedQuantities[$size->id] ?? 0;
+            $availableQuantities[$size->id] = max(0, $sent - $received);
+        }
+
+        return response()->json([
+            'availableQuantities' => $availableQuantities,
+            'sizes' => $sizes
+        ]);
+    }
+
+    // Update the find method to use PO-filtered available quantities
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
@@ -274,7 +425,8 @@ class PrintReceiveDataController extends Controller
                 // Mark this combination as processed
                 $processedCombinations[] = $combinationKey;
 
-                $availableQuantities = $this->getAvailableReceiveQuantities($data->productCombination)->getData()->availableQuantities;
+                // Get available quantities filtered by PO number
+                $availableQuantities = $this->getAvailableReceiveQuantities($data->productCombination, $poNumber)->getData()->availableQuantities;
 
                 $result[$poNumber][] = [
                     'combination_id' => $data->productCombination->id,
@@ -289,49 +441,48 @@ class PrintReceiveDataController extends Controller
         return response()->json($result);
     }
 
-    public function getAvailableReceiveQuantities(ProductCombination $productCombination)
+    // Update the edit method to use PO-filtered available quantities
+    public function edit(PrintReceiveData $printReceiveDatum)
     {
-        $sizes = Size::where('is_active', 1)->get();
-        $availableQuantities = [];
+        $printReceiveDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        // Sum sent quantities per size
-        $sentQuantities = PrintSendData::where('product_combination_id', $productCombination->id)
-            ->get()
-            ->pluck('send_quantities')
-            ->reduce(function ($carry, $quantities) {
-                foreach ($quantities as $sizeId => $qty) {
-                    $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
-                }
-                return $carry;
-            }, []);
-
-        // Sum received quantities per size
-        $receivedQuantities = PrintReceiveData::where('product_combination_id', $productCombination->id)
-            ->get()
-            ->pluck('receive_quantities')
-            ->reduce(function ($carry, $quantities) {
-                foreach ($quantities as $sizeId => $qty) {
-                    $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
-                }
-                return $carry;
-            }, []);
-
-        // Calculate available quantities
-        foreach ($sizes as $size) {
-            $sent = $sentQuantities[$size->id] ?? 0;
-            $received = $receivedQuantities[$size->id] ?? 0;
-            $availableQuantities[$size->id] = max(0, $sent - $received);
+        // Convert JSON objects to arrays if needed
+        if (is_object($printReceiveDatum->receive_quantities)) {
+            $printReceiveDatum->receive_quantities = (array) $printReceiveDatum->receive_quantities;
         }
 
-        return response()->json([
-            'availableQuantities' => $availableQuantities,
-            'sizes' => $sizes
-        ]);
+        if (is_object($printReceiveDatum->receive_waste_quantities)) {
+            $printReceiveDatum->receive_waste_quantities = (array) $printReceiveDatum->receive_waste_quantities;
+        }
+
+        // Only show sizes that have data
+        $validSizes = $allSizes->filter(function ($size) use ($printReceiveDatum) {
+            return isset($printReceiveDatum->receive_quantities[$size->id]) ||
+                isset($printReceiveDatum->receive_waste_quantities[$size->id]);
+        });
+
+        $allSizes = $validSizes->values();
+
+        // Get available quantities filtered by PO number
+        // $availableResponse = $this->getAvailableReceiveQuantities($printReceiveDatum->productCombination, $printReceiveDatum->po_number);
+        // $availableData = json_decode($availableResponse->content(), true);
+        // $availableQuantities = $availableData['availableQuantities'] ?? [];
+
+        // // Ensure availableQuantities is an array
+        // if (is_object($availableQuantities)) {
+        //     $availableQuantities = (array) $availableQuantities;
+        // }
+
+        $availableQuantities = $this->getAvailableReceiveQuantities($printReceiveDatum->productCombination, $printReceiveDatum->po_number)->getData()->availableQuantities;
+        // dd($availableQuantities);
+        if (is_object($availableQuantities)) {
+            $availableQuantities = (array) $availableQuantities;
+        }
+
+
+        return view('backend.library.print_receive_data.edit', compact('printReceiveDatum', 'allSizes', 'availableQuantities'));
     }
-
-    // Existing report methods remain unchanged...
-    //     // Reports
-
     public function totalPrintEmbReceiveReport(Request $request)
     {
         $query = PrintReceiveData::with('productCombination.style', 'productCombination.color');

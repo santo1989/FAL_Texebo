@@ -5,7 +5,7 @@
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Line Input Data </x-slot>
+            <x-slot name="pageHeader"> Sewing Input Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
             <li class="breadcrumb-item active">Input Balance Report</li>
         </x-backend.layouts.elements.breadcrumb>
@@ -59,11 +59,14 @@
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
                                                 @php
-                                                    $sizeData = collect($data['sizes'])->firstWhere('name', $size->name) ?? [
+                                                    $sizeData = collect($data['sizes'])->firstWhere(
+                                                        'name',
+                                                        $size->name,
+                                                    ) ?? [
                                                         'available' => 0,
                                                         'input' => 0,
                                                         'waste' => 0,
-                                                        'balance' => 0
+                                                        'balance' => 0,
                                                     ];
                                                 @endphp
                                                 <td>{{ $sizeData['available'] }}</td>

@@ -107,7 +107,7 @@ class FinishPackingDataController extends Controller
             DB::commit();
 
             return redirect()->route('finish_packing_data.index')
-                ->with('success', 'Finish packing data added successfully.');
+                ->withMessage('Finish packing data added successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -286,7 +286,7 @@ class FinishPackingDataController extends Controller
             ]);
 
             return redirect()->route('finish_packing_data.index')
-                ->with('success', 'Finish packing data updated successfully.');
+                ->withMessage('Finish packing data updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Error occurred: ' . $e->getMessage())
@@ -297,7 +297,7 @@ class FinishPackingDataController extends Controller
     public function destroy(FinishPackingData $finishPackingDatum)
     {
         $finishPackingDatum->delete();
-        return redirect()->route('finish_packing_data.index')->with('success', 'Finish packing data deleted successfully.');
+        return redirect()->route('finish_packing_data.index')->withMessage('Finish packing data deleted successfully.');
     }
 
     // Reports
@@ -785,7 +785,7 @@ class FinishPackingDataController extends Controller
     //         'total_packing_quantity' => $totalPackingQuantity,
     //     ]);
 
-    //     return redirect()->route('finish_packing_data.index')->with('success', 'Finish packing data added successfully.');
+    //     return redirect()->route('finish_packing_data.index')->withMessage( 'Finish packing data added successfully.');
     // }
 
     // public function getMaxPackingQuantities(ProductCombination $pc)
@@ -886,13 +886,13 @@ class FinishPackingDataController extends Controller
     //         'total_packing_quantity' => $totalPackingQuantity,
     //     ]);
 
-    //     return redirect()->route('finish_packing_data.index')->with('success', 'Finish packing data updated successfully.');
+    //     return redirect()->route('finish_packing_data.index')->withMessage( 'Finish packing data updated successfully.');
     // }
 
     // public function destroy(FinishPackingData $finishPackingDatum)
     // {
     //     $finishPackingDatum->delete();
-    //     return redirect()->route('finish_packing_data.index')->with('success', 'Finish packing data deleted successfully.');
+    //     return redirect()->route('finish_packing_data.index')->withMessage( 'Finish packing data deleted successfully.');
     // }
 
     // // Reports

@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\CuttingData;
+use App\Models\FinishPackingData;
 use App\Models\LineInputData;
 use App\Models\OrderData;
+use App\Models\OutputFinishingData;
 use App\Models\PrintReceiveData;
 use App\Models\ProductCombination;
+use App\Models\ShipmentData;
 use App\Models\Size;
 use App\Models\SublimationPrintReceive;
 use Illuminate\Http\Request;
@@ -107,7 +110,7 @@ class LineInputDataController extends Controller
             DB::commit();
 
             return redirect()->route('line_input_data.index')
-                ->with('success', 'Line input data added successfully.');
+                ->withMessage('Line input data added successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -132,7 +135,7 @@ class LineInputDataController extends Controller
         return view('backend.library.line_input_data.show', compact('lineInputDatum', 'allSizes'));
     }
 
-       public function edit(LineInputData $lineInputDatum)
+    public function edit(LineInputData $lineInputDatum)
     {
         $lineInputDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
@@ -227,7 +230,7 @@ class LineInputDataController extends Controller
             ]);
 
             return redirect()->route('line_input_data.index')
-                ->with('success', 'Line input data updated successfully.');
+                ->withMessage('Line input data updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Error occurred: ' . $e->getMessage())
@@ -237,8 +240,27 @@ class LineInputDataController extends Controller
 
     public function destroy(LineInputData $lineInputDatum)
     {
+        //next stage data first delete then delete this
+        $outputData = OutputFinishingData::whereIn('po_number', explode(',', $lineInputDatum->po_number))
+            ->where('product_combination_id', $lineInputDatum->product_combination_id)
+            ->get();
+        if ($outputData->count() > 0) {
+            $outputData->each->delete();
+        }
+        $finishpackingData = FinishPackingData::whereIn('po_number', explode(',', $lineInputDatum->po_number))
+            ->where('product_combination_id', $lineInputDatum->product_combination_id)
+            ->get();
+        if ($finishpackingData->count() > 0) {
+            $finishpackingData->each->delete();
+        }
+        $shipmentData = ShipmentData::whereIn('po_number', explode(',', $lineInputDatum->po_number))
+            ->where('product_combination_id', $lineInputDatum->product_combination_id)
+            ->get();
+        if ($shipmentData->count() > 0) {
+            $shipmentData->each->delete();
+        }
         $lineInputDatum->delete();
-        return redirect()->route('line_input_data.index')->with('success', 'Line input data deleted successfully.');
+        return redirect()->route('line_input_data.index')->withMessage('Line input data deleted successfully.');
     }
 
     // Reports
@@ -315,7 +337,7 @@ class LineInputDataController extends Controller
         ]);
     }
 
-   public function inputBalanceReport(Request $request)
+    public function inputBalanceReport(Request $request)
     {
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $balanceData = [];
@@ -500,7 +522,7 @@ class LineInputDataController extends Controller
     {
         $maxQuantities = [];
         $allSizes = Size::where('is_active', 1)->get();
-        
+
 
         // Determine source based on product combination type
         if ($pc->print_embroidery && !$pc->sublimation_print) {
@@ -582,7 +604,7 @@ class LineInputDataController extends Controller
 
         return $maxQuantities;
     }
-   public function getAvailableQuantities(ProductCombination $productCombination)
+    public function getAvailableQuantities(ProductCombination $productCombination)
     {
         $maxQuantities = $this->getMaxInputQuantities($productCombination);
         $sizes = Size::where('is_active', 1)->get();

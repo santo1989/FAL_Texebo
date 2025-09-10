@@ -50,8 +50,8 @@ class UserController extends Controller
             'user' => $user,
             'roles' => $roles,
             'divisions' => $divisions,
-            'companies' => $companies, 
-            'departments' => $departments, 
+            'companies' => $companies,
+            'departments' => $departments,
             'designations' => $designations
         ]);
     }
@@ -80,39 +80,35 @@ class UserController extends Controller
                 $file->move('images/users', $filename);
                 $requestData['picture'] = $filename;
             }
-            
-            if($request->role_id)
-            {
+
+            if ($request->role_id) {
                 $requestData['role_id'] = $request->role_id;
-            }else{
+            } else {
                 $requestData['role_id'] = $user->role_id;
             }
 
-            if($request->company_id)
-            {
+            if ($request->company_id) {
                 $requestData['company_id'] = $request->company_id;
-            }else{
+            } else {
                 $requestData['company_id'] = $user->company_id;
             }
 
-            if($request->department_id)
-            {
+            if ($request->department_id) {
                 $requestData['department_id'] = $request->department_id;
-            }else{
+            } else {
                 $requestData['department_id'] = $user->department_id;
             }
 
-            if($request->designation_id)
-            {
+            if ($request->designation_id) {
                 $requestData['designation_id'] = $request->designation_id;
-            }else{
+            } else {
                 $requestData['designation_id'] = $user->designation_id;
             }
 
             $user->update($requestData);
 
 
-            if (auth()->user()->role_id == 1 ) {
+            if (auth()->user()->role_id == 1) {
                 return redirect()->route('users.index')->withMessage('Successfully Updated!');
             } else {
                 return redirect()->route('users.show', $user->id)->withMessage('Successfully Updated!');
@@ -130,7 +126,7 @@ class UserController extends Controller
                 return redirect()->route('users.index')->withMessage('Successfully Deleted!');
             } else {
                 return redirect()->route('users.index')->withErrors('You are not authorized to  delete this user!');
-            } 
+            }
         } catch (QueryException $e) {
             return redirect()->back()->withErrors($e->getMessage());
         }
@@ -176,6 +172,6 @@ class UserController extends Controller
         $user->role_id = $request->role_id;
         $user->save();
 
-        return redirect()->back()->with('success', 'User role updated successfully.');
+        return redirect()->back()->withMessage('User role updated successfully.');
     }
 }

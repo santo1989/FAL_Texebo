@@ -117,7 +117,7 @@ class ShipmentDataController extends Controller
             DB::commit();
 
             return redirect()->route('shipment_data.index')
-                ->with('success', 'Shipment data added successfully.');
+                ->withMessage('Shipment data added successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -252,7 +252,7 @@ class ShipmentDataController extends Controller
             ]);
 
             return redirect()->route('shipment_data.index')
-                ->with('success', 'Shipment data updated successfully.');
+                ->withMessage('Shipment data updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Error occurred: ' . $e->getMessage())
@@ -263,7 +263,7 @@ class ShipmentDataController extends Controller
     public function destroy(ShipmentData $shipmentDatum)
     {
         $shipmentDatum->delete();
-        return redirect()->route('shipment_data.index')->with('success', 'Shipment data deleted successfully.');
+        return redirect()->route('shipment_data.index')->withMessage('Shipment data deleted successfully.');
     }
 
     private function getAvailablePoNumbers()
@@ -471,7 +471,7 @@ class ShipmentDataController extends Controller
     }
 
 
-    
+
 
     // Reports
     public function totalShipmentReport(Request $request)
@@ -1185,7 +1185,7 @@ class ShipmentDataController extends Controller
             'date' => 'required|date',
             'po_number' => 'required|array',
             'po_number.*' => 'string',
-            'Stage' => 'required|string|in:CuttingData,SublimationPrintSend,SublimationPrintReceive,PrintSendData,PrintReceiveData,LineInputData,OutputFinishingData,FinishPackingData,ShipmentData',
+            'Stage' => 'required|string|in:CuttingData,SublimationPrintSend,SublimationPrintReceive,PrintSendData,PrintReceiveData,LineInputData,OutputFinishingData,FinishPackingData',
             'old_order' => 'required|in:yes,no',
             'rows' => 'required|array',
             'rows.*.po_number' => 'required|string|in:' . implode(',', $request->input('po_number', [])),
@@ -1205,7 +1205,7 @@ class ShipmentDataController extends Controller
             'LineInputData',
             'OutputFinishingData',
             'FinishPackingData',
-            'ShipmentData'
+            // 'ShipmentData'
         ];
 
         $currentStage = $request->Stage;
@@ -1368,7 +1368,7 @@ class ShipmentDataController extends Controller
 
             DB::commit();
 
-            return redirect()->route('old_data_index')->with('success', 'Old order data created successfully.');
+            return redirect()->route('old_data_index')->withMessage('Old order data created successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error storing old order data: ' . $e->getMessage(), ['exception' => $e]);

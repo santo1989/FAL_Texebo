@@ -103,7 +103,7 @@ class OutputFinishingDataController extends Controller
             DB::commit();
 
             return redirect()->route('output_finishing_data.index')
-                ->with('success', 'Output finishing data added successfully.');
+                ->withMessage('Output finishing data added successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -224,7 +224,7 @@ class OutputFinishingDataController extends Controller
             ]);
 
             return redirect()->route('output_finishing_data.index')
-                ->with('success', 'Output finishing data updated successfully.');
+                ->withMessage('Output finishing data updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Error occurred: ' . $e->getMessage())
@@ -235,7 +235,7 @@ class OutputFinishingDataController extends Controller
     public function destroy(OutputFinishingData $outputFinishingDatum)
     {
         $outputFinishingDatum->delete();
-        return redirect()->route('output_finishing_data.index')->with('success', 'Output finishing data deleted successfully.');
+        return redirect()->route('output_finishing_data.index')->withMessage('Output finishing data deleted successfully.');
     }
 
     // Report: Total Balance Report
@@ -400,7 +400,7 @@ class OutputFinishingDataController extends Controller
 
         return response()->json($result);
     }
-    
+
     private function getAvailablePoNumbers()
     {
         $poNumbers = [];
@@ -597,7 +597,7 @@ class OutputFinishingDataController extends Controller
     //         'total_output_quantity' => $totalOutputQuantity,
     //     ]);
 
-    //     return redirect()->route('output_finishing_data.index')->with('success', 'Output finishing data added successfully.');
+    //     return redirect()->route('output_finishing_data.index')->withMessage( 'Output finishing data added successfully.');
     // }
 
     // public function maxQuantities($id)
@@ -747,13 +747,13 @@ class OutputFinishingDataController extends Controller
     //         'total_output_quantity' => $totalOutputQuantity,
     //     ]);
 
-    //     return redirect()->route('output_finishing_data.index')->with('success', 'Output finishing data updated successfully.');
+    //     return redirect()->route('output_finishing_data.index')->withMessage( 'Output finishing data updated successfully.');
     // }
 
     // public function destroy(OutputFinishingData $outputFinishingDatum)
     // {
     //     $outputFinishingDatum->delete();
-    //     return redirect()->route('output_finishing_data.index')->with('success', 'Output finishing data deleted successfully.');
+    //     return redirect()->route('output_finishing_data.index')->withMessage( 'Output finishing data deleted successfully.');
     // }
 
     // // Report: Total Balance Report

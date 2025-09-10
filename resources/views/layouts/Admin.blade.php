@@ -186,7 +186,7 @@
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
                                         href="{{ route('line_input_data.index') }}">
                                         <div class="sb-nav-link-icon"><i class="fas fa-sticky-note"></i></div>
-                                        Sewing Line Input Data
+                                        Sewing Sewing Input Data
                                     </a>
 
                                 </div>
@@ -487,11 +487,11 @@
                                 </div>
                             </div>
 
-                            <!-- Line Input Reports -->
+                            <!-- Sewing Input Reports -->
                             <div class="col-md-3 mb-3">
                                 <div class="card border-primary">
                                     <div class="card-header bg-primary text-white">
-                                        <i class="fas fa-keyboard"></i> Line Input
+                                        <i class="fas fa-keyboard"></i> Sewing Input
                                     </div>
                                     <div class="card-body">
                                         <a href="{{ route('line_input_data.report.total_input') }}"
@@ -788,7 +788,7 @@
                                 </div>
                             @endcanany
 
-                            {{-- Line Input specific module --}}
+                            {{-- Sewing Input specific module --}}
                             @canany(['Admin', 'Input', 'Supervisor'])
                                 <div class="col-3 pt-1 pb-1">
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
@@ -983,12 +983,12 @@
                                 </div>
                             @endcanany
 
-                            {{-- Line Input Reports --}}
+                            {{-- Sewing Input Reports --}}
                             @canany(['Admin', 'Input', 'Supervisor'])
                                 <div class="col-md-3 mb-3">
                                     <div class="card border-primary">
                                         <div class="card-header bg-primary text-white">
-                                            <i class="fas fa-keyboard"></i> Line Input
+                                            <i class="fas fa-keyboard"></i> Sewing Input
                                         </div>
                                         <div class="card-body">
                                             <a href="{{ route('line_input_data.report.total_input') }}"

@@ -1,13 +1,13 @@
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Line Input Data
+        Sewing Input Data
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Line Input Data </x-slot>
+            <x-slot name="pageHeader"> Sewing Input Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item active">Line Input</li>
+            <li class="breadcrumb-item active">Sewing Input</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
 
@@ -21,15 +21,20 @@
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
                             <a href="{{ route('line_input_data.create') }}" class="btn btn-lg btn-outline-primary">
-                                <i class="fas fa-plus"></i> Add Line Input
+                                <i class="fas fa-plus"></i> Add Sewing Input
                             </a>
                             <div class="btn-group ml-2">
                                 <h4 class="btn btn-lg text-center">Reports</h4>
-                                <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('line_input_data.report.total_input') }}'">Total Input</button>
-                                <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('line_input_data.report.input_balance') }}'">Input Balance</button>
+                                <button class="btn btn-lg btn-outline-primary"
+                                    onclick="location.href='{{ route('line_input_data.report.total_input') }}'">Total
+                                    Input</button>
+                                <button class="btn btn-lg btn-outline-primary"
+                                    onclick="location.href='{{ route('line_input_data.report.input_balance') }}'">Input
+                                    Balance</button>
                             </div>
 
-                            <form class="d-flex float-right" action="{{ route('line_input_data.index') }}" method="GET">
+                            <form class="d-flex float-right" action="{{ route('line_input_data.index') }}"
+                                method="GET">
                                 <input class="form-control me-2" type="search" name="search"
                                     placeholder="Search by Style/Color" value="{{ request('search') }}">
                                 <input class="form-control me-2" type="date" name="date"
@@ -70,7 +75,8 @@
                                                     @if (isset($data->input_quantities[$size->id]))
                                                         {{ $data->input_quantities[$size->id] }}
                                                         @if (isset($data->input_waste_quantities[$size->id]))
-                                                            <br><small class="text-muted">W: {{ $data->input_waste_quantities[$size->id] }}</small>
+                                                            <br><small class="text-muted">W:
+                                                                {{ $data->input_waste_quantities[$size->id] }}</small>
                                                         @endif
                                                     @endif
                                                 </td>
@@ -78,10 +84,12 @@
                                             <td>{{ $data->total_input_quantity }}</td>
                                             <td>{{ $data->total_input_waste_quantity ?? 0 }}</td>
                                             <td>
-                                                <a href="{{ route('line_input_data.edit', $data->id) }}" class="btn btn-sm btn-outline-primary">
+                                                <a href="{{ route('line_input_data.edit', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-pencil"></i> Edit
                                                 </a>
-                                                <a href="{{ route('line_input_data.show', $data->id) }}" class="btn btn-sm btn-outline-info">
+                                                <a href="{{ route('line_input_data.show', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-info-circle"></i> Show
                                                 </a>
                                                 <button class="btn btn-sm btn-outline-danger"
@@ -92,7 +100,8 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 7 + count($allSizes) }}" class="text-center">No line input data found</td>
+                                            <td colspan="{{ 7 + count($allSizes) }}" class="text-center">No line input
+                                                data found</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

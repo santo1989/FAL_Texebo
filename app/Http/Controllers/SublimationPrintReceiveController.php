@@ -110,7 +110,7 @@ class SublimationPrintReceiveController extends Controller
             DB::commit();
 
             return redirect()->route('sublimation_print_receive_data.index')
-                ->with('success', 'Sublimation Print/Receive data added successfully.');
+                ->withMessage('Sublimation Print/Receive data added successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -151,13 +151,21 @@ class SublimationPrintReceiveController extends Controller
             $totalReceiveQuantity = 0;
             $totalWasteQuantity = 0;
 
-            // Get the corresponding send data
+            // Get all corresponding send data records for this PO and product combination
             $sendData = SublimationPrintSend::where('po_number', $sublimationPrintReceiveDatum->po_number)
                 ->where('product_combination_id', $sublimationPrintReceiveDatum->product_combination_id)
-                ->first();
+                ->get();
 
-            if (!$sendData) {
+            if ($sendData->isEmpty()) {
                 throw new \Exception('No send data found for this PO and product combination');
+            }
+
+            // Sum all sent quantities
+            $sentQuantities = [];
+            foreach ($sendData as $send) {
+                foreach ($send->sublimation_print_send_quantities as $sizeId => $qty) {
+                    $sentQuantities[$sizeId] = ($sentQuantities[$sizeId] ?? 0) + $qty;
+                }
             }
 
             // Calculate already received quantities for this product combination and PO (excluding current record)
@@ -176,7 +184,7 @@ class SublimationPrintReceiveController extends Controller
             foreach ($request->sublimation_print_receive_quantities as $sizeId => $quantity) {
                 $quantity = (int)$quantity;
                 if ($quantity > 0) {
-                    $sentQty = $sendData->sublimation_print_send_quantities[$sizeId] ?? 0;
+                    $sentQty = $sentQuantities[$sizeId] ?? 0;
                     $alreadyReceivedQty = $alreadyReceived[$sizeId] ?? 0;
                     $availableQty = max(0, $sentQty - $alreadyReceivedQty);
 
@@ -211,7 +219,7 @@ class SublimationPrintReceiveController extends Controller
             DB::commit();
 
             return redirect()->route('sublimation_print_receive_data.index')
-                ->with('success', 'Sublimation Print/Receive data updated successfully.');
+                ->withMessage('Sublimation Print/Receive data updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -225,9 +233,101 @@ class SublimationPrintReceiveController extends Controller
         $sublimationPrintReceiveDatum->delete();
 
         return redirect()->route('sublimation_print_receive_data.index')
-            ->with('success', 'Sublimation Print/Receive data deleted successfully.');
+            ->withMessage('Sublimation Print/Receive data deleted successfully.');
     }
 
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     // Get print send data for the selected PO numbers
+    //     $printSendData = SublimationPrintSend::whereIn('po_number', $poNumbers)
+    //         ->with(['productCombination.style', 'productCombination.color', 'productCombination.size'])
+    //         ->get()
+    //         ->groupBy('po_number');
+
+    //     $result = [];
+
+    //     foreach ($printSendData as $poNumber => $printSendRecords) {
+    //         $result[$poNumber] = [];
+
+    //         // Group records by product_combination_id
+    //         $groupedByCombination = $printSendRecords->groupBy('product_combination_id');
+
+    //         foreach ($groupedByCombination as $combinationId => $records) {
+    //             // Get the product combination from the first record
+    //             $productCombination = $records->first()->productCombination;
+
+    //             if (!$productCombination) {
+    //                 continue;
+    //             }
+
+    //             $availableQuantities = $this->getAvailableReceiveQuantities($productCombination)->getData()->availableQuantities;
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $productCombination->id,
+    //                 'style' => $productCombination->style->name,
+    //                 'color' => $productCombination->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => $productCombination->sizes->pluck('id')->toArray()
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
+    // public function getAvailableReceiveQuantities(ProductCombination $productCombination)
+    // {
+    //     $sizes = Size::where('is_active', 1)->get();
+    //     $availableQuantities = [];
+
+    //     // Create a mapping of size IDs to size names
+    //     $sizeIdToName = [];
+    //     foreach ($sizes as $size) {
+    //         $sizeIdToName[$size->id] = $size->name;
+    //     }
+
+    //     // Sum sent quantities per size using size IDs
+    //     $sentQuantities = SublimationPrintSend::where('product_combination_id', $productCombination->id)
+    //         ->get()
+    //         ->pluck('sublimation_print_send_quantities')
+    //         ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+    //             foreach ($quantities as $sizeId => $qty) {
+    //                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+    //             }
+    //             return $carry;
+    //         }, []);
+
+    //     // Sum received quantities per size using size IDs
+    //     $receivedQuantities = SublimationPrintReceive::where('product_combination_id', $productCombination->id)
+    //         ->get()
+    //         ->pluck('sublimation_print_receive_quantities')
+    //         ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+    //             foreach ($quantities as $sizeId => $qty) {
+    //                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+    //             }
+    //             return $carry;
+    //         }, []);
+
+    //     // Calculate available quantities
+    //     foreach ($sizes as $size) {
+    //         $sent = $sentQuantities[$size->id] ?? 0;
+    //         $received = $receivedQuantities[$size->id] ?? 0;
+    //         $availableQuantities[$size->name] = max(0, $sent - $received);
+    //     }
+
+    //     return response()->json([
+    //         'availableQuantities' => $availableQuantities,
+    //         'sizes' => $sizes
+    //     ]);
+    // }
+
+    // Update the getAvailableReceiveQuantities method to accept PO numbers
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
@@ -258,7 +358,8 @@ class SublimationPrintReceiveController extends Controller
                     continue;
                 }
 
-                $availableQuantities = $this->getAvailableReceiveQuantities($productCombination)->getData()->availableQuantities;
+                // Get available quantities filtered by PO number
+                $availableQuantities = $this->getAvailableReceiveQuantities($productCombination, $poNumber)->getData()->availableQuantities;
 
                 $result[$poNumber][] = [
                     'combination_id' => $productCombination->id,
@@ -273,7 +374,7 @@ class SublimationPrintReceiveController extends Controller
         return response()->json($result);
     }
 
-    public function getAvailableReceiveQuantities(ProductCombination $productCombination)
+    public function getAvailableReceiveQuantities(ProductCombination $productCombination, $poNumber = null)
     {
         $sizes = Size::where('is_active', 1)->get();
         $availableQuantities = [];
@@ -284,9 +385,16 @@ class SublimationPrintReceiveController extends Controller
             $sizeIdToName[$size->id] = $size->name;
         }
 
+        // Base query for sent quantities
+        $sentQuery = SublimationPrintSend::where('product_combination_id', $productCombination->id);
+
+        // Filter by PO number if provided
+        if ($poNumber) {
+            $sentQuery->where('po_number', $poNumber);
+        }
+
         // Sum sent quantities per size using size IDs
-        $sentQuantities = SublimationPrintSend::where('product_combination_id', $productCombination->id)
-            ->get()
+        $sentQuantities = $sentQuery->get()
             ->pluck('sublimation_print_send_quantities')
             ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
                 foreach ($quantities as $sizeId => $qty) {
@@ -295,9 +403,16 @@ class SublimationPrintReceiveController extends Controller
                 return $carry;
             }, []);
 
+        // Base query for received quantities
+        $receivedQuery = SublimationPrintReceive::where('product_combination_id', $productCombination->id);
+
+        // Filter by PO number if provided
+        if ($poNumber) {
+            $receivedQuery->where('po_number', 'like', '%' . $poNumber . '%');
+        }
+
         // Sum received quantities per size using size IDs
-        $receivedQuantities = SublimationPrintReceive::where('product_combination_id', $productCombination->id)
-            ->get()
+        $receivedQuantities = $receivedQuery->get()
             ->pluck('sublimation_print_receive_quantities')
             ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
                 foreach ($quantities as $sizeId => $qty) {
@@ -320,6 +435,7 @@ class SublimationPrintReceiveController extends Controller
     }
 
     // Reports
+
     public function totalPrintEmbReceiveReport(Request $request)
     {
         $query = SublimationPrintReceive::with('productCombination.style', 'productCombination.color');
