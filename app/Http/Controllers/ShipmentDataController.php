@@ -1175,7 +1175,15 @@ class ShipmentDataController extends Controller
         ];
     }
 
-    //old_data_store
+    //old_data
+
+    public function old_data_create()
+    {
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $distinctPoNumbers = OrderData::where('po_status', 'running')->distinct()->pluck('po_number');
+
+        return view('backend.library.old_data.create', compact('allSizes', 'distinctPoNumbers'));
+    }
 
     public function old_data_store(Request $request)
     {

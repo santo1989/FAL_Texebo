@@ -151,7 +151,10 @@ Route::middleware('auth')->group(function () {
 
 
     // Cutting Data Routes
+    Route::get('cutting_requisition', [CuttingDataController::class, 'cutting_requisition'])->name('cutting_requisition');
     Route::get('cutting_data_report', [CuttingDataController::class, 'cutting_data_report'])->name('cutting_data_report');
+    
+    Route::get('/cutting_requisition_find', [CuttingDataController::class, 'cutting_requisition_find'])->name('cutting_requisition_find');
     Route::get('/cutting-data/find', [CuttingDataController::class, 'find'])->name('cutting_data.find');
     Route::get('/get-order-and-cutting-quantities/{product_combination_id}', [CuttingDataController::class, 'getOrderAndCuttingQuantities'])->name('get.order.and.cutting.quantities');
     Route::resource('cutting_data', CuttingDataController::class); // Resource route last
@@ -302,7 +305,7 @@ Route::get('/get-size-name/{sizeId}', function ($sizeId) {
 
 //privious old data update stage wise
 
-Route::get('old_data_create', [OrderDataController::class, 'old_data_create'])->name('old_data_create');
+Route::get('old_data_create', [ShipmentDataController::class, 'old_data_create'])->name('old_data_create');
 
 // old_data_store
 Route::post('old_data_store', [ShipmentDataController::class, 'old_data_store'])->name('old_data_store');

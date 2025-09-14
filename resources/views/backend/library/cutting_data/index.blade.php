@@ -30,6 +30,9 @@
                                 <a href="{{ route('cutting_data_report') }}" class="btn btn-sm btn-outline-info">
                                     <i class="fas fa-chart-bar"></i> Cutting Report
                                 </a>
+                                <a href="{{ route('cutting_requisition') }}" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-file-alt"></i> Cutting Requisition
+                                </a>
                             </div>
 
                             <form class="d-flex flex-wrap align-items-end gap-2"

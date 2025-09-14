@@ -1048,4 +1048,219 @@ class CuttingDataController extends Controller
             'distinctPoNumbers'
         ));
     }
+
+    public function cutting_requisition()
+    {
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $distinctPoNumbers = OrderData::where('po_status', 'running')->distinct()->pluck('po_number');
+
+        return view('backend.library.cutting_data.cutting_requisition', compact('allSizes', 'distinctPoNumbers'));
+    }
+    public function cutting_requisition_find(Request $request)
+    {
+        $poNumbers = $request->input('po_numbers', []);
+        // Log::info('PO Numbers for Requisition Find:', $poNumbers); // For debugging
+
+        if (empty($poNumbers)) {
+            return response()->json([]);
+        }
+
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
+        $sizeNameToIdMap = $allSizes->keyBy('name')->map(fn($size) => $size->id); // Added for reverse lookup if needed
+
+        $orderData = OrderData::whereIn('po_number', $poNumbers)
+            ->with(['productCombination.style', 'productCombination.color'])
+            ->get();
+        // Log::info('Order Data for Requisition Find:', $orderData->toArray()); // For debugging
+
+        $existingCuttingData = CuttingData::whereIn('po_number', $poNumbers)->get();
+        // Log::info('Cutting Data for Requisition Find:', $existingCuttingData->toArray()); // For debugging
+
+        $response = []; // Final structured response
+        $aggregatedData = []; // Intermediate aggregation
+
+        foreach ($orderData as $order) {
+            $poNumber = $order->po_number;
+            $combinationId = $order->product_combination_id;
+            $key = $poNumber . '-' . $combinationId;
+
+            if (!isset($aggregatedData[$key])) {
+                $sizeIds = $order->productCombination ? $order->productCombination->size_ids : [];
+                $aggregatedData[$key] = [
+                    'po_number' => $poNumber,
+                    'combination_id' => $combinationId,
+                    'style' => $order->productCombination->style->name ?? 'Unknown',
+                    'color' => $order->productCombination->color->name ?? 'Unknown',
+                    'size_ids' => $sizeIds, // Original size IDs for this combination
+                    'order_quantities' => [], // Actual order quantities per size name
+                    'cut_quantities' => [],    // Already cut quantities per size name
+                ];
+            }
+
+            foreach ($order->order_quantities as $sizeId => $quantity) {
+                $sizeName = $sizeIdToNameMap[(string)$sizeId] ?? 'unknown';
+                $aggregatedData[$key]['order_quantities'][$sizeName] =
+                    ($aggregatedData[$key]['order_quantities'][$sizeName] ?? 0) + (int)$quantity;
+            }
+        }
+
+        foreach ($existingCuttingData as $cut) {
+            $poNumber = $cut->po_number;
+            $combinationId = $cut->product_combination_id;
+            $key = $poNumber . '-' . $combinationId;
+
+            if (isset($aggregatedData[$key])) {
+                foreach ($cut->cut_quantities as $sizeIdOrName => $quantity) {
+                    // Normalize size name (handle both IDs and names from existing data)
+                    $sizeName = is_numeric($sizeIdOrName) ?
+                        ($sizeIdToNameMap[(string)$sizeIdOrName] ?? 'unknown') :
+                        $sizeIdOrName;
+
+                    $aggregatedData[$key]['cut_quantities'][$sizeName] =
+                        ($aggregatedData[$key]['cut_quantities'][$sizeName] ?? 0) + (int)$quantity;
+                }
+            }
+        }
+
+        $poTotals = []; // To store the total max allowed for each PO
+
+        foreach ($aggregatedData as $data) {
+            $requisitionQuantities = []; // These will be our 'available' or 'requisition' quantities
+            $combinationTotalRequisitionQty = 0; // Total requisition for this style/color combination
+
+            foreach ($data['order_quantities'] as $sizeName => $orderQty) {
+                $cutQty = $data['cut_quantities'][$sizeName] ?? 0;
+
+                // Calculate maximum allowed (order quantity + 3%)
+                $maxAllowed = ceil($orderQty * 1.03);
+
+                // Calculate requisition quantity (max allowed minus already cut)
+                $requisitionQty = max(0, $maxAllowed - $cutQty);
+
+                $requisitionQuantities[$sizeName] = $requisitionQty;
+                $combinationTotalRequisitionQty += $requisitionQty;
+
+                // Sum up for PO Total Max Value (this represents the max potential for each size for the PO)
+                // Initialize if not set
+                if (!isset($poTotals[$data['po_number']])) {
+                    $poTotals[$data['po_number']] = 0;
+                }
+                // Add the *maxAllowed* for this size to the PO's total
+                $poTotals[$data['po_number']] += $maxAllowed;
+            }
+
+            $response[$data['po_number']][] = [
+                'combination_id' => $data['combination_id'],
+                'style' => $data['style'],
+                'color' => $data['color'],
+                'size_ids' => $data['size_ids'], // Still useful to know which sizes are relevant
+                'requisition_quantities' => $requisitionQuantities, // Renamed from available_quantities
+                'combination_total_requisition_qty' => $combinationTotalRequisitionQty, // New field for row total
+            ];
+        }
+
+        // Add PO Total Max Value to the overall response
+        $finalResponse = [
+            'data' => $response,
+            'po_totals_max_allowed' => $poTotals, // This will be the sum of all (order + 3%) for each PO
+        ];
+
+        // Log::info('Final Requisition Report Data:', $finalResponse); // For debugging
+        return response()->json($finalResponse);
+    }
+
+    // public function cutting_requisition_find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+    //     Log::info('PO Numbers:', $poNumbers);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+    //     Log::info('Sizes:', $allSizes->toArray());
+    //     $sizeIdToNameMap = $allSizes->keyBy('id')->map(fn($size) => $size->name);
+
+    //     $orderData = OrderData::whereIn('po_number', $poNumbers)
+    //         ->with(['productCombination.style', 'productCombination.color'])
+    //         ->get();
+    //     Log::info('Order Data:', $orderData->toArray());
+
+    //     $existingCuttingData = CuttingData::whereIn('po_number', $poNumbers)->get();
+    //     Log::info('Cutting Data:', $existingCuttingData->toArray());
+
+    //     $response = [];
+    //     $aggregatedData = [];
+
+    //     foreach ($orderData as $order) {
+    //         $poNumber = $order->po_number;
+    //         $combinationId = $order->product_combination_id;
+    //         $key = $poNumber . '-' . $combinationId;
+
+    //         if (!isset($aggregatedData[$key])) {
+    //             $sizeIds = $order->productCombination ? $order->productCombination->size_ids : [];
+    //             $aggregatedData[$key] = [
+    //                 'po_number' => $poNumber,
+    //                 'combination_id' => $combinationId,
+    //                 'style' => $order->productCombination->style->name ?? 'Unknown',
+    //                 'color' => $order->productCombination->color->name ?? 'Unknown',
+    //                 'size_ids' => $sizeIds,
+    //                 'order_quantities' => [],
+    //                 'cut_quantities' => [],
+    //             ];
+    //         }
+
+    //         foreach ($order->order_quantities as $sizeId => $quantity) {
+    //             $sizeName = $sizeIdToNameMap[(string)$sizeId] ?? 'unknown';
+    //             $aggregatedData[$key]['order_quantities'][$sizeName] =
+    //                 ($aggregatedData[$key]['order_quantities'][$sizeName] ?? 0) + (int)$quantity;
+    //         }
+    //     }
+
+    //     foreach ($existingCuttingData as $cut) {
+    //         $poNumber = $cut->po_number;
+    //         $combinationId = $cut->product_combination_id;
+    //         $key = $poNumber . '-' . $combinationId;
+
+    //         if (isset($aggregatedData[$key])) {
+    //             foreach ($cut->cut_quantities as $sizeIdOrName => $quantity) {
+    //                 // Normalize size name (handle both IDs and names)
+    //                 $sizeName = is_numeric($sizeIdOrName) ?
+    //                     ($sizeIdToNameMap[(string)$sizeIdOrName] ?? 'unknown') :
+    //                     $sizeIdOrName;
+
+    //                 $aggregatedData[$key]['cut_quantities'][$sizeName] =
+    //                     ($aggregatedData[$key]['cut_quantities'][$sizeName] ?? 0) + (int)$quantity;
+    //             }
+    //         }
+    //     }
+
+    //     foreach ($aggregatedData as $data) {
+    //         $availableQuantities = [];
+    //         foreach ($data['order_quantities'] as $sizeName => $orderQty) {
+    //             $cutQty = $data['cut_quantities'][$sizeName] ?? 0;
+
+    //             // Calculate maximum allowed (order quantity + 3%)
+    //             $maxAllowed = ceil($orderQty * 1.03);
+
+    //             // Calculate available quantity (max allowed minus already cut)
+    //             $available = max(0, $maxAllowed - $cutQty);
+
+    //             $availableQuantities[$sizeName] = $available;
+    //         }
+
+    //         $response[$data['po_number']][] = [
+    //             'combination_id' => $data['combination_id'],
+    //             'style' => $data['style'],
+    //             'color' => $data['color'],
+    //             'size_ids' => $data['size_ids'],
+    //             'available_quantities' => $availableQuantities,
+    //         ];
+    //     }
+
+    //     Log::info('Response Data:', $response);
+    //     return response()->json($response);
+    // }
 }

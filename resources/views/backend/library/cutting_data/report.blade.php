@@ -87,21 +87,23 @@
                                         <th rowspan="2">Style</th>
                                         <th rowspan="2">Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th colspan="3" class="text-center">
+                                            <th colspan="2" class="text-center">
                                                 {{ strtoupper($size->name) }}
                                             </th>
                                         @endforeach
-                                        <th colspan="3">Total Quantities</th>
+                                        <th colspan="2">Total Quantities</th>
                                     </tr>
                                     <tr>
                                         @foreach ($allSizes as $size)
-                                            <th>Cut Qty</th>
-                                            <th>Waste Qty</th>
-                                            <th class="bg-info">Order Qty</th>
+                                            <th>Order Qty</th>
+                                            <th class="bg-info">Cut Qty</th>
+                                            {{-- <th>Waste Qty</th> --}}
+                                           
                                         @endforeach
-                                        <th>Cut</th>
-                                        <th>Waste</th>
-                                        <th class="bg-info">Order</th>
+                                        <th >Order</th>
+                                        <th class="bg-info">Cut</th>
+                                        {{-- <th>Waste</th> --}}
+                                        
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -111,17 +113,19 @@
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['cut_sizes'][$size->id] ?? 0 }}</td>
-                                                <td>{{ $data['waste_sizes'][$size->id] ?? 0 }}</td>
-                                                <td class="bg-info">{{ $data['order_sizes'][$size->id] ?? 0 }}</td>
+                                            <td >{{ $data['order_sizes'][$size->id] ?? 0 }}</td>
+                                                <td class="bg-info">{{ $data['cut_sizes'][$size->id] ?? 0 }}</td>
+                                                {{-- <td>{{ $data['waste_sizes'][$size->id] ?? 0 }}</td> --}}
+                                                
                                             @endforeach
-                                            <td>{{ $data['total_cut'] }}</td>
-                                            <td>{{ $data['total_waste'] }}</td>
-                                            <td class="bg-info">{{ $data['total_order'] }}</td>
+                                            <td >{{ $data['total_order'] }}</td>
+                                            <td class="bg-info">{{ $data['total_cut'] }}</td>
+                                            {{-- <td>{{ $data['total_waste'] }}</td> --}}
+                                            
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 3 + count($allSizes) * 3 + 3 }}" class="text-center">No
+                                            <td colspan="{{ 2 + count($allSizes) * 2 + 2 }}" class="text-center">No
                                                 report
                                                 data found for the selected criteria.</td>
                                         </tr>
