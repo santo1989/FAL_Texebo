@@ -409,8 +409,49 @@ class SublimationPrintSendController extends Controller
     {
         $query = SublimationPrintSend::with('productCombination.style', 'productCombination.color');
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('date', [$request->start_date, $request->end_date]);
+        // Apply filters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
+
+        // Style filter
+        if (!empty($styleIds)) {
+            $query->whereHas('productCombination', function ($q) use ($styleIds) {
+                $q->whereIn('style_id', $styleIds);
+            });
+        }
+
+        // Color filter
+        if (!empty($colorIds)) {
+            $query->whereHas('productCombination', function ($q) use ($colorIds) {
+                $q->whereIn('color_id', $colorIds);
+            });
+        }
+
+        // PO Number filter
+        if (!empty($poNumbers)) {
+            $query->whereIn('po_number', $poNumbers);
+        }
+
+        // Date filter
+        if ($startDate && $endDate) {
+            $query->whereBetween('date', [$startDate, $endDate]);
+        }
+
+        // Search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', '%' . $search . '%')
+                    ->orWhereHas('productCombination.style', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('productCombination.color', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    });
+            });
         }
 
         $printSendData = $query->get();
@@ -450,19 +491,43 @@ class SublimationPrintSendController extends Controller
             $reportData[$key]['total'] += $data->total_sublimation_print_send_quantity;
         }
 
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = SublimationPrintSend::distinct()->pluck('po_number')->filter()->values();
+
         return view('backend.library.sublimation_print_send_data.reports.total', [
             'reportData' => array_values($reportData),
-            'allSizes' => $allSizes
+            'allSizes' => $allSizes,
+            'allStyles' => $allStyles,
+            'allColors' => $allColors,
+            'distinctPoNumbers' => $distinctPoNumbers
         ]);
     }
 
     public function wipReport(Request $request)
     {
-        // Get product combinations with sublimation_print = true
-        $combinations = ProductCombination::where('sublimation_print', true)
-            ->with('style', 'color')
-            ->get();
+        // Get filter parameters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
 
+        // Base query for product combinations with sublimation_print = true
+        $combinationsQuery = ProductCombination::where('sublimation_print', true)
+            ->with('style', 'color');
+
+        // Apply style and color filters
+        if (!empty($styleIds)) {
+            $combinationsQuery->whereIn('style_id', $styleIds);
+        }
+
+        if (!empty($colorIds)) {
+            $combinationsQuery->whereIn('color_id', $colorIds);
+        }
+
+        $combinations = $combinationsQuery->get();
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $wipData = [];
 
@@ -473,11 +538,41 @@ class SublimationPrintSendController extends Controller
         }
 
         foreach ($combinations as $pc) {
-            $totalCut = CuttingData::where('product_combination_id', $pc->id)
-                ->sum('total_cut_quantity');
+            // Apply filters to cutting data
+            $cuttingDataQuery = CuttingData::where('product_combination_id', $pc->id);
+            $sendDataQuery = SublimationPrintSend::where('product_combination_id', $pc->id);
 
-            $totalSent = SublimationPrintSend::where('product_combination_id', $pc->id)
-                ->sum('total_sublimation_print_send_quantity');
+            // PO Number filter
+            if (!empty($poNumbers)) {
+                $cuttingDataQuery->whereIn('po_number', $poNumbers);
+                $sendDataQuery->whereIn('po_number', $poNumbers);
+            }
+
+            // Date filter
+            if ($startDate && $endDate) {
+                $cuttingDataQuery->whereBetween('created_at', [$startDate, $endDate]);
+                $sendDataQuery->whereBetween('date', [$startDate, $endDate]);
+            }
+
+            $totalCut = $cuttingDataQuery->sum('total_cut_quantity');
+            $totalSent = $sendDataQuery->sum('total_sublimation_print_send_quantity');
+
+            // Skip if no cutting data matches the filters
+            if ($totalCut == 0) continue;
+
+            // Apply search filter
+            if ($search) {
+                $styleName = strtolower($pc->style->name);
+                $colorName = strtolower($pc->color->name);
+                $searchTerm = strtolower($search);
+
+                if (
+                    strpos($styleName, $searchTerm) === false &&
+                    strpos($colorName, $searchTerm) === false
+                ) {
+                    continue;
+                }
+            }
 
             if ($totalCut > $totalSent) {
                 $key = $pc->style->name . '-' . $pc->color->name;
@@ -506,8 +601,8 @@ class SublimationPrintSendController extends Controller
                 $wipData[$key]['total_sent'] += $totalSent;
                 $wipData[$key]['waiting'] += ($totalCut - $totalSent);
 
-                // Aggregate size quantities
-                $cuttingData = CuttingData::where('product_combination_id', $pc->id)->get();
+                // Aggregate size quantities for cutting data
+                $cuttingData = $cuttingDataQuery->get();
                 foreach ($cuttingData as $cd) {
                     foreach ($cd->cut_quantities as $size => $qty) {
                         if (isset($wipData[$key]['sizes'][$size])) {
@@ -516,7 +611,8 @@ class SublimationPrintSendController extends Controller
                     }
                 }
 
-                $sendData = SublimationPrintSend::where('product_combination_id', $pc->id)->get();
+                // Aggregate size quantities for send data
+                $sendData = $sendDataQuery->get();
                 foreach ($sendData as $sd) {
                     foreach ($sd->sublimation_print_send_quantities as $sizeId => $qty) {
                         $sizeName = $sizeIdToName[$sizeId] ?? null;
@@ -534,42 +630,131 @@ class SublimationPrintSendController extends Controller
             }
         }
 
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = CuttingData::distinct()->pluck('po_number')->filter()->values();
+
         return view('backend.library.sublimation_print_send_data.reports.wip', [
             'wipData' => array_values($wipData),
-            'allSizes' => $allSizes
+            'allSizes' => $allSizes,
+            'allStyles' => $allStyles,
+            'allColors' => $allColors,
+            'distinctPoNumbers' => $distinctPoNumbers
         ]);
     }
-
     public function readyToInputReport(Request $request)
     {
         $readyData = [];
 
-        // Product combinations with sublimation_print = false
-        $nonEmbCombinations = ProductCombination::where('sublimation_print', false)
-            ->with('style', 'color')
-            ->get();
+        // Get filter parameters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
 
+        // Base query for non-embroidery combinations
+        $nonEmbCombinationsQuery = ProductCombination::where('sublimation_print', false)
+            ->with(['style', 'color', 'cuttingData']);
+
+        // Base query for embroidery combinations
+        $embCombinationsQuery = ProductCombination::where('sublimation_print', true)
+            ->with(['style', 'color', 'cuttingData', 'sublimationPrintSends']);
+
+        // Apply filters if provided
+        if (!empty($styleIds)) {
+            $nonEmbCombinationsQuery->whereIn('style_id', $styleIds);
+            $embCombinationsQuery->whereIn('style_id', $styleIds);
+        }
+
+        if (!empty($colorIds)) {
+            $nonEmbCombinationsQuery->whereIn('color_id', $colorIds);
+            $embCombinationsQuery->whereIn('color_id', $colorIds);
+        }
+
+        // Get the combinations
+        $nonEmbCombinations = $nonEmbCombinationsQuery->get();
+        $embCombinations = $embCombinationsQuery->get();
+
+        // Process non-embroidery combinations
         foreach ($nonEmbCombinations as $pc) {
+            $cuttingDataQuery = CuttingData::where('product_combination_id', $pc->id);
+
+            // Apply PO number filter
+            if (!empty($poNumbers)) {
+                $cuttingDataQuery->whereIn('po_number', $poNumbers);
+            }
+
+            // Apply date filter
+            if ($startDate && $endDate) {
+                $cuttingDataQuery->whereBetween('created_at', [$startDate, $endDate]);
+            }
+
+            $totalCut = $cuttingDataQuery->sum('total_cut_quantity');
+
+            // Skip if no cutting data matches the filters
+            if ($totalCut == 0) continue;
+
+            // Apply search filter
+            if ($search) {
+                $styleName = strtolower($pc->style->name);
+                $colorName = strtolower($pc->color->name);
+                $searchTerm = strtolower($search);
+
+                if (
+                    strpos($styleName, $searchTerm) === false &&
+                    strpos($colorName, $searchTerm) === false
+                ) {
+                    continue;
+                }
+            }
+
             $readyData[] = [
                 'style' => $pc->style->name,
                 'color' => $pc->color->name,
                 'type' => 'No Print/Emb Needed',
-                'total_cut' => CuttingData::where('product_combination_id', $pc->id)->sum('total_cut_quantity'),
+                'total_cut' => $totalCut,
                 'total_sent' => 0
             ];
         }
 
-        // Product combinations with sublimation_print = true and completed
-        $embCombinations = ProductCombination::where('sublimation_print', true)
-            ->with('style', 'color')
-            ->get();
-
+        // Process embroidery combinations
         foreach ($embCombinations as $pc) {
-            $totalCut = CuttingData::where('product_combination_id', $pc->id)
-                ->sum('total_cut_quantity');
+            $cuttingDataQuery = CuttingData::where('product_combination_id', $pc->id);
+            $sendDataQuery = SublimationPrintSend::where('product_combination_id', $pc->id);
 
-            $totalSent = SublimationPrintSend::where('product_combination_id', $pc->id)
-                ->sum('total_sublimation_print_send_quantity');
+            // Apply PO number filter
+            if (!empty($poNumbers)) {
+                $cuttingDataQuery->whereIn('po_number', $poNumbers);
+                $sendDataQuery->whereIn('po_number', $poNumbers);
+            }
+
+            // Apply date filter
+            if ($startDate && $endDate) {
+                $cuttingDataQuery->whereBetween('created_at', [$startDate, $endDate]);
+                $sendDataQuery->whereBetween('created_at', [$startDate, $endDate]);
+            }
+
+            $totalCut = $cuttingDataQuery->sum('total_cut_quantity');
+            $totalSent = $sendDataQuery->sum('total_sublimation_print_send_quantity');
+
+            // Skip if no cutting data matches the filters
+            if ($totalCut == 0) continue;
+
+            // Apply search filter
+            if ($search) {
+                $styleName = strtolower($pc->style->name);
+                $colorName = strtolower($pc->color->name);
+                $searchTerm = strtolower($search);
+
+                if (
+                    strpos($styleName, $searchTerm) === false &&
+                    strpos($colorName, $searchTerm) === false
+                ) {
+                    continue;
+                }
+            }
 
             if ($totalSent >= $totalCut) {
                 $readyData[] = [
@@ -582,9 +767,12 @@ class SublimationPrintSendController extends Controller
             }
         }
 
-        return view('backend.library.sublimation_print_send_data.reports.ready', compact('readyData'));
-    }
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = CuttingData::distinct()->pluck('po_number')->filter()->values();
 
+        return view('backend.library.sublimation_print_send_data.reports.ready', compact('readyData', 'allStyles', 'allColors', 'distinctPoNumbers'));
+    }
     public function available($product_combination_id)
     {
         $sizes = Size::where('is_active', 1)->get();
@@ -1794,6 +1982,205 @@ class SublimationPrintSendController extends Controller
     //         'sizes' => $sizes
     //     ]);
     // }
+
+    // public function totalPrintEmbSendReport(Request $request)
+    // {
+    //     $query = SublimationPrintSend::with('productCombination.style', 'productCombination.color');
+
+    //     if ($request->filled('start_date') && $request->filled('end_date')) {
+    //         $query->whereBetween('date', [$request->start_date, $request->end_date]);
+    //     }
+
+    //     $printSendData = $query->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+    //     $reportData = [];
+
+    //     // Create a mapping of size IDs to size names
+    //     $sizeIdToName = [];
+    //     foreach ($allSizes as $size) {
+    //         $sizeIdToName[$size->id] = $size->name;
+    //     }
+
+    //     foreach ($printSendData as $data) {
+    //         $style = $data->productCombination->style->name;
+    //         $color = $data->productCombination->color->name;
+    //         $key = $style . '-' . $color;
+
+    //         if (!isset($reportData[$key])) {
+    //             $reportData[$key] = [
+    //                 'style' => $style,
+    //                 'color' => $color,
+    //                 'sizes' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //                 'total' => 0
+    //             ];
+    //         }
+
+    //         // Convert size IDs to names for display
+    //         foreach ($data->sublimation_print_send_quantities as $sizeId => $qty) {
+    //             $sizeName = $sizeIdToName[$sizeId] ?? null;
+    //             if ($sizeName) {
+    //                 $normalized = strtolower($sizeName);
+    //                 if (array_key_exists($normalized, $reportData[$key]['sizes'])) {
+    //                     $reportData[$key]['sizes'][$normalized] += $qty;
+    //                 }
+    //             }
+    //         }
+    //         $reportData[$key]['total'] += $data->total_sublimation_print_send_quantity;
+    //     }
+    //     $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+    //     $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+    //     $distinctPoNumbers = CuttingData::distinct()->pluck('po_number')->filter()->values();
+
+    //     return view('backend.library.sublimation_print_send_data.reports.total', [
+    //         'reportData' => array_values($reportData),
+    //         'allSizes' => $allSizes,
+    //         'allStyles' => $allStyles,
+    //         'allColors' => $allColors,
+    //         'distinctPoNumbers' => $distinctPoNumbers
+    //     ]);
+    // }
+
+    // public function wipReport(Request $request)
+    // {
+    //     // Get product combinations with sublimation_print = true
+    //     $combinations = ProductCombination::where('sublimation_print', true)
+    //         ->with('style', 'color')
+    //         ->get();
+
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+    //     $wipData = [];
+
+    //     // Create a mapping of size IDs to size names
+    //     $sizeIdToName = [];
+    //     foreach ($allSizes as $size) {
+    //         $sizeIdToName[$size->id] = $size->name;
+    //     }
+
+    //     foreach ($combinations as $pc) {
+    //         $totalCut = CuttingData::where('product_combination_id', $pc->id)
+    //             ->sum('total_cut_quantity');
+
+    //         $totalSent = SublimationPrintSend::where('product_combination_id', $pc->id)
+    //             ->sum('total_sublimation_print_send_quantity');
+
+    //         if ($totalCut > $totalSent) {
+    //             $key = $pc->style->name . '-' . $pc->color->name;
+
+    //             if (!isset($wipData[$key])) {
+    //                 $wipData[$key] = [
+    //                     'style' => $pc->style->name,
+    //                     'color' => $pc->color->name,
+    //                     'sizes' => [],
+    //                     'total_cut' => 0,
+    //                     'total_sent' => 0,
+    //                     'waiting' => 0
+    //                 ];
+
+    //                 // Initialize sizes
+    //                 foreach ($allSizes as $size) {
+    //                     $wipData[$key]['sizes'][$size->name] = [
+    //                         'cut' => 0,
+    //                         'sent' => 0,
+    //                         'waiting' => 0
+    //                     ];
+    //                 }
+    //             }
+
+    //             $wipData[$key]['total_cut'] += $totalCut;
+    //             $wipData[$key]['total_sent'] += $totalSent;
+    //             $wipData[$key]['waiting'] += ($totalCut - $totalSent);
+
+    //             // Aggregate size quantities
+    //             $cuttingData = CuttingData::where('product_combination_id', $pc->id)->get();
+    //             foreach ($cuttingData as $cd) {
+    //                 foreach ($cd->cut_quantities as $size => $qty) {
+    //                     if (isset($wipData[$key]['sizes'][$size])) {
+    //                         $wipData[$key]['sizes'][$size]['cut'] += $qty;
+    //                     }
+    //                 }
+    //             }
+
+    //             $sendData = SublimationPrintSend::where('product_combination_id', $pc->id)->get();
+    //             foreach ($sendData as $sd) {
+    //                 foreach ($sd->sublimation_print_send_quantities as $sizeId => $qty) {
+    //                     $sizeName = $sizeIdToName[$sizeId] ?? null;
+    //                     if ($sizeName && isset($wipData[$key]['sizes'][$sizeName])) {
+    //                         $wipData[$key]['sizes'][$sizeName]['sent'] += $qty;
+    //                     }
+    //                 }
+    //             }
+
+    //             // Calculate waiting per size
+    //             foreach ($wipData[$key]['sizes'] as $size => $data) {
+    //                 $wipData[$key]['sizes'][$size]['waiting'] =
+    //                     $data['cut'] - $data['sent'];
+    //             }
+    //         }
+    //     }
+    //     $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+    //     $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+    //     $distinctPoNumbers = CuttingData::distinct()->pluck('po_number')->filter()->values();
+
+    //     return view('backend.library.sublimation_print_send_data.reports.wip', [
+    //         'wipData' => array_values($wipData),
+    //         'allSizes' => $allSizes,
+    //         'allStyles' => $allStyles,
+    //         'allColors' => $allColors,
+    //         'distinctPoNumbers' => $distinctPoNumbers
+    //     ]);
+    // }
+
+    // public function readyToInputReport(Request $request)
+    // {
+    //     $readyData = [];
+
+    //     // Product combinations with sublimation_print = false
+    //     $nonEmbCombinations = ProductCombination::where('sublimation_print', false)
+    //         ->with('style', 'color')
+    //         ->get();
+
+    //     foreach ($nonEmbCombinations as $pc) {
+    //         $readyData[] = [
+    //             'style' => $pc->style->name,
+    //             'color' => $pc->color->name,
+    //             'type' => 'No Print/Emb Needed',
+    //             'total_cut' => CuttingData::where('product_combination_id', $pc->id)->sum('total_cut_quantity'),
+    //             'total_sent' => 0
+    //         ];
+    //     }
+
+    //     // Product combinations with sublimation_print = true and completed
+    //     $embCombinations = ProductCombination::where('sublimation_print', true)
+    //         ->with('style', 'color')
+    //         ->get();
+
+    //     foreach ($embCombinations as $pc) {
+    //         $totalCut = CuttingData::where('product_combination_id', $pc->id)
+    //             ->sum('total_cut_quantity');
+
+    //         $totalSent = SublimationPrintSend::where('product_combination_id', $pc->id)
+    //             ->sum('total_sublimation_print_send_quantity');
+
+    //         if ($totalSent >= $totalCut) {
+    //             $readyData[] = [
+    //                 'style' => $pc->style->name,
+    //                 'color' => $pc->color->name,
+    //                 'type' => 'Print/Emb Completed',
+    //                 'total_cut' => $totalCut,
+    //                 'total_sent' => $totalSent
+    //             ];
+    //         }
+
+    //     }
+
+    //     $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+    //     $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+    //     $distinctPoNumbers = CuttingData::distinct()->pluck('po_number')->filter()->values();
+
+    //     return view('backend.library.sublimation_print_send_data.reports.ready', compact('readyData', 'allStyles', 'allColors', 'distinctPoNumbers'));
+    // }
+
+
 
 
 

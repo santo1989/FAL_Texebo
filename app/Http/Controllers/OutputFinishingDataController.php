@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Color;
 use App\Models\LineInputData;
 use App\Models\OrderData;
 use App\Models\OutputFinishingData;
 use App\Models\ProductCombination;
 use App\Models\Size;
+use App\Models\Style;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -16,22 +18,73 @@ class OutputFinishingDataController extends Controller
     {
         $query = OutputFinishingData::with('productCombination.buyer', 'productCombination.style', 'productCombination.color');
 
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->whereHas('productCombination.style', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
-            })->orWhereHas('productCombination.color', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
+        // Get filter parameters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
+
+        // Style filter
+        if (!empty($styleIds)) {
+            $query->whereHas('productCombination', function ($q) use ($styleIds) {
+                $q->whereIn('style_id', $styleIds);
             });
         }
-        if ($request->filled('date')) {
+
+        // Color filter
+        if (!empty($colorIds)) {
+            $query->whereHas('productCombination', function ($q) use ($colorIds) {
+                $q->whereIn('color_id', $colorIds);
+            });
+        }
+
+        // PO Number filter
+        if (!empty($poNumbers)) {
+            $query->whereIn('po_number', $poNumbers);
+        }
+
+        // Date range filter
+        if ($startDate && $endDate) {
+            $query->whereBetween('date', [$startDate, $endDate]);
+        } elseif ($request->filled('date')) {
+            // Single date filter (for backward compatibility)
             $query->whereDate('date', $request->input('date'));
+        }
+
+        // Search filter
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', '%' . $search . '%')
+                    ->orWhereHas('productCombination.style', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('productCombination.color', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('productCombination.buyer', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    });
+            });
         }
 
         $outputFinishingData = $query->orderBy('date', 'desc')->paginate(10);
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        return view('backend.library.output_finishing_data.index', compact('outputFinishingData', 'allSizes'));
+        // Get filter options
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = OutputFinishingData::distinct()->pluck('po_number')->filter()->values();
+
+        return view('backend.library.output_finishing_data.index', compact(
+            'outputFinishingData',
+            'allSizes',
+            'allStyles',
+            'allColors',
+            'distinctPoNumbers'
+        ));
     }
 
     public function create()
@@ -412,15 +465,44 @@ class OutputFinishingDataController extends Controller
         return array_unique($poNumbers);
     }
 
-    // Report: Total Balance Report
     public function totalBalanceReport(Request $request)
     {
         $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
         $reportData = [];
 
-        $productCombinations = ProductCombination::whereHas('lineInputData')
-            ->with('style', 'color')
-            ->get();
+        // Get filter parameters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
+
+        // Base query for product combinations
+        $productCombinationsQuery = ProductCombination::whereHas('lineInputData')
+            ->with('style', 'color');
+
+        // Apply style and color filters
+        if (!empty($styleIds)) {
+            $productCombinationsQuery->whereIn('style_id', $styleIds);
+        }
+
+        if (!empty($colorIds)) {
+            $productCombinationsQuery->whereIn('color_id', $colorIds);
+        }
+
+        // Apply search filter
+        if ($search) {
+            $productCombinationsQuery->where(function ($q) use ($search) {
+                $q->whereHas('style', function ($q2) use ($search) {
+                    $q2->where('name', 'like', '%' . $search . '%');
+                })->orWhereHas('color', function ($q2) use ($search) {
+                    $q2->where('name', 'like', '%' . $search . '%');
+                });
+            });
+        }
+
+        $productCombinations = $productCombinationsQuery->get();
 
         foreach ($productCombinations as $pc) {
             $style = $pc->style->name;
@@ -436,17 +518,39 @@ class OutputFinishingDataController extends Controller
                 ];
             }
 
-            // Get total input quantities
-            $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
-                ->get()
+            // Get total input quantities with filters
+            $inputQuery = LineInputData::where('product_combination_id', $pc->id);
+
+            // Apply PO number filter
+            if (!empty($poNumbers)) {
+                $inputQuery->whereIn('po_number', $poNumbers);
+            }
+
+            // Apply date filter
+            if ($startDate && $endDate) {
+                $inputQuery->whereBetween('date', [$startDate, $endDate]);
+            }
+
+            $inputQuantities = $inputQuery->get()
                 ->flatMap(fn($item) => $item->input_quantities)
                 ->groupBy(fn($value, $key) => $key) // Use size ID as key
                 ->map(fn($group) => $group->sum())
                 ->toArray();
 
-            // Get total output quantities
-            $outputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
-                ->get()
+            // Get total output quantities with filters
+            $outputQuery = OutputFinishingData::where('product_combination_id', $pc->id);
+
+            // Apply PO number filter
+            if (!empty($poNumbers)) {
+                $outputQuery->whereIn('po_number', $poNumbers);
+            }
+
+            // Apply date filter
+            if ($startDate && $endDate) {
+                $outputQuery->whereBetween('date', [$startDate, $endDate]);
+            }
+
+            $outputQuantities = $outputQuery->get()
                 ->flatMap(fn($item) => $item->output_quantities)
                 ->groupBy(fn($value, $key) => $key) // Use size ID as key
                 ->map(fn($group) => $group->sum())
@@ -460,11 +564,30 @@ class OutputFinishingDataController extends Controller
                 $reportData[$key]['sizes'][$size->id] = $balance;
                 $reportData[$key]['total'] += $balance;
             }
+
+            // Remove if no data matches the filters
+            if ($reportData[$key]['total'] == 0) {
+                unset($reportData[$key]);
+            }
         }
+
+        // Get filter options
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = array_unique(
+            array_merge(
+                LineInputData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                OutputFinishingData::distinct()->pluck('po_number')->filter()->values()->toArray()
+            )
+        );
+        sort($distinctPoNumbers);
 
         return view('backend.library.output_finishing_data.reports.total_balance', [
             'reportData' => array_values($reportData),
-            'allSizes' => $allSizes
+            'allSizes' => $allSizes,
+            'allStyles' => $allStyles,
+            'allColors' => $allColors,
+            'distinctPoNumbers' => $distinctPoNumbers
         ]);
     }
 
@@ -473,9 +596,39 @@ class OutputFinishingDataController extends Controller
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $wipData = [];
 
-        $productCombinations = ProductCombination::whereHas('lineInputData')
-            ->with('style', 'color')
-            ->get();
+        // Get filter parameters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
+
+        // Base query for product combinations
+        $productCombinationsQuery = ProductCombination::whereHas('lineInputData')
+            ->with('style', 'color');
+
+        // Apply style and color filters
+        if (!empty($styleIds)) {
+            $productCombinationsQuery->whereIn('style_id', $styleIds);
+        }
+
+        if (!empty($colorIds)) {
+            $productCombinationsQuery->whereIn('color_id', $colorIds);
+        }
+
+        // Apply search filter
+        if ($search) {
+            $productCombinationsQuery->where(function ($q) use ($search) {
+                $q->whereHas('style', function ($q2) use ($search) {
+                    $q2->where('name', 'like', '%' . $search . '%');
+                })->orWhereHas('color', function ($q2) use ($search) {
+                    $q2->where('name', 'like', '%' . $search . '%');
+                });
+            });
+        }
+
+        $productCombinations = $productCombinationsQuery->get();
 
         foreach ($productCombinations as $pc) {
             $style = $pc->style->name;
@@ -490,17 +643,39 @@ class OutputFinishingDataController extends Controller
                 'total' => 0
             ];
 
-            // Get input quantities (using size IDs as keys)
-            $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
-                ->get()
+            // Get input quantities with filters
+            $inputQuery = LineInputData::where('product_combination_id', $pc->id);
+
+            // Apply PO number filter
+            if (!empty($poNumbers)) {
+                $inputQuery->whereIn('po_number', $poNumbers);
+            }
+
+            // Apply date filter
+            if ($startDate && $endDate) {
+                $inputQuery->whereBetween('date', [$startDate, $endDate]);
+            }
+
+            $inputQuantities = $inputQuery->get()
                 ->flatMap(fn($item) => $item->input_quantities)
                 ->groupBy(fn($value, $key) => $key) // Use size ID as key
                 ->map(fn($group) => $group->sum())
                 ->toArray();
 
-            // Get output quantities (using size IDs as keys)
-            $outputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
-                ->get()
+            // Get output quantities with filters
+            $outputQuery = OutputFinishingData::where('product_combination_id', $pc->id);
+
+            // Apply PO number filter
+            if (!empty($poNumbers)) {
+                $outputQuery->whereIn('po_number', $poNumbers);
+            }
+
+            // Apply date filter
+            if ($startDate && $endDate) {
+                $outputQuery->whereBetween('date', [$startDate, $endDate]);
+            }
+
+            $outputQuantities = $outputQuery->get()
                 ->flatMap(fn($item) => $item->output_quantities)
                 ->groupBy(fn($value, $key) => $key) // Use size ID as key
                 ->map(fn($group) => $group->sum())
@@ -514,13 +689,164 @@ class OutputFinishingDataController extends Controller
                 $wipData[$key]['sizes'][$size->id] = $wip;
                 $wipData[$key]['total'] += $wip;
             }
+
+            // Remove if no data matches the filters
+            if ($wipData[$key]['total'] == 0) {
+                unset($wipData[$key]);
+            }
         }
+
+        // Get filter options
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = array_unique(
+            array_merge(
+                LineInputData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                OutputFinishingData::distinct()->pluck('po_number')->filter()->values()->toArray()
+            )
+        );
+        sort($distinctPoNumbers);
 
         return view('backend.library.output_finishing_data.reports.sewing_wip', [
             'wipData' => array_values($wipData),
-            'allSizes' => $allSizes
+            'allSizes' => $allSizes,
+            'allStyles' => $allStyles,
+            'allColors' => $allColors,
+            'distinctPoNumbers' => $distinctPoNumbers
         ]);
     }
+
+    // Report: Total Balance Report
+    // public function totalBalanceReport(Request $request)
+    // {
+    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $reportData = [];
+
+    //     $productCombinations = ProductCombination::whereHas('lineInputData')
+    //         ->with('style', 'color')
+    //         ->get();
+
+    //     foreach ($productCombinations as $pc) {
+    //         $style = $pc->style->name;
+    //         $color = $pc->color->name;
+    //         $key = $style . '-' . $color;
+
+    //         if (!isset($reportData[$key])) {
+    //             $reportData[$key] = [
+    //                 'style' => $style,
+    //                 'color' => $color,
+    //                 'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+    //                 'total' => 0
+    //             ];
+    //         }
+
+    //         // Get total input quantities
+    //         $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
+    //             ->get()
+    //             ->flatMap(fn($item) => $item->input_quantities)
+    //             ->groupBy(fn($value, $key) => $key) // Use size ID as key
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
+
+    //         // Get total output quantities
+    //         $outputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
+    //             ->get()
+    //             ->flatMap(fn($item) => $item->output_quantities)
+    //             ->groupBy(fn($value, $key) => $key) // Use size ID as key
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
+
+    //         foreach ($allSizes as $size) {
+    //             $input = $inputQuantities[$size->id] ?? 0;
+    //             $output = $outputQuantities[$size->id] ?? 0;
+    //             $balance = max(0, $input - $output);
+
+    //             $reportData[$key]['sizes'][$size->id] = $balance;
+    //             $reportData[$key]['total'] += $balance;
+    //         }
+    //     }
+
+    //     return view('backend.library.output_finishing_data.reports.total_balance', [
+    //         'reportData' => array_values($reportData),
+    //         'allSizes' => $allSizes
+    //     ]);
+    // }
+
+    // public function sewingWipReport(Request $request)
+    // {
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+    //     $wipData = [];
+
+    //     $productCombinations = ProductCombination::whereHas('lineInputData')
+    //         ->with('style', 'color')
+    //         ->get();
+
+    //     foreach ($productCombinations as $pc) {
+    //         $style = $pc->style->name;
+    //         $color = $pc->color->name;
+    //         $key = $style . '-' . $color;
+
+    //         // Initialize with size IDs as keys
+    //         $wipData[$key] = [
+    //             'style' => $style,
+    //             'color' => $color,
+    //             'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+    //             'total' => 0
+    //         ];
+
+    //         // Get input quantities (using size IDs as keys)
+    //         $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
+    //             ->get()
+    //             ->flatMap(fn($item) => $item->input_quantities)
+    //             ->groupBy(fn($value, $key) => $key) // Use size ID as key
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
+
+    //         // Get output quantities (using size IDs as keys)
+    //         $outputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
+    //             ->get()
+    //             ->flatMap(fn($item) => $item->output_quantities)
+    //             ->groupBy(fn($value, $key) => $key) // Use size ID as key
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
+
+    //         foreach ($allSizes as $size) {
+    //             $input = $inputQuantities[$size->id] ?? 0;
+    //             $output = $outputQuantities[$size->id] ?? 0;
+    //             $wip = max(0, $input - $output);
+
+    //             $wipData[$key]['sizes'][$size->id] = $wip;
+    //             $wipData[$key]['total'] += $wip;
+    //         }
+    //     }
+
+    //     return view('backend.library.output_finishing_data.reports.sewing_wip', [
+    //         'wipData' => array_values($wipData),
+    //         'allSizes' => $allSizes
+    //     ]);
+    // }
+
+    // public function index(Request $request)
+    // {
+    //     $query = OutputFinishingData::with('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+
+    //     if ($request->filled('search')) {
+    //         $search = $request->input('search');
+    //         $query->whereHas('productCombination.style', function ($q) use ($search) {
+    //             $q->where('name', 'like', '%' . $search . '%');
+    //         })->orWhereHas('productCombination.color', function ($q) use ($search) {
+    //             $q->where('name', 'like', '%' . $search . '%');
+    //         });
+    //     }
+    //     if ($request->filled('date')) {
+    //         $query->whereDate('date', $request->input('date'));
+    //     }
+
+    //     $outputFinishingData = $query->orderBy('date', 'desc')->paginate(10);
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+
+    //     return view('backend.library.output_finishing_data.index', compact('outputFinishingData', 'allSizes'));
+    // }
 
     // public function index(Request $request)
     // {

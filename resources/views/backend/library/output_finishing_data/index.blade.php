@@ -31,18 +31,85 @@
                         class="btn btn-lg btn-outline-info">
                         <i class="fas fa-balance-scale"></i> Total Balance Report
                     </a>
-                    <a href="{{ route('sewing_wip') }}"
-                        class="btn btn-lg btn-outline-warning">
+                    <a href="{{ route('sewing_wip') }}" class="btn btn-lg btn-outline-warning">
                         <i class="fas fa-industry"></i> Sewing WIP Report
                     </a>
                     <form class="d-flex float-right" action="{{ route('output_finishing_data.index') }}" method="GET">
-                        <input class="form-control me-2" type="search" name="search"
-                            placeholder="Search by Style/Color" value="{{ request('search') }}">
-                        <input class="form-control me-2" type="date" name="date" value="{{ request('date') }}">
-                        <button class="btn btn-outline-success" type="submit">Search</button>
-                        @if (request('search') || request('date'))
-                            <a href="{{ route('output_finishing_data.index') }}" class="btn btn-secondary ml-2">Reset</a>
-                        @endif
+                        <div class="row g-2">
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label for="style_id">Style</label>
+                                    <select name="style_id[]" id="style_id" class="form-control" multiple>
+                                        <option value="">Select Style</option>
+                                        @foreach ($allStyles as $style)
+                                            <option value="{{ $style->id }}"
+                                                {{ in_array($style->id, (array) request('style_id')) ? 'selected' : '' }}>
+                                                {{ $style->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label for="color_id">Color</label>
+                                    <select name="color_id[]" id="color_id" class="form-control" multiple>
+                                        <option value="">Select Color</option>
+                                        @foreach ($allColors as $color)
+                                            <option value="{{ $color->id }}"
+                                                {{ in_array($color->id, (array) request('color_id')) ? 'selected' : '' }}>
+                                                {{ $color->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label for="po_number">PO Number</label>
+                                    <select name="po_number[]" id="po_number" class="form-control" multiple>
+                                        <option value="">Select PO Number</option>
+                                        @foreach ($distinctPoNumbers as $poNumber)
+                                            <option value="{{ $poNumber }}"
+                                                {{ in_array($poNumber, (array) request('po_number')) ? 'selected' : '' }}>
+                                                {{ $poNumber }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label for="start_date">Start Date</label>
+                                    <input type="date" name="start_date" id="start_date" class="form-control"
+                                        value="{{ request('start_date') }}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="end_date">End Date</label>
+                                    <input type="date" name="end_date" id="end_date" class="form-control"
+                                        value="{{ request('end_date') }}">
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 d-flex align-items-end gap-2">
+                                <input class="form-control me-2" type="search" name="search"
+                                    placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
+                                <button class="btn btn-outline-success" type="submit">Search</button>
+                                @if (request('search') ||
+                                        request('date') ||
+                                        request('style_id') ||
+                                        request('color_id') ||
+                                        request('po_number') ||
+                                        request('start_date') ||
+                                        request('end_date'))
+                                    <a href="{{ route('output_finishing_data.index') }}"
+                                        class="btn btn-outline-secondary">Reset</a>
+                                @endif
+                            </div>
+                        </div>
                     </form>
                 </div>
                 <div class="card-body" style="overflow-x: auto;">
@@ -72,7 +139,7 @@
                             <tbody>
                                 @forelse ($outputFinishingData as $key => $data)
                                     <tr>
-                                        
+
                                         <td>{{ \Carbon\Carbon::parse($data->date)->format('d-M-Y') }}</td>
                                         <td>{{ $data->po_number }}</td>
                                         <td>{{ $data->productCombination->buyer->name ?? 'N/A' }}</td>
@@ -100,7 +167,8 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ 8 + count($allSizes) }}" class="text-center">No output finishing data found.</td>
+                                        <td colspan="{{ 8 + count($allSizes) }}" class="text-center">No output
+                                            finishing data found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

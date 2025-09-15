@@ -43,9 +43,9 @@
                                     <th>Stage</th>
                                     <th>Quantities (by Size name)</th>
                                     <th>Total Qty</th>
-                                    <th>Waste Quantities (by Size name)</th>
+                                   {{-- <th>Waste Quantities (by Size name)</th>
                                     <th>Total Waste</th>
-                                    {{-- Add more columns as needed, e.g., actions --}}
+                                     Add more columns as needed, e.g., actions --}}
                                 </tr>
                             </thead>
                             <tbody>
@@ -76,7 +76,7 @@
                                             @endif
                                         </td>
                                         <td>{{ $data['total_quantity'] }}</td>
-                                        <td>
+                                        {{-- <td>
                                             @if (!empty($data['waste_quantities']))
                                                 <ul class="list-unstyled mb-0">
                                                     @foreach ($data['waste_quantities'] as $sizeId => $wasteQty)
@@ -91,7 +91,7 @@
                                                 N/A
                                             @endif
                                         </td>
-                                        <td>{{ $data['total_waste_quantity'] }}</td>
+                                        <td>{{ $data['total_waste_quantity'] }}</td> --}}
                                     </tr>
                                 @empty
                                     <tr>

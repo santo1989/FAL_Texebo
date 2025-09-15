@@ -4,9 +4,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Color;
 use App\Models\CuttingData;
 use App\Models\ProductCombination;
 use App\Models\Size;
+use App\Models\Style;
 use App\Models\SublimationPrintReceive;
 use App\Models\SublimationPrintSend;
 use Illuminate\Http\Request;
@@ -14,29 +16,99 @@ use Illuminate\Support\Facades\DB;
 
 class SublimationPrintReceiveController extends Controller
 {
+    // public function index(Request $request)
+    // {
+    //     $query = SublimationPrintReceive::with('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+
+    //     if ($request->filled('search')) {
+    //         $search = $request->input('search');
+    //         $query->whereHas('productCombination.style', function ($q) use ($search) {
+    //             $q->where('name', 'like', '%' . $search . '%');
+    //         })->orWhereHas('productCombination.color', function ($q) use ($search) {
+    //             $q->where('name', 'like', '%' . $search . '%');
+    //         });
+    //     }
+
+    //     if ($request->filled('date')) {
+    //         $query->whereDate('date', $request->input('date'));
+    //     }
+
+    //     $printReceiveData = $query->orderBy('date', 'desc')->paginate(10);
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
+
+    //     return view('backend.library.sublimation_print_receive_data.index', compact('printReceiveData', 'allSizes'));
+    // }
+
+
     public function index(Request $request)
     {
         $query = SublimationPrintReceive::with('productCombination.buyer', 'productCombination.style', 'productCombination.color');
 
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->whereHas('productCombination.style', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
-            })->orWhereHas('productCombination.color', function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%');
+        // Get filter parameters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
+
+        // Style filter
+        if (!empty($styleIds)) {
+            $query->whereHas('productCombination', function ($q) use ($styleIds) {
+                $q->whereIn('style_id', $styleIds);
             });
         }
 
-        if ($request->filled('date')) {
+        // Color filter
+        if (!empty($colorIds)) {
+            $query->whereHas('productCombination', function ($q) use ($colorIds) {
+                $q->whereIn('color_id', $colorIds);
+            });
+        }
+
+        // PO Number filter
+        if (!empty($poNumbers)) {
+            $query->whereIn('po_number', $poNumbers);
+        }
+
+        // Date range filter
+        if ($startDate && $endDate) {
+            $query->whereBetween('date', [$startDate, $endDate]);
+        } elseif ($request->filled('date')) {
+            // Single date filter (for backward compatibility)
             $query->whereDate('date', $request->input('date'));
         }
 
+        // Search filter
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', '%' . $search . '%')
+                    ->orWhereHas('productCombination.style', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('productCombination.color', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
         $printReceiveData = $query->orderBy('date', 'desc')->paginate(10);
-        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        return view('backend.library.sublimation_print_receive_data.index', compact('printReceiveData', 'allSizes'));
+        // Get filter options
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = SublimationPrintReceive::distinct()->pluck('po_number')->filter()->values();
+
+        return view('backend.library.sublimation_print_receive_data.index', compact(
+            'printReceiveData',
+            'allSizes',
+            'allStyles',
+            'allColors',
+            'distinctPoNumbers'
+        ));
     }
-
     public function create()
     {
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
@@ -236,96 +308,6 @@ class SublimationPrintReceiveController extends Controller
             ->withMessage('Sublimation Print/Receive data deleted successfully.');
     }
 
-    // public function find(Request $request)
-    // {
-    //     $poNumbers = $request->input('po_numbers', []);
-
-    //     if (empty($poNumbers)) {
-    //         return response()->json([]);
-    //     }
-
-    //     // Get print send data for the selected PO numbers
-    //     $printSendData = SublimationPrintSend::whereIn('po_number', $poNumbers)
-    //         ->with(['productCombination.style', 'productCombination.color', 'productCombination.size'])
-    //         ->get()
-    //         ->groupBy('po_number');
-
-    //     $result = [];
-
-    //     foreach ($printSendData as $poNumber => $printSendRecords) {
-    //         $result[$poNumber] = [];
-
-    //         // Group records by product_combination_id
-    //         $groupedByCombination = $printSendRecords->groupBy('product_combination_id');
-
-    //         foreach ($groupedByCombination as $combinationId => $records) {
-    //             // Get the product combination from the first record
-    //             $productCombination = $records->first()->productCombination;
-
-    //             if (!$productCombination) {
-    //                 continue;
-    //             }
-
-    //             $availableQuantities = $this->getAvailableReceiveQuantities($productCombination)->getData()->availableQuantities;
-
-    //             $result[$poNumber][] = [
-    //                 'combination_id' => $productCombination->id,
-    //                 'style' => $productCombination->style->name,
-    //                 'color' => $productCombination->color->name,
-    //                 'available_quantities' => $availableQuantities,
-    //                 'size_ids' => $productCombination->sizes->pluck('id')->toArray()
-    //             ];
-    //         }
-    //     }
-
-    //     return response()->json($result);
-    // }
-
-    // public function getAvailableReceiveQuantities(ProductCombination $productCombination)
-    // {
-    //     $sizes = Size::where('is_active', 1)->get();
-    //     $availableQuantities = [];
-
-    //     // Create a mapping of size IDs to size names
-    //     $sizeIdToName = [];
-    //     foreach ($sizes as $size) {
-    //         $sizeIdToName[$size->id] = $size->name;
-    //     }
-
-    //     // Sum sent quantities per size using size IDs
-    //     $sentQuantities = SublimationPrintSend::where('product_combination_id', $productCombination->id)
-    //         ->get()
-    //         ->pluck('sublimation_print_send_quantities')
-    //         ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
-    //             foreach ($quantities as $sizeId => $qty) {
-    //                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
-    //             }
-    //             return $carry;
-    //         }, []);
-
-    //     // Sum received quantities per size using size IDs
-    //     $receivedQuantities = SublimationPrintReceive::where('product_combination_id', $productCombination->id)
-    //         ->get()
-    //         ->pluck('sublimation_print_receive_quantities')
-    //         ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
-    //             foreach ($quantities as $sizeId => $qty) {
-    //                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
-    //             }
-    //             return $carry;
-    //         }, []);
-
-    //     // Calculate available quantities
-    //     foreach ($sizes as $size) {
-    //         $sent = $sentQuantities[$size->id] ?? 0;
-    //         $received = $receivedQuantities[$size->id] ?? 0;
-    //         $availableQuantities[$size->name] = max(0, $sent - $received);
-    //     }
-
-    //     return response()->json([
-    //         'availableQuantities' => $availableQuantities,
-    //         'sizes' => $sizes
-    //     ]);
-    // }
 
     // Update the getAvailableReceiveQuantities method to accept PO numbers
     public function find(Request $request)
@@ -440,12 +422,53 @@ class SublimationPrintReceiveController extends Controller
     {
         $query = SublimationPrintReceive::with('productCombination.style', 'productCombination.color');
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('date', [$request->start_date, $request->end_date]);
+        // Get filter parameters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
+
+        // Style filter
+        if (!empty($styleIds)) {
+            $query->whereHas('productCombination', function ($q) use ($styleIds) {
+                $q->whereIn('style_id', $styleIds);
+            });
+        }
+
+        // Color filter
+        if (!empty($colorIds)) {
+            $query->whereHas('productCombination', function ($q) use ($colorIds) {
+                $q->whereIn('color_id', $colorIds);
+            });
+        }
+
+        // PO Number filter
+        if (!empty($poNumbers)) {
+            $query->whereIn('po_number', $poNumbers);
+        }
+
+        // Date filter
+        if ($startDate && $endDate) {
+            $query->whereBetween('date', [$startDate, $endDate]);
+        }
+
+        // Search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', '%' . $search . '%')
+                    ->orWhereHas('productCombination.style', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('productCombination.color', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    });
+            });
         }
 
         $printReceiveData = $query->get();
-        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
 
         // Create a mapping of size IDs to size names
@@ -481,16 +504,32 @@ class SublimationPrintReceiveController extends Controller
             $reportData[$key]['total'] += $data->total_sublimation_print_receive_quantity;
         }
 
+        // Get filter options
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = SublimationPrintReceive::distinct()->pluck('po_number')->filter()->values();
+
         return view('backend.library.sublimation_print_receive_data.reports.total_receive', [
             'reportData' => array_values($reportData),
-            'allSizes' => $allSizes
+            'allSizes' => $allSizes,
+            'allStyles' => $allStyles,
+            'allColors' => $allColors,
+            'distinctPoNumbers' => $distinctPoNumbers
         ]);
     }
 
     public function totalPrintEmbBalanceReport(Request $request)
     {
-        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $balanceData = [];
+
+        // Get filter parameters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
 
         // Create a mapping of size IDs to size names
         $sizeIdToName = [];
@@ -498,11 +537,33 @@ class SublimationPrintReceiveController extends Controller
             $sizeIdToName[$size->id] = $size->name;
         }
 
-        // Get all product combinations that have either been sent or received for print/emb
-        $productCombinations = ProductCombination::whereHas('printSends')
-            ->orWhereHas('printReceives')
-            ->with('style', 'color')
-            ->get();
+        // Base query for product combinations
+        $productCombinationsQuery = ProductCombination::where(function ($q) {
+            $q->whereHas('printSends')
+                ->orWhereHas('printReceives');
+        })->with('style', 'color');
+
+        // Apply style and color filters
+        if (!empty($styleIds)) {
+            $productCombinationsQuery->whereIn('style_id', $styleIds);
+        }
+
+        if (!empty($colorIds)) {
+            $productCombinationsQuery->whereIn('color_id', $colorIds);
+        }
+
+        // Apply search filter
+        if ($search) {
+            $productCombinationsQuery->where(function ($q) use ($search) {
+                $q->whereHas('style', function ($q2) use ($search) {
+                    $q2->where('name', 'like', '%' . $search . '%');
+                })->orWhereHas('color', function ($q2) use ($search) {
+                    $q2->where('name', 'like', '%' . $search . '%');
+                });
+            });
+        }
+
+        $productCombinations = $productCombinationsQuery->get();
 
         foreach ($productCombinations as $pc) {
             $style = $pc->style->name;
@@ -520,11 +581,19 @@ class SublimationPrintReceiveController extends Controller
             ];
 
             // Aggregate sent quantities
-            $sentData = SublimationPrintSend::where('product_combination_id', $pc->id);
-            if ($request->filled('start_date') && $request->filled('end_date')) {
-                $sentData->whereBetween('date', [$request->start_date, $request->end_date]);
+            $sentDataQuery = SublimationPrintSend::where('product_combination_id', $pc->id);
+
+            // Apply PO number filter
+            if (!empty($poNumbers)) {
+                $sentDataQuery->whereIn('po_number', $poNumbers);
             }
-            $sentData = $sentData->get();
+
+            // Apply date filter
+            if ($startDate && $endDate) {
+                $sentDataQuery->whereBetween('date', [$startDate, $endDate]);
+            }
+
+            $sentData = $sentDataQuery->get();
 
             foreach ($sentData as $data) {
                 foreach ($data->sublimation_print_send_quantities as $sizeId => $qty) {
@@ -540,11 +609,19 @@ class SublimationPrintReceiveController extends Controller
             }
 
             // Aggregate received quantities
-            $receiveData = SublimationPrintReceive::where('product_combination_id', $pc->id);
-            if ($request->filled('start_date') && $request->filled('end_date')) {
-                $receiveData->whereBetween('date', [$request->start_date, $request->end_date]);
+            $receiveDataQuery = SublimationPrintReceive::where('product_combination_id', $pc->id);
+
+            // Apply PO number filter
+            if (!empty($poNumbers)) {
+                $receiveDataQuery->whereIn('po_number', $poNumbers);
             }
-            $receiveData = $receiveData->get();
+
+            // Apply date filter
+            if ($startDate && $endDate) {
+                $receiveDataQuery->whereBetween('date', [$startDate, $endDate]);
+            }
+
+            $receiveData = $receiveDataQuery->get();
 
             foreach ($receiveData as $data) {
                 foreach ($data->sublimation_print_receive_quantities as $sizeId => $qty) {
@@ -568,28 +645,277 @@ class SublimationPrintReceiveController extends Controller
             $balanceData[$key]['total_balance'] = $balanceData[$key]['total_sent'] - $balanceData[$key]['total_received'];
 
             // Remove if total balance is 0 or less (meaning everything sent has been received) unless filtered by date
-            if ($balanceData[$key]['total_balance'] <= 0 && (!$request->filled('start_date') && !$request->filled('end_date'))) {
+            if ($balanceData[$key]['total_balance'] <= 0 && (!$startDate && !$endDate && empty($poNumbers) && empty($styleIds) && empty($colorIds) && !$search)) {
                 unset($balanceData[$key]);
             }
         }
 
+        // Get filter options
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = array_unique(
+            array_merge(
+                SublimationPrintSend::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                SublimationPrintReceive::distinct()->pluck('po_number')->filter()->values()->toArray()
+            )
+        );
+        sort($distinctPoNumbers);
+
         return view('backend.library.sublimation_print_receive_data.reports.balance_quantity', [
             'reportData' => array_values($balanceData),
-            'allSizes' => $allSizes
+            'allSizes' => $allSizes,
+            'allStyles' => $allStyles,
+            'allColors' => $allColors,
+            'distinctPoNumbers' => $distinctPoNumbers
         ]);
     }
 
-    // Helper method to get size name by ID
-    private function getSizeNameById($sizeId)
-    {
-        $size = Size::find($sizeId);
-        return $size ? $size->name : null;
-    }
+    // public function totalPrintEmbReceiveReport(Request $request)
+    // {
+    //     $query = SublimationPrintReceive::with('productCombination.style', 'productCombination.color');
 
-    // Helper method to get size ID by name
-    private function getSizeIdByName($sizeName)
-    {
-        $size = Size::where('name', $sizeName)->first();
-        return $size ? $size->id : null;
-    }
+    //     if ($request->filled('start_date') && $request->filled('end_date')) {
+    //         $query->whereBetween('date', [$request->start_date, $request->end_date]);
+    //     }
+
+    //     $printReceiveData = $query->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
+    //     $reportData = [];
+
+    //     // Create a mapping of size IDs to size names
+    //     $sizeIdToName = [];
+    //     foreach ($allSizes as $size) {
+    //         $sizeIdToName[$size->id] = $size->name;
+    //     }
+
+    //     foreach ($printReceiveData as $data) {
+    //         $style = $data->productCombination->style->name;
+    //         $color = $data->productCombination->color->name;
+    //         $key = $style . '-' . $color;
+
+    //         if (!isset($reportData[$key])) {
+    //             $reportData[$key] = [
+    //                 'style' => $style,
+    //                 'color' => $color,
+    //                 'sizes' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //                 'total' => 0
+    //             ];
+    //         }
+
+    //         // Convert size IDs to names for display
+    //         foreach ($data->sublimation_print_receive_quantities as $sizeId => $qty) {
+    //             $sizeName = $sizeIdToName[$sizeId] ?? null;
+    //             if ($sizeName) {
+    //                 $normalized = strtolower($sizeName);
+    //                 if (array_key_exists($normalized, $reportData[$key]['sizes'])) {
+    //                     $reportData[$key]['sizes'][$normalized] += $qty;
+    //                 }
+    //             }
+    //         }
+    //         $reportData[$key]['total'] += $data->total_sublimation_print_receive_quantity;
+    //     }
+
+    //     return view('backend.library.sublimation_print_receive_data.reports.total_receive', [
+    //         'reportData' => array_values($reportData),
+    //         'allSizes' => $allSizes
+    //     ]);
+    // }
+
+    // public function totalPrintEmbBalanceReport(Request $request)
+    // {
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();;
+    //     $balanceData = [];
+
+    //     // Create a mapping of size IDs to size names
+    //     $sizeIdToName = [];
+    //     foreach ($allSizes as $size) {
+    //         $sizeIdToName[$size->id] = $size->name;
+    //     }
+
+    //     // Get all product combinations that have either been sent or received for print/emb
+    //     $productCombinations = ProductCombination::whereHas('printSends')
+    //         ->orWhereHas('printReceives')
+    //         ->with('style', 'color')
+    //         ->get();
+
+    //     foreach ($productCombinations as $pc) {
+    //         $style = $pc->style->name;
+    //         $color = $pc->color->name;
+    //         $key = $style . '-' . $color;
+
+    //         // Initialize with default values
+    //         $balanceData[$key] = [
+    //             'style' => $style,
+    //             'color' => $color,
+    //             'sizes' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), ['sent' => 0, 'received' => 0, 'balance' => 0]),
+    //             'total_sent' => 0,
+    //             'total_received' => 0,
+    //             'total_balance' => 0,
+    //         ];
+
+    //         // Aggregate sent quantities
+    //         $sentData = SublimationPrintSend::where('product_combination_id', $pc->id);
+    //         if ($request->filled('start_date') && $request->filled('end_date')) {
+    //             $sentData->whereBetween('date', [$request->start_date, $request->end_date]);
+    //         }
+    //         $sentData = $sentData->get();
+
+    //         foreach ($sentData as $data) {
+    //             foreach ($data->sublimation_print_send_quantities as $sizeId => $qty) {
+    //                 $sizeName = $sizeIdToName[$sizeId] ?? null;
+    //                 if ($sizeName) {
+    //                     $normalized = strtolower($sizeName);
+    //                     if (isset($balanceData[$key]['sizes'][$normalized])) {
+    //                         $balanceData[$key]['sizes'][$normalized]['sent'] += $qty;
+    //                     }
+    //                 }
+    //             }
+    //             $balanceData[$key]['total_sent'] += $data->total_sublimation_print_send_quantity;
+    //         }
+
+    //         // Aggregate received quantities
+    //         $receiveData = SublimationPrintReceive::where('product_combination_id', $pc->id);
+    //         if ($request->filled('start_date') && $request->filled('end_date')) {
+    //             $receiveData->whereBetween('date', [$request->start_date, $request->end_date]);
+    //         }
+    //         $receiveData = $receiveData->get();
+
+    //         foreach ($receiveData as $data) {
+    //             foreach ($data->sublimation_print_receive_quantities as $sizeId => $qty) {
+    //                 $sizeName = $sizeIdToName[$sizeId] ?? null;
+    //                 if ($sizeName) {
+    //                     $normalized = strtolower($sizeName);
+    //                     if (isset($balanceData[$key]['sizes'][$normalized])) {
+    //                         $balanceData[$key]['sizes'][$normalized]['received'] += $qty;
+    //                     }
+    //                 }
+    //             }
+    //             $balanceData[$key]['total_received'] += $data->total_sublimation_print_receive_quantity;
+    //         }
+
+    //         // Calculate balance per size and total balance
+    //         foreach ($balanceData[$key]['sizes'] as $sizeName => &$sizeData) {
+    //             $sizeData['balance'] = $sizeData['sent'] - $sizeData['received'];
+    //         }
+    //         unset($sizeData); // Unset the reference to avoid unexpected behavior
+
+    //         $balanceData[$key]['total_balance'] = $balanceData[$key]['total_sent'] - $balanceData[$key]['total_received'];
+
+    //         // Remove if total balance is 0 or less (meaning everything sent has been received) unless filtered by date
+    //         if ($balanceData[$key]['total_balance'] <= 0 && (!$request->filled('start_date') && !$request->filled('end_date'))) {
+    //             unset($balanceData[$key]);
+    //         }
+    //     }
+
+    //     return view('backend.library.sublimation_print_receive_data.reports.balance_quantity', [
+    //         'reportData' => array_values($balanceData),
+    //         'allSizes' => $allSizes
+    //     ]);
+    // }
+
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     // Get print send data for the selected PO numbers
+    //     $printSendData = SublimationPrintSend::whereIn('po_number', $poNumbers)
+    //         ->with(['productCombination.style', 'productCombination.color', 'productCombination.size'])
+    //         ->get()
+    //         ->groupBy('po_number');
+
+    //     $result = [];
+
+    //     foreach ($printSendData as $poNumber => $printSendRecords) {
+    //         $result[$poNumber] = [];
+
+    //         // Group records by product_combination_id
+    //         $groupedByCombination = $printSendRecords->groupBy('product_combination_id');
+
+    //         foreach ($groupedByCombination as $combinationId => $records) {
+    //             // Get the product combination from the first record
+    //             $productCombination = $records->first()->productCombination;
+
+    //             if (!$productCombination) {
+    //                 continue;
+    //             }
+
+    //             $availableQuantities = $this->getAvailableReceiveQuantities($productCombination)->getData()->availableQuantities;
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $productCombination->id,
+    //                 'style' => $productCombination->style->name,
+    //                 'color' => $productCombination->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => $productCombination->sizes->pluck('id')->toArray()
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
+    // public function getAvailableReceiveQuantities(ProductCombination $productCombination)
+    // {
+    //     $sizes = Size::where('is_active', 1)->get();
+    //     $availableQuantities = [];
+
+    //     // Create a mapping of size IDs to size names
+    //     $sizeIdToName = [];
+    //     foreach ($sizes as $size) {
+    //         $sizeIdToName[$size->id] = $size->name;
+    //     }
+
+    //     // Sum sent quantities per size using size IDs
+    //     $sentQuantities = SublimationPrintSend::where('product_combination_id', $productCombination->id)
+    //         ->get()
+    //         ->pluck('sublimation_print_send_quantities')
+    //         ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+    //             foreach ($quantities as $sizeId => $qty) {
+    //                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+    //             }
+    //             return $carry;
+    //         }, []);
+
+    //     // Sum received quantities per size using size IDs
+    //     $receivedQuantities = SublimationPrintReceive::where('product_combination_id', $productCombination->id)
+    //         ->get()
+    //         ->pluck('sublimation_print_receive_quantities')
+    //         ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+    //             foreach ($quantities as $sizeId => $qty) {
+    //                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+    //             }
+    //             return $carry;
+    //         }, []);
+
+    //     // Calculate available quantities
+    //     foreach ($sizes as $size) {
+    //         $sent = $sentQuantities[$size->id] ?? 0;
+    //         $received = $receivedQuantities[$size->id] ?? 0;
+    //         $availableQuantities[$size->name] = max(0, $sent - $received);
+    //     }
+
+    //     return response()->json([
+    //         'availableQuantities' => $availableQuantities,
+    //         'sizes' => $sizes
+    //     ]);
+    // }
+
+    // // Helper method to get size name by ID
+    // private function getSizeNameById($sizeId)
+    // {
+    //     $size = Size::find($sizeId);
+    //     return $size ? $size->name : null;
+    // }
+
+    // // Helper method to get size ID by name
+    // private function getSizeIdByName($sizeName)
+    // {
+    //     $size = Size::where('name', $sizeName)->first();
+    //     return $size ? $size->id : null;
+    // }
+
 }
