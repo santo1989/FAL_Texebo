@@ -8,7 +8,9 @@ use App\Models\OrderData;
 use App\Models\ProductCombination;
 use App\Models\Size;
 use App\Models\Style;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -932,123 +934,283 @@ class CuttingDataController extends Controller
         return response()->json($response);
     }
 
+    // public function cutting_data_report(Request $request)
+    // {
+    //     $distinctPoNumbers = CuttingData::distinct()->pluck('po_number');
+    //     $query = CuttingData::with('productCombination.style', 'productCombination.color');
+
+
+    //     if ($request->filled('start_date') && $request->filled('end_date')) {
+    //         $query->whereBetween('date', [$request->start_date, $request->end_date]);
+    //     }
+    //     if ($request->filled('style_id')) {
+    //         $query->whereHas('productCombination', function ($q) use ($request) {
+    //             $q->where('style_id', $request->style_id);
+    //         });
+    //     }
+    //     if ($request->filled('color_id')) {
+    //         $query->whereHas('productCombination', function ($q) use ($request) {
+    //             $q->where('color_id', $request->color_id);
+    //         });
+    //     }
+    //     if ($request->filled('po_number')) {
+    //         $query->where('po_number', $request->po_number);
+    //     }
+
+    //     $cuttingData = $query->get();
+
+    //     // Ensure cut_quantities and cut_waste_quantities are treated as arrays
+    //     $cuttingData->each(function ($data) {
+    //         $data->cut_quantities = is_array($data->cut_quantities)
+    //             ? array_map(fn($qty) => $qty ?? 0, $data->cut_quantities)
+    //             : [];
+
+    //         $data->cut_waste_quantities = is_array($data->cut_waste_quantities)
+    //             ? array_map(fn($qty) => $qty ?? 0, $data->cut_waste_quantities)
+    //             : [];
+    //     });
+
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+    //     $reportData = [];
+
+    //     // Get order data for comparison
+    //     $poNumbers = $cuttingData->pluck('po_number')->unique();
+    //     $productCombinationIds = $cuttingData->pluck('product_combination_id')->unique();
+
+    //     $orderData = OrderData::whereIn('po_number', $poNumbers)
+    //         ->whereIn('product_combination_id', $productCombinationIds)
+    //         ->get()
+    //         ->groupBy(['po_number', 'product_combination_id']);
+
+    //     $sizeIdToNameMap = $allSizes->keyBy('id')->map(function ($size) {
+    //         return $size->name;
+    //     });
+
+    //     foreach ($cuttingData as $data) {
+    //         $styleName = $data->productCombination->style->name;
+    //         $colorName = $data->productCombination->color->name;
+    //         $key = $styleName . '-' . $colorName . '-' . $data->po_number;
+
+    //         if (!isset($reportData[$key])) {
+    //             $reportData[$key] = [
+    //                 'style' => $styleName,
+    //                 'color' => $colorName,
+    //                 'po_number' => $data->po_number,
+    //                 'cut_sizes' => [],
+    //                 'waste_sizes' => [],
+    //                 'order_sizes' => [],
+    //                 'total_cut' => 0,
+    //                 'total_waste' => 0,
+    //                 'total_order' => 0,
+    //             ];
+
+    //             foreach ($allSizes as $size) {
+    //                 $reportData[$key]['cut_sizes'][$size->id] = 0;
+    //                 $reportData[$key]['waste_sizes'][$size->id] = 0;
+    //                 $reportData[$key]['order_sizes'][$size->id] = 0;
+    //             }
+
+    //             // Add order quantities if available
+    //             if (isset($orderData[$data->po_number][$data->product_combination_id])) {
+    //                 $order = $orderData[$data->po_number][$data->product_combination_id]->first();
+    //                 foreach ($order->order_quantities as $sizeId => $quantity) {
+    //                     $reportData[$key]['order_sizes'][$sizeId] = $quantity;
+    //                     $reportData[$key]['total_order'] += $quantity;
+    //                 }
+    //             }
+    //         }
+
+    //         // Add cutting quantities
+    //         foreach ($data->cut_quantities as $sizeId => $quantity) {
+    //             if (array_key_exists($sizeId, $reportData[$key]['cut_sizes'])) {
+    //                 $reportData[$key]['cut_sizes'][$sizeId] += $quantity;
+    //                 $reportData[$key]['total_cut'] += $quantity;
+    //             }
+    //         }
+
+    //         // Add waste quantities
+    //         foreach ($data->cut_waste_quantities as $sizeId => $quantity) {
+    //             if (array_key_exists($sizeId, $reportData[$key]['waste_sizes'])) {
+    //                 $reportData[$key]['waste_sizes'][$sizeId] += $quantity;
+    //                 $reportData[$key]['total_waste'] += $quantity;
+    //             }
+    //         }
+    //     }
+
+    //     $reportData = array_values($reportData);
+
+    //     $styles = Style::all();
+    //     $colors = Color::all();
+
+    //     return view('backend.library.cutting_data.report', compact(
+    //         'reportData',
+    //         'allSizes',
+    //         'styles',
+    //         'colors',
+    //         'distinctPoNumbers'
+    //     ));
+    // }
+
+
     public function cutting_data_report(Request $request)
     {
-        $distinctPoNumbers = CuttingData::distinct()->pluck('po_number');
-        $query = CuttingData::with('productCombination.style', 'productCombination.color');
-
-
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('date', [$request->start_date, $request->end_date]);
-        }
-        if ($request->filled('style_id')) {
-            $query->whereHas('productCombination', function ($q) use ($request) {
-                $q->where('style_id', $request->style_id);
+        try {
+            // Use caching for static data to improve performance
+            $styles = Cache::remember('styles', 3600, function () {
+                return Style::all();
             });
-        }
-        if ($request->filled('color_id')) {
-            $query->whereHas('productCombination', function ($q) use ($request) {
-                $q->where('color_id', $request->color_id);
+
+            $colors = Cache::remember('colors', 3600, function () {
+                return Color::all();
             });
-        }
-        if ($request->filled('po_number')) {
-            $query->where('po_number', $request->po_number);
-        }
 
-        $cuttingData = $query->get();
+            $allSizes = Cache::remember('active_sizes', 3600, function () {
+                return Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+            });
 
-        // Ensure cut_quantities and cut_waste_quantities are treated as arrays
-        $cuttingData->each(function ($data) {
-            $data->cut_quantities = is_array($data->cut_quantities)
-                ? array_map(fn($qty) => $qty ?? 0, $data->cut_quantities)
-                : [];
+            $distinctPoNumbers = Cache::remember('distinct_po_numbers', 300, function () {
+                return CuttingData::distinct()->pluck('po_number');
+            });
 
-            $data->cut_waste_quantities = is_array($data->cut_waste_quantities)
-                ? array_map(fn($qty) => $qty ?? 0, $data->cut_waste_quantities)
-                : [];
-        });
+            // Build the query with eager loading to prevent N+1 issues
+            $query = CuttingData::with([
+                'productCombination.style',
+                'productCombination.color'
+            ]);
 
-        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
-        $reportData = [];
+            // Apply filters with proper input validation
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $startDate = Carbon::parse($request->start_date)->startOfDay();
+                $endDate = Carbon::parse($request->end_date)->endOfDay();
 
-        // Get order data for comparison
-        $poNumbers = $cuttingData->pluck('po_number')->unique();
-        $productCombinationIds = $cuttingData->pluck('product_combination_id')->unique();
+                $query->whereBetween('date', [$startDate, $endDate]);
+            }
 
-        $orderData = OrderData::whereIn('po_number', $poNumbers)
-            ->whereIn('product_combination_id', $productCombinationIds)
-            ->get()
-            ->groupBy(['po_number', 'product_combination_id']);
+            if ($request->filled('style_id')) {
+                $styleIds = is_array($request->style_id) ? $request->style_id : [$request->style_id];
+                $query->whereHas('productCombination', function ($q) use ($styleIds) {
+                    $q->whereIn('style_id', $styleIds);
+                });
+            }
 
-        $sizeIdToNameMap = $allSizes->keyBy('id')->map(function ($size) {
-            return $size->name;
-        });
+            if ($request->filled('color_id')) {
+                $colorIds = is_array($request->color_id) ? $request->color_id : [$request->color_id];
+                $query->whereHas('productCombination', function ($q) use ($colorIds) {
+                    $q->whereIn('color_id', $colorIds);
+                });
+            }
 
-        foreach ($cuttingData as $data) {
-            $styleName = $data->productCombination->style->name;
-            $colorName = $data->productCombination->color->name;
-            $key = $styleName . '-' . $colorName . '-' . $data->po_number;
+            if ($request->filled('po_number')) {
+                $poNumbers = is_array($request->po_number) ? $request->po_number : [$request->po_number];
+                $query->whereIn('po_number', $poNumbers);
+            }
 
-            if (!isset($reportData[$key])) {
-                $reportData[$key] = [
-                    'style' => $styleName,
-                    'color' => $colorName,
-                    'po_number' => $data->po_number,
-                    'cut_sizes' => [],
-                    'waste_sizes' => [],
-                    'order_sizes' => [],
-                    'total_cut' => 0,
-                    'total_waste' => 0,
-                    'total_order' => 0,
-                ];
+            // Use chunking for large datasets to prevent memory issues
+            $reportData = [];
+            $poNumbersCollection = collect();
+            $productCombinationIdsCollection = collect();
 
-                foreach ($allSizes as $size) {
-                    $reportData[$key]['cut_sizes'][$size->id] = 0;
-                    $reportData[$key]['waste_sizes'][$size->id] = 0;
-                    $reportData[$key]['order_sizes'][$size->id] = 0;
+            $query->chunk(200, function ($cuttingDataChunk) use ($allSizes, &$reportData, &$poNumbersCollection, &$productCombinationIdsCollection) {
+                foreach ($cuttingDataChunk as $data) {
+                    // Ensure cut_quantities and cut_waste_quantities are treated as arrays
+                    $data->cut_quantities = is_array($data->cut_quantities)
+                        ? array_map(fn($qty) => $qty ?? 0, $data->cut_quantities)
+                        : [];
+
+                    $data->cut_waste_quantities = is_array($data->cut_waste_quantities)
+                        ? array_map(fn($qty) => $qty ?? 0, $data->cut_waste_quantities)
+                        : [];
+
+                    // Collect PO numbers and product combination IDs for batch order data query
+                    $poNumbersCollection->push($data->po_number);
+                    $productCombinationIdsCollection->push($data->product_combination_id);
+
+                    // Process the data
+                    $styleName = $data->productCombination->style->name ?? 'N/A';
+                    $colorName = $data->productCombination->color->name ?? 'N/A';
+                    $key = $styleName . '-' . $colorName . '-' . $data->po_number;
+
+                    if (!isset($reportData[$key])) {
+                        $reportData[$key] = [
+                            'style' => $styleName,
+                            'color' => $colorName,
+                            'po_number' => $data->po_number,
+                            'cut_sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                            'waste_sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                            'order_sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                            'total_cut' => 0,
+                            'total_waste' => 0,
+                            'total_order' => 0,
+                        ];
+                    }
+
+                    // Add cutting quantities
+                    foreach ($data->cut_quantities as $sizeId => $quantity) {
+                        if (isset($reportData[$key]['cut_sizes'][$sizeId])) {
+                            $reportData[$key]['cut_sizes'][$sizeId] += $quantity;
+                            $reportData[$key]['total_cut'] += $quantity;
+                        }
+                    }
+
+                    // Add waste quantities
+                    foreach ($data->cut_waste_quantities as $sizeId => $quantity) {
+                        if (isset($reportData[$key]['waste_sizes'][$sizeId])) {
+                            $reportData[$key]['waste_sizes'][$sizeId] += $quantity;
+                            $reportData[$key]['total_waste'] += $quantity;
+                        }
+                    }
                 }
+            });
 
-                // Add order quantities if available
-                if (isset($orderData[$data->po_number][$data->product_combination_id])) {
-                    $order = $orderData[$data->po_number][$data->product_combination_id]->first();
-                    foreach ($order->order_quantities as $sizeId => $quantity) {
-                        $reportData[$key]['order_sizes'][$sizeId] = $quantity;
-                        $reportData[$key]['total_order'] += $quantity;
+            // Batch load order data to optimize database queries
+            if ($poNumbersCollection->isNotEmpty() && $productCombinationIdsCollection->isNotEmpty()) {
+                $orderData = OrderData::whereIn('po_number', $poNumbersCollection->unique())
+                    ->whereIn('product_combination_id', $productCombinationIdsCollection->unique())
+                    ->get()
+                    ->groupBy(['po_number', 'product_combination_id']);
+
+                // Add order quantities to report data
+                foreach ($reportData as $key => $data) {
+                    $poNumber = $data['po_number'];
+                    // Extract product_combination_id from the first matching record
+                    // This assumes all records with the same key have the same product_combination_id
+                    $firstRecord = $query->clone()
+                        ->where('po_number', $poNumber)
+                        ->whereHas('productCombination', function ($q) use ($data) {
+                            $q->where('style_id', Style::where('name', $data['style'])->first()->id ?? 0)
+                                ->where('color_id', Color::where('name', $data['color'])->first()->id ?? 0);
+                        })
+                        ->first();
+
+                    if ($firstRecord && isset($orderData[$poNumber][$firstRecord->product_combination_id])) {
+                        $order = $orderData[$poNumber][$firstRecord->product_combination_id]->first();
+                        foreach ($order->order_quantities as $sizeId => $quantity) {
+                            if (isset($reportData[$key]['order_sizes'][$sizeId])) {
+                                $reportData[$key]['order_sizes'][$sizeId] = $quantity;
+                                $reportData[$key]['total_order'] += $quantity;
+                            }
+                        }
                     }
                 }
             }
 
-            // Add cutting quantities
-            foreach ($data->cut_quantities as $sizeId => $quantity) {
-                if (array_key_exists($sizeId, $reportData[$key]['cut_sizes'])) {
-                    $reportData[$key]['cut_sizes'][$sizeId] += $quantity;
-                    $reportData[$key]['total_cut'] += $quantity;
-                }
-            }
+            $reportData = array_values($reportData);
 
-            // Add waste quantities
-            foreach ($data->cut_waste_quantities as $sizeId => $quantity) {
-                if (array_key_exists($sizeId, $reportData[$key]['waste_sizes'])) {
-                    $reportData[$key]['waste_sizes'][$sizeId] += $quantity;
-                    $reportData[$key]['total_waste'] += $quantity;
-                }
-            }
+            return view('backend.library.cutting_data.report', compact(
+                'reportData',
+                'allSizes',
+                'styles',
+                'colors',
+                'distinctPoNumbers'
+            ));
+        } catch (\Exception $e) {
+            // Log the error and return a user-friendly message
+            Log::error('Error generating cutting data report: ' . $e->getMessage());
+
+            return redirect()->back()
+                ->with('error', 'An error occurred while generating the report. Please try again.');
         }
-
-        $reportData = array_values($reportData);
-
-        $styles = Style::all();
-        $colors = Color::all();
-
-        return view('backend.library.cutting_data.report', compact(
-            'reportData',
-            'allSizes',
-            'styles',
-            'colors',
-            'distinctPoNumbers'
-        ));
     }
-
     public function cutting_requisition()
     {
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();

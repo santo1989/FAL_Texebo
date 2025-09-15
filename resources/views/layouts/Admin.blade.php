@@ -886,6 +886,10 @@
                                                 class="btn btn-outline-info btn-block mb-2">
                                                 <i class="fas fa-chart-bar"></i> Cutting Report
                                             </a>
+                                            <a href="{{ route('cutting_requisition') }}"
+                                                class="btn btn-outline-info btn-block mb-2">
+                                                <i class="fas fa-file-invoice"></i> Cutting Requisition Report
+                                            </a>
                                         </div>
                                     </div>
                                 </div>

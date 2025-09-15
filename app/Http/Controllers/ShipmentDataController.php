@@ -1187,6 +1187,7 @@ class ShipmentDataController extends Controller
 
     public function old_data_store(Request $request)
     {
+        // dd($request->all());
         Log::info('Old Data Store Request Data:', $request->all());
 
         $request->validate([
@@ -1200,9 +1201,9 @@ class ShipmentDataController extends Controller
             'rows.*.product_combination_id' => 'required|integer|exists:product_combinations,id',
             'rows.*.Old_data_qty' => 'required|array',
             'rows.*.Old_data_qty.*' => 'nullable|integer|min:0',
-            'rows.*.Old_data_waste' => 'required|array',
-            'rows.*.Old_data_waste.*' => 'nullable|integer|min:0',
         ]);
+        // dd($request->all());
+
 
         $allStages = [
             'CuttingData',
