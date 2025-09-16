@@ -1706,7 +1706,176 @@ class ShipmentDataController extends Controller
         }
     }
 
-    public function old_data_index()
+    //     public function old_data_index(Request $request)
+    //     {
+    //         // Define all models that store old order data
+    //         $oldOrderModels = [
+    //             'CuttingData' => CuttingData::class,
+    //             'SublimationPrintSend' => SublimationPrintSend::class,
+    //             'SublimationPrintReceive' => SublimationPrintReceive::class,
+    //             'PrintSendData' => PrintSendData::class,
+    //             'PrintReceiveData' => PrintReceiveData::class,
+    //             'LineInputData' => LineInputData::class,
+    //             'OutputFinishingData' => OutputFinishingData::class,
+    //             'FinishPackingData' => FinishPackingData::class,
+    //             'ShipmentData' => ShipmentData::class,
+    //         ];
+
+    //         $allOldData = collect(); // Initialize an empty collection to hold all consolidated data
+    // // Get filter parameters
+    //         $styleIds = $request->input('style_id', []);
+    //         $colorIds = $request->input('color_id', []);
+    //         $poNumbers = $request->input('po_number', []);
+    //         $startDate = $request->input('start_date');
+    //         $endDate = $request->input('end_date');
+    //         $search = $request->input('search');
+
+
+
+
+    //         foreach ($oldOrderModels as $stageName => $modelClass) {
+    //             $data = $modelClass::where('old_order', 'yes')
+    //                 ->with('productCombination.style', 'productCombination.color', 'productCombination.size')
+    //                 ->get();
+
+    //             foreach ($data as $item) {
+    //                 // Prepare common attributes
+    //                 $record = [
+    //                     'id' => $item->id,
+    //                     'stage' => $stageName,
+    //                     'date' => $item->date,
+    //                     'po_number' => $item->po_number, // This might be a comma-separated string
+    //                     'old_order' => $item->old_order,
+    //                     'product_combination_id' => $item->product_combination_id,
+    //                     'style_name' => $item->productCombination->style->name ?? 'N/A',
+    //                     'color_name' => $item->productCombination->color->name ?? 'N/A',
+    //                     'size_name' => $item->productCombination->size->name ?? 'N/A', // This might not be relevant if quantities are by size_id
+    //                     'quantities' => [], // Will store specific quantity data for the stage
+    //                     'waste_quantities' => [], // Will store specific waste data for the stage
+    //                     'total_quantity' => 0,
+    //                     'total_waste_quantity' => 0,
+    //                 ];
+
+    //                 // Dynamically get the quantity and waste fields based on the stage name
+    //                 $qtyField = strtolower(str_replace('Data', '', str_replace('SublimationPrint', 'sublimation_print_', str_replace('Print', '', $stageName)))) . '_quantities';
+    //                 $totalQtyField = 'total_' . $qtyField;
+    //                 $wasteQtyField = strtolower(str_replace('Data', '', str_replace('SublimationPrint', 'sublimation_print_', str_replace('Print', '', $stageName)))) . '_waste_quantities';
+    //                 $totalWasteQtyField = 'total_' . $wasteQtyField;
+
+
+    //                 // Handle specific field names for each model
+    //                 if ($stageName === 'CuttingData') {
+    //                     $record['quantities'] = $item->cut_quantities ?? [];
+    //                     $record['total_quantity'] = $item->total_cut_quantity ?? 0;
+    //                     $record['waste_quantities'] = []; // Cutting data typically doesn't have waste directly
+    //                     $record['total_waste_quantity'] = 0;
+    //                 } else if ($stageName === 'SublimationPrintSend') {
+    //                     $record['quantities'] = $item->sublimation_print_send_quantities ?? [];
+    //                     $record['total_quantity'] = $item->total_sublimation_print_send_quantity ?? 0;
+    //                     $record['waste_quantities'] = $item->sublimation_print_send_waste_quantities ?? [];
+    //                     $record['total_waste_quantity'] = $item->total_sublimation_print_send_waste_quantity ?? 0;
+    //                 } else if ($stageName === 'SublimationPrintReceive') {
+    //                     $record['quantities'] = $item->sublimation_print_receive_quantities ?? [];
+    //                     $record['total_quantity'] = $item->total_sublimation_print_receive_quantity ?? 0;
+    //                     $record['waste_quantities'] = $item->sublimation_print_receive_waste_quantities ?? [];
+    //                     $record['total_waste_quantity'] = $item->total_sublimation_print_receive_waste_quantity ?? 0;
+    //                 } else if ($stageName === 'PrintSendData') {
+    //                     $record['quantities'] = $item->send_quantities ?? [];
+    //                     $record['total_quantity'] = $item->total_send_quantity ?? 0;
+    //                     $record['waste_quantities'] = $item->send_waste_quantities ?? [];
+    //                     $record['total_waste_quantity'] = $item->total_send_waste_quantity ?? 0;
+    //                 } else if ($stageName === 'PrintReceiveData') {
+    //                     $record['quantities'] = $item->receive_quantities ?? [];
+    //                     $record['total_quantity'] = $item->total_receive_quantity ?? 0;
+    //                     $record['waste_quantities'] = $item->receive_waste_quantities ?? [];
+    //                     $record['total_waste_quantity'] = $item->total_receive_waste_quantity ?? 0;
+    //                 } else if ($stageName === 'LineInputData') {
+    //                     $record['quantities'] = $item->input_quantities ?? [];
+    //                     $record['total_quantity'] = $item->total_input_quantity ?? 0;
+    //                     $record['waste_quantities'] = $item->input_waste_quantities ?? [];
+    //                     $record['total_waste_quantity'] = $item->total_input_waste_quantity ?? 0;
+    //                 } else if ($stageName === 'OutputFinishingData') {
+    //                     $record['quantities'] = $item->output_quantities ?? [];
+    //                     $record['total_quantity'] = $item->total_output_quantity ?? 0;
+    //                     $record['waste_quantities'] = $item->output_waste_quantities ?? [];
+    //                     $record['total_waste_quantity'] = $item->total_output_waste_quantity ?? 0;
+    //                 } else if ($stageName === 'FinishPackingData') {
+    //                     $record['quantities'] = $item->packing_quantities ?? [];
+    //                     $record['total_quantity'] = $item->total_packing_quantity ?? 0;
+    //                     $record['waste_quantities'] = $item->packing_waste_quantities ?? [];
+    //                     $record['total_waste_quantity'] = $item->total_packing_waste_quantity ?? 0;
+    //                 } else if ($stageName === 'ShipmentData') {
+    //                     $record['quantities'] = $item->shipment_quantities ?? [];
+    //                     $record['total_quantity'] = $item->total_shipment_quantity ?? 0;
+    //                     $record['waste_quantities'] = $item->shipment_waste_quantities ?? [];
+    //                     $record['total_waste_quantity'] = $item->total_shipment_waste_quantity ?? 0;
+    //                 }
+
+
+    //                 $allOldData->push($record);
+    //             }
+    //         }
+
+    //         // You might want to sort $allOldData for better display, e.g., by date or PO number
+    //         $allOldData = $allOldData->sortBy('date')->sortBy('po_number');
+    //         // Apply filters
+    //         $query = $allOldData;
+    //         // Style filter
+    //         if (!empty($styleIds)) {
+    //             $query->whereHas('productCombination', function ($q) use ($styleIds) {
+    //                 $q->whereIn('style_id', $styleIds);
+    //             });
+    //         }
+
+    //         // Color filter
+    //         if (!empty($colorIds)) {
+    //             $query->whereHas('productCombination', function ($q) use ($colorIds) {
+    //                 $q->whereIn('color_id', $colorIds);
+    //             });
+    //         }
+
+    //         // PO Number filter
+    //         if (!empty($poNumbers)) {
+    //             $query->whereIn('po_number', $poNumbers);
+    //         }
+
+    //         // Date range filter
+    //         if ($startDate && $endDate) {
+    //             $query->whereBetween('date', [$startDate, $endDate]);
+    //         } elseif ($request->filled('date')) {
+    //             // Single date filter (for backward compatibility)
+    //             $query->whereDate('date', $request->input('date'));
+    //         }
+
+    //         // Search filter
+    //         if ($request->filled('search')) {
+    //             $search = $request->input('search');
+    //             $query->where(function ($q) use ($search) {
+    //                 $q->where('po_number', 'like', '%' . $search . '%')
+    //                     ->orWhere('shipment_number', 'like', '%' . $search . '%')
+    //                     ->orWhereHas('productCombination.style', function ($q2) use ($search) {
+    //                         $q2->where('name', 'like', '%' . $search . '%');
+    //                     })
+    //                     ->orWhereHas('productCombination.color', function ($q2) use ($search) {
+    //                         $q2->where('name', 'like', '%' . $search . '%');
+    //                     })
+    //                     ->orWhereHas('productCombination.buyer', function ($q2) use ($search) {
+    //                         $q2->where('name', 'like', '%' . $search . '%');
+    //                     });
+    //             });
+    //         }
+    //         $allOldData = $query;
+    //         $allSizes = Size::all();
+
+    //         // Get filter options
+    //         $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+    //         $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+    //         $distinctPoNumbers = CuttingData::where('old_order', 'yes')->distinct()->pluck('po_number')->filter()->values();
+
+    //         return view('backend.library.old_data.index', compact('allOldData', 'allSizes', 'allStyles', 'allColors', 'distinctPoNumbers'));
+    //     }
+
+    public function old_data_index(Request $request)
     {
         // Define all models that store old order data
         $oldOrderModels = [
@@ -1723,10 +1892,64 @@ class ShipmentDataController extends Controller
 
         $allOldData = collect(); // Initialize an empty collection to hold all consolidated data
 
+        // Get filter parameters
+        $styleIds = (array) $request->input('style_id', []);
+        $colorIds = (array) $request->input('color_id', []);
+        $poNumbers = (array) $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
+        $perPage = $request->input('per_page', 10); // Items per page for pagination
+
         foreach ($oldOrderModels as $stageName => $modelClass) {
-            $data = $modelClass::where('old_order', 'yes')
-                ->with('productCombination.style', 'productCombination.color', 'productCombination.size')
-                ->get();
+            // Start a query for the current model
+            $query = $modelClass::where('old_order', 'yes');
+
+            // Eager load relationships for productCombination, style, color, size
+            $query->with('productCombination.style', 'productCombination.color', 'productCombination.size');
+
+            // Apply filters at the database level where possible for efficiency
+            if (!empty($styleIds) || !empty($colorIds)) {
+                $query->whereHas('productCombination', function ($q) use ($styleIds, $colorIds) {
+                    if (!empty($styleIds)) {
+                        $q->whereIn('style_id', $styleIds);
+                    }
+                    if (!empty($colorIds)) {
+                        $q->whereIn('color_id', $colorIds);
+                    }
+                });
+            }
+
+            if (!empty($poNumbers)) {
+                $query->whereIn('po_number', $poNumbers);
+            }
+
+            if ($startDate && $endDate) {
+                $query->whereBetween('date', [$startDate, $endDate]);
+            } elseif ($request->filled('date')) {
+                $query->whereDate('date', $request->input('date'));
+            }
+
+            // Global search at the database level for relevant fields
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('po_number', 'like', '%' . $search . '%')
+                        ->orWhereHas('productCombination.style', function ($q2) use ($search) {
+                            $q2->where('name', 'like', '%' . $search . '%');
+                        })
+                        ->orWhereHas('productCombination.color', function ($q2) use ($search) {
+                            $q2->where('name', 'like', '%' . $search . '%');
+                        });
+                    // You might need to add other searchable fields depending on the specific model's schema
+                    // For example, if shipment_number exists in ShipmentData:
+                    if ($q->getModel() instanceof ShipmentData) {
+                        $q->orWhere('shipment_number', 'like', '%' . $search . '%');
+                    }
+                });
+            }
+
+            $data = $query->get(); // Get the filtered data for the current model
 
             foreach ($data as $item) {
                 // Prepare common attributes
@@ -1734,31 +1957,22 @@ class ShipmentDataController extends Controller
                     'id' => $item->id,
                     'stage' => $stageName,
                     'date' => $item->date,
-                    'po_number' => $item->po_number, // This might be a comma-separated string
+                    'po_number' => $item->po_number,
                     'old_order' => $item->old_order,
                     'product_combination_id' => $item->product_combination_id,
                     'style_name' => $item->productCombination->style->name ?? 'N/A',
                     'color_name' => $item->productCombination->color->name ?? 'N/A',
                     'size_name' => $item->productCombination->size->name ?? 'N/A', // This might not be relevant if quantities are by size_id
-                    'quantities' => [], // Will store specific quantity data for the stage
-                    'waste_quantities' => [], // Will store specific waste data for the stage
+                    'quantities' => [],
+                    'waste_quantities' => [],
                     'total_quantity' => 0,
                     'total_waste_quantity' => 0,
                 ];
-
-                // Dynamically get the quantity and waste fields based on the stage name
-                $qtyField = strtolower(str_replace('Data', '', str_replace('SublimationPrint', 'sublimation_print_', str_replace('Print', '', $stageName)))) . '_quantities';
-                $totalQtyField = 'total_' . $qtyField;
-                $wasteQtyField = strtolower(str_replace('Data', '', str_replace('SublimationPrint', 'sublimation_print_', str_replace('Print', '', $stageName)))) . '_waste_quantities';
-                $totalWasteQtyField = 'total_' . $wasteQtyField;
-
 
                 // Handle specific field names for each model
                 if ($stageName === 'CuttingData') {
                     $record['quantities'] = $item->cut_quantities ?? [];
                     $record['total_quantity'] = $item->total_cut_quantity ?? 0;
-                    $record['waste_quantities'] = []; // Cutting data typically doesn't have waste directly
-                    $record['total_waste_quantity'] = 0;
                 } else if ($stageName === 'SublimationPrintSend') {
                     $record['quantities'] = $item->sublimation_print_send_quantities ?? [];
                     $record['total_quantity'] = $item->total_sublimation_print_send_quantity ?? 0;
@@ -1801,15 +2015,41 @@ class ShipmentDataController extends Controller
                     $record['total_waste_quantity'] = $item->total_shipment_waste_quantity ?? 0;
                 }
 
-
                 $allOldData->push($record);
             }
         }
 
-        // You might want to sort $allOldData for better display, e.g., by date or PO number
-        $allOldData = $allOldData->sortBy('date')->sortBy('po_number');
+        // Apply Collection-based filters that couldn't be pushed to the database
+        // For example, if you had a search on 'stage'
+        // if ($request->filled('stage')) {
+        //     $allOldData = $allOldData->where('stage', $request->input('stage'));
+        // }
+
+        // Sort the consolidated data
+        $allOldData = $allOldData->sortBy('date')->sortBy('po_number')->values(); // values() to reset keys after sorting
+
+        // Manual Pagination for the Collection
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $itemCollection = $allOldData;
+        $currentItems = $itemCollection->slice(($currentPage * $perPage) - $perPage, $perPage)->values();
+
+        $paginatedOldData = new LengthAwarePaginator(
+            $currentItems,
+            $itemCollection->count(),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+        $paginatedOldData->appends(request()->except('page')); // Keep filter parameters in pagination links
+
         $allSizes = Size::all();
 
-        return view('backend.library.old_data.index', compact('allOldData', 'allSizes'));
+        // Get filter options
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        // Fetch distinct PO numbers from all relevant models, or just CuttingData if it's the primary source
+        $distinctPoNumbers = CuttingData::where('old_order', 'yes')->distinct()->pluck('po_number')->filter()->values();
+
+        return view('backend.library.old_data.index', compact('paginatedOldData', 'allSizes', 'allStyles', 'allColors', 'distinctPoNumbers', 'perPage'));
     }
 }
