@@ -85,8 +85,10 @@
                             <a href="{{ route('sublimation_print_receive_data.index') }}" class="btn btn-primary">Back
                                 to
                                 List</a>
+                            @canany(['Admin', 'Supervisor'])
                             <a href="{{ route('sublimation_print_receive_data.edit', $sublimationPrintReceiveDatum->id) }}"
                                 class="btn btn-warning">Edit</a>
+                            @endcanany
                         </div>
                     </div>
                 </div>

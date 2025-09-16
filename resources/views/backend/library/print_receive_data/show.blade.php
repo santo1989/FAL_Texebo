@@ -7,7 +7,8 @@
         <x-backend.layouts.elements.breadcrumb>
             <x-slot name="pageHeader"> Print/Embroidery Receive Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('print_receive_data.index') }}">Print/Embroidery Receive Data</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('print_receive_data.index') }}">Print/Embroidery Receive
+                    Data</a></li>
             <li class="breadcrumb-item active">Details</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
@@ -62,13 +63,20 @@
             </table>
 
             <div class="mt-3">
-                <a href="{{ route('print_receive_data.edit', $printReceiveDatum->id) }}" class="btn btn-primary">Edit</a>
+                @canany(['Admin', 'Print Receive', 'Supervisor'])
+                    <a href="{{ route('print_receive_data.edit', $printReceiveDatum->id) }}"
+                        class="btn btn-primary">Edit</a>
+                @endcanany
                 <a href="{{ route('print_receive_data.index') }}" class="btn btn-secondary">Back to List</a>
-                <form action="{{ route('print_receive_data.destroy', $printReceiveDatum->id) }}" method="POST" class="d-inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this record?');">Delete</button>
-                </form>
+                @canany(['Admin', 'Print Receive', 'Supervisor'])
+                    <form action="{{ route('print_receive_data.destroy', $printReceiveDatum->id) }}" method="POST"
+                        class="d-inline">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger"
+                            onclick="return confirm('Are you sure you want to delete this record?');">Delete</button>
+                    </form>
+                @endcanany
             </div>
         </div>
     </div>

@@ -75,6 +75,7 @@
 
 
                             <a href="{{ route('cutting_data.index') }}" class="btn btn-secondary mt-3">Back to List</a>
+                            @canany(['Admin', 'Cutting', 'Supervisor'])
                             <a href="{{ route('cutting_data.edit', ['cutting_datum' => $cuttingDatum->id]) }}"
                                 class="btn btn-primary mt-3">Edit</a>
                             {{-- Delete Button (consider adding a confirmation dialog) --}}
@@ -85,6 +86,7 @@
                                 <button type="submit" class="btn btn-danger mt-3"
                                     onclick="return confirm('Are you sure you want to delete this cutting data?');">Delete</button>
                             </form>
+                            @endcanany
                         </div>
                     </div>
                 </div>

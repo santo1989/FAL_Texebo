@@ -80,7 +80,9 @@
                 </div>
                 <div class="card-footer">
                     <a href="{{ route('shipment_data.index') }}" class="btn btn-secondary">Back to List</a>
+                    @canany(['Admin', 'Shipment', 'Supervisor'])
                     <a href="{{ route('shipment_data.edit', $shipmentDatum->id) }}" class="btn btn-warning">Edit</a>
+                    @endcanany
                 </div>
             </div>
         </div>

@@ -21,12 +21,15 @@
                                 <a href="{{ route('home') }}" class="btn btn-sm btn-outline-danger">
                                     <i class="fas fa-arrow-left"></i> Close
                                 </a>
+                                @canany(['Admin', 'Cutting', 'Supervisor'])
                                 <a href="{{ route('cutting_data.create') }}" class="btn btn-sm btn-outline-primary">
                                     <i class="fas fa-plus"></i> Add Cutting Data
                                 </a>
                                 <a href="{{ route('cutting_data.create_waste') }}" class="btn btn-sm btn-outline-info">
                                     <i class="fas fa-plus"></i> Add Cutting Waste Data
                                 </a>
+                                @endcanany
+                            
                                 <a href="{{ route('cutting_data_report') }}" class="btn btn-sm btn-outline-info">
                                     <i class="fas fa-chart-bar"></i> Cutting Report
                                 </a>
@@ -156,18 +159,21 @@
                                             <td>{{ $data->total_cut_quantity }}</td>
                                             <td>{{ $data->total_cut_waste_quantity }}</td>
                                             <td>
-                                                <a href="{{ route('cutting_data.edit', $data->id) }}"
-                                                    class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </a>
+                                               
                                                 <a href="{{ route('cutting_data.show', $data->id) }}"
                                                     class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-info-circle"></i> Show
+                                                </a>
+                                                @canany(['Admin', 'Cutting', 'Supervisor'])
+                                                 <a href="{{ route('cutting_data.edit', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-pencil"></i> Edit
                                                 </a>
                                                 <button class="btn btn-sm btn-outline-danger"
                                                     onclick="confirmDelete('{{ route('cutting_data.destroy', $data->id) }}')">
                                                     <i class="bi bi-trash"></i> Delete
                                                 </button>
+                                                @endcanany
                                             </td>
                                         </tr>
                                     @empty

@@ -20,9 +20,11 @@
                             <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
+                            @canany(['Admin', 'Input', 'Supervisor'])
                             <a href="{{ route('line_input_data.create') }}" class="btn btn-lg btn-outline-primary">
                                 <i class="fas fa-plus"></i> Add Sewing Input
                             </a>
+                            @endcanany
                             <div class="btn-group ml-2">
                                 <h4 class="btn btn-lg text-center">Reports</h4>
                                 <button class="btn btn-lg btn-outline-primary"
@@ -153,18 +155,21 @@
                                             <td>{{ $data->total_input_quantity }}</td>
                                             <td>{{ $data->total_input_waste_quantity ?? 0 }}</td>
                                             <td>
-                                                <a href="{{ route('line_input_data.edit', $data->id) }}"
-                                                    class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </a>
+                                               
                                                 <a href="{{ route('line_input_data.show', $data->id) }}"
                                                     class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-info-circle"></i> Show
+                                                </a>
+                                                @canany(['Admin', 'Input', 'Supervisor'])
+                                                 <a href="{{ route('line_input_data.edit', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-pencil"></i> Edit
                                                 </a>
                                                 <button class="btn btn-sm btn-outline-danger"
                                                     onclick="confirmDelete('{{ route('line_input_data.destroy', $data->id) }}')">
                                                     <i class="bi bi-trash"></i> Delete
                                                 </button>
+                                                @endcanany
                                             </td>
                                         </tr>
                                     @empty

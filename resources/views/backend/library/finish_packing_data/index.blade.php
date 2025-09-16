@@ -24,9 +24,11 @@
                     <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
                         <i class="fas fa-arrow-left"></i> Close
                     </a>
+                    @canany(['Admin', 'Packing', 'Supervisor'])
                     <a href="{{ route('finish_packing_data.create') }}" class="btn btn-lg btn-outline-primary">
                         <i class="fas fa-plus"></i> Add Finish Packing Data
                     </a>
+                    @endcanany
                     <a href="{{ route('finish_packing_data.report.total_packing') }}"
                         class="btn btn-lg btn-outline-info">
                         <i class="fas fa-chart-bar"></i> Total Packing Report
@@ -154,8 +156,10 @@
                                         <td>
                                             <a href="{{ route('finish_packing_data.show', $data->id) }}"
                                                 class="btn btn-sm btn-info">Show</a>
+                                                @canany(['Admin', 'Packing', 'Supervisor'])
                                             <a href="{{ route('finish_packing_data.edit', $data->id) }}"
                                                 class="btn btn-sm btn-warning">Edit</a>
+                                                
                                             <form action="{{ route('finish_packing_data.destroy', $data->id) }}"
                                                 method="POST" class="d-inline"
                                                 onsubmit="return confirm('Are you sure you want to delete this?')">
@@ -163,6 +167,7 @@
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                             </form>
+                                            @endcanany
                                         </td>
                                     </tr>
                                 @empty

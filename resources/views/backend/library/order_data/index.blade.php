@@ -25,9 +25,11 @@
                         <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
                             <i class="fas fa-arrow-left"></i> Close
                         </a>
+                        @canany(['Admin', 'Supervisor','OrderDataEntry'])
                         <a href="{{ route('order_data.create') }}" class="btn btn-lg btn-outline-primary">
                             <i class="fas fa-plus"></i> Add Order Data
                         </a>
+                        @endcanany
                         <a href="{{ route('order_data.report.total_order') }}" class="btn btn-lg btn-outline-info">
                             <i class="fas fa-chart-bar"></i> Total Order Report
                         </a>
@@ -147,6 +149,7 @@
 
                                         <td>{{ $data->total_order_quantity }}</td>
                                         <td>
+                                             @canany(['Admin', 'Supervisor'])
                                             <!--from select to change Status-->
                                             <form action="{{ route('order_data.update_status', $data->id) }}"
                                                 method="POST" class="d-inline">
@@ -165,10 +168,14 @@
                                                         Cancelled</option>
                                                 </select>
                                             </form>
+                                            @else
+                                                {{ ucfirst($data->po_status) }}
+                                            @endif
                                         </td>
                                         <td>
                                             <a href="{{ route('order_data.show', $data->id) }}"
                                                 class="btn btn-sm btn-info">Show</a>
+                                                @canany(['Admin', 'Supervisor'])
                                             <a href="{{ route('order_data.edit', $data->id) }}"
                                                 class="btn btn-sm btn-warning">Edit</a>
                                             <form action="{{ route('order_data.destroy', $data->id) }}" method="POST"
@@ -178,6 +185,7 @@
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                             </form>
+                                            @endcanany
                                         </td>
                                     </tr>
                                 @empty

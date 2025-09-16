@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\OrderData;
 use App\Models\User;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\DB;
@@ -94,6 +95,10 @@ class AuthServiceProvider extends ServiceProvider
             if ($user->role()->where('name', 'Admin')->exists()) {
                 return true;
             }
+        });
+        // OrderDataEntry
+        Gate::define('OrderDataEntry', function (User $user) {
+            return $user->role()->where('name', 'OrderDataEntry')->exists();
         });
 
         // DB::table('role')->get()->each(function ($role) {

@@ -24,9 +24,11 @@
                     <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
                         <i class="fas fa-arrow-left"></i> Close
                     </a>
+                    @canany(['Admin', 'Shipment', 'Supervisor'])
                     <a href="{{ route('shipment_data.create') }}" class="btn btn-lg btn-outline-primary">
                         <i class="fas fa-plus"></i> Add Shipment Data
                     </a>
+                    @endcanany
                     <a href="{{ route('shipment_data.report.total_shipment') }}" class="btn btn-lg btn-outline-info">
                         <i class="fas fa-ship"></i> Total Shipment Report
                     </a>
@@ -161,6 +163,7 @@
                                         <td>
                                             <a href="{{ route('shipment_data.show', $data->id) }}"
                                                 class="btn btn-sm btn-info">Show</a>
+                                                @canany(['Admin', 'Shipment', 'Supervisor'])
                                             <a href="{{ route('shipment_data.edit', $data->id) }}"
                                                 class="btn btn-sm btn-warning">Edit</a>
                                             <form action="{{ route('shipment_data.destroy', $data->id) }}"
@@ -170,6 +173,7 @@
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                             </form>
+                                            @endcanany
                                         </td>
                                     </tr>
                                 @empty

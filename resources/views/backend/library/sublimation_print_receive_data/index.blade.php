@@ -20,10 +20,12 @@
                             <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
+                            @canany(['Admin', 'Supervisor', 'Print Receive'])
                             <a href="{{ route('sublimation_print_receive_data.create') }}"
                                 class="btn btn-lg btn-outline-primary">
                                 <i class="fas fa-plus"></i> Add Print/Emb Receive
                             </a>
+                            @endcanany
                             <div class="btn-group ml-2">
                                 <h4 class="btn btn-lg text-center">Reports</h4>
                                 <button class="btn btn-lg btn-outline-primary"
@@ -155,18 +157,22 @@
                                             <td>{{ $data->total_sublimation_print_receive_quantity }}</td>
                                             <td>{{ $data->total_sublimation_print_receive_waste_quantity }}</td>
                                             <td>
-                                                <a href="{{ route('sublimation_print_receive_data.edit', $data->id) }}"
-                                                    class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </a>
+                                                
                                                 <a href="{{ route('sublimation_print_receive_data.show', $data->id) }}"
                                                     class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-info-circle"></i> Show
                                                 </a>
+                                                @canany(['Admin', 'Supervisor'])
+                                                <a href="{{ route('sublimation_print_receive_data.edit', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-primary">
+                                                    <i class="bi bi-pencil"></i> Edit
+                                                </a>
+
                                                 <button class="btn btn-sm btn-outline-danger"
                                                     onclick="confirmDelete('{{ route('sublimation_print_receive_data.destroy', $data->id) }}')">
                                                     <i class="bi bi-trash"></i> Delete
                                                 </button>
+                                                @endcanany
                                             </td>
                                         </tr>
                                     @empty

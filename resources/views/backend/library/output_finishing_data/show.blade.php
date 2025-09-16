@@ -74,7 +74,9 @@
                 </div>
                 <div class="card-footer">
                     <a href="{{ route('output_finishing_data.index') }}" class="btn btn-secondary">Back to List</a>
+                    @canany(['Admin', 'Output', 'Supervisor'])
                     <a href="{{ route('output_finishing_data.edit', $outputFinishingDatum->id) }}" class="btn btn-warning">Edit</a>
+                    @endcanany
                 </div>
             </div>
         </div>

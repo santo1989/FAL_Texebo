@@ -24,9 +24,11 @@
                     <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
                         <i class="fas fa-arrow-left"></i> Close
                     </a>
+                    @canany(['Admin', 'Output', 'Supervisor'])
                     <a href="{{ route('output_finishing_data.create') }}" class="btn btn-lg btn-outline-primary">
                         <i class="fas fa-plus"></i> Add Output Data
                     </a>
+                    @endcanany
                     <a href="{{ route('output_finishing_data.report.total_balance') }}"
                         class="btn btn-lg btn-outline-info">
                         <i class="fas fa-balance-scale"></i> Total Balance Report
@@ -154,6 +156,7 @@
                                         <td>
                                             <a href="{{ route('output_finishing_data.show', $data->id) }}"
                                                 class="btn btn-sm btn-info">Show</a>
+                                                @canany(['Admin', 'Output', 'Supervisor'])
                                             <a href="{{ route('output_finishing_data.edit', $data->id) }}"
                                                 class="btn btn-sm btn-warning">Edit</a>
                                             <form action="{{ route('output_finishing_data.destroy', $data->id) }}"
@@ -163,6 +166,7 @@
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                                             </form>
+                                            @endcanany
                                         </td>
                                     </tr>
                                 @empty

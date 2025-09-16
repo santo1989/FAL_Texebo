@@ -65,13 +65,17 @@
             </table>
 
             <div class="mt-3">
+                @canany(['Admin', 'Supervisor'])
                 <a href="{{ route('print_send_data.edit', $printSendDatum->id) }}" class="btn btn-primary">Edit</a>
+                @endcanany
                 <a href="{{ route('print_send_data.index') }}" class="btn btn-secondary">Back to List</a>
+                    @canany(['Admin', 'Supervisor'])
                 <form action="{{ route('print_send_data.destroy', $printSendDatum->id) }}" method="POST" class="d-inline">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this record?');">Delete</button>
                 </form>
+                @endcanany
             </div>
         </div>
     </div>

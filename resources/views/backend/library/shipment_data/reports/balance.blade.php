@@ -17,7 +17,7 @@
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">Production Stage Balance Report</h3>
-                    <a href="{{ route('shipment_data.index') }}" class="btn btn-secondary mb-3 float-right">
+                    <a href="{{ route('home') }}" class="btn btn-secondary mb-3 float-right">
                         <i class="fas fa-arrow-left"></i> Close
                     </a>
                     <button id="export-excel" class="btn btn-success mb-3 float-left">

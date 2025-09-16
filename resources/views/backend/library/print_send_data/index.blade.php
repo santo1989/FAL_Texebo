@@ -20,9 +20,11 @@
                             <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
+                            @canany(['Admin', 'Print Send', 'Supervisor'])
                             <a href="{{ route('print_send_data.create') }}" class="btn btn-lg btn-outline-primary">
                                 <i class="fas fa-plus"></i> Add Print/Emb Send
                             </a>
+                            @endcanany
                             <div class="btn-group ml-2">
                                 <h4 class="btn btn-lg text-center">Reports</h4>
                                 <div class="dropdown">
@@ -159,16 +161,19 @@
                                             <td>{{ $data->total_send_quantity }}</td>
                                             <td>{{ $data->total_send_waste_quantity }}</td>
                                             <td>
+                                                  <a href="{{ route('print_send_data.show', $data->id) }}" class="btn btn-sm btn-outline-info">
+                                                    <i class="bi bi-info-circle"></i> Show
+                                                </a>
+                                                @canany(['Admin', 'Supervisor'])
                                                 <a href="{{ route('print_send_data.edit', $data->id) }}" class="btn btn-sm btn-outline-primary">
                                                     <i class="bi bi-pencil"></i> Edit
                                                 </a>
-                                                <a href="{{ route('print_send_data.show', $data->id) }}" class="btn btn-sm btn-outline-info">
-                                                    <i class="bi bi-info-circle"></i> Show
-                                                </a>
+                                              
                                                 <button class="btn btn-sm btn-outline-danger"
                                                     onclick="confirmDelete('{{ route('print_send_data.destroy', $data->id) }}')">
                                                     <i class="bi bi-trash"></i> Delete
                                                 </button>
+                                                @endcanany
                                             </td>
                                         </tr>
                                     @empty

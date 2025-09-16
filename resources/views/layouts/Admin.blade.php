@@ -733,6 +733,16 @@
                                 </div>
                             @endcanany
 
+                            @can('OrderDataEntry')
+                            <div class="col-3 pt-1 pb-1">
+                                    <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
+                                        href="{{ route('order_data.index') }}">
+                                        <div class="sb-nav-link-icon"><i class="fas fa-clipboard-list"></i></div>
+                                        Order Data (PO Information)
+                                    </a>
+                                </div>
+                            @endcan
+
                             {{-- Cutting specific module --}}
                             @canany(['Admin', 'Cutting', 'Supervisor'])
                                 <div class="col-3 pt-1 pb-1">
@@ -830,6 +840,7 @@
                                         Shipment Data
                                     </a>
                                 </div>
+                                @endcanany
                                 <div class="col-3 pt-1 pb-1">
                                     <a href="{{ route('shipment_data.report.final_balance') }}"
                                         class="btn btn-outline-info btn-block">
@@ -837,7 +848,7 @@
                                         Final Balance Report
                                     </a>
                                 </div>
-                            @endcanany
+                            
 
                             {{-- HR Specific --}}
                             @can('HR')
@@ -852,7 +863,8 @@
                             @endcan
 
                             {{-- QC Specific --}}
-                            @can('QC')
+                            @canany('QC', 'OrderDataEntry')
+                                {{-- Add QC specific links here if any --}}
                                 <div class="col-3 pt-1 pb-1">
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
                                         href="{{-- route('qc.inspections') --}}">
@@ -860,7 +872,7 @@
                                         QC Inspections (Example)
                                     </a>
                                 </div>
-                            @endcan
+                            @endcanany
 
                         </div>
                     </div>

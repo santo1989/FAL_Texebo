@@ -83,7 +83,9 @@
         </div>
         <div class="card-footer">
             <a href="{{ route('sublimation_print_send_data.index') }}" class="btn btn-secondary">Back</a>
+            @canany(['Admin', 'Supervisor'])
             <a href="{{ route('sublimation_print_send_data.edit', $sublimationPrintSendDatum->id) }}" class="btn btn-primary">Edit</a>
+            @endcanany
         </div>
     </div>
 </x-backend.layouts.master>
