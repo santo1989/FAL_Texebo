@@ -21,21 +21,29 @@
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
                             @canany(['Admin', 'Print Receive', 'Supervisor'])
-                            <a href="{{ route('print_receive_data.create') }}" class="btn btn-lg btn-outline-primary">
-                                <i class="fas fa-plus"></i> Add Print/Emb Receive
-                            </a>
+                                <a href="{{ route('print_receive_data.create') }}" class="btn btn-lg btn-outline-primary">
+                                    <i class="fas fa-plus"></i> Add Print/Emb Receive
+                                </a>
                             @endcanany
-                            
+
                             <div class="btn-group ml-2">
                                 <h4 class="btn btn-lg text-center">Reports</h4>
-                                <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_receive_data.report.total_receive') }}'">Total Print/Emb Receive</button>
-                                <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_receive_data.report.balance_quantity') }}'">Print/Emb Balance</button>
-                                <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_receive_data.report.ready') }}'">Ready to Input</button>
-                                <button class="btn btn-lg btn-outline-primary" onclick="location.href='{{ route('print_receive_data.report.wip') }}'">WIP</button>
+                                <button class="btn btn-lg btn-outline-primary"
+                                    onclick="location.href='{{ route('print_receive_data.report.total_receive') }}'">Total
+                                    Print/Emb Receive</button>
+                                <button class="btn btn-lg btn-outline-primary"
+                                    onclick="location.href='{{ route('print_receive_data.report.balance_quantity') }}'">Print/Emb
+                                    Balance</button>
+                                <button class="btn btn-lg btn-outline-primary"
+                                    onclick="location.href='{{ route('print_receive_data.report.ready') }}'">Ready to
+                                    Input</button>
+                                <button class="btn btn-lg btn-outline-primary"
+                                    onclick="location.href='{{ route('print_receive_data.report.wip') }}'">WIP</button>
                             </div>
 
-                            <form class="d-flex float-right" action="{{ route('print_receive_data.index') }}" method="GET">
-                               <div class="row g-2">
+                            <form class="d-flex float-right" action="{{ route('print_receive_data.index') }}"
+                                method="GET">
+                                <div class="row g-2">
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="style_id">Style</label>
@@ -87,6 +95,9 @@
                                             <input type="date" name="start_date" id="start_date" class="form-control"
                                                 value="{{ request('start_date') }}">
                                         </div>
+                                    </div>
+
+                                    <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="end_date">End Date</label>
                                             <input type="date" name="end_date" id="end_date" class="form-control"
@@ -94,7 +105,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="col-md-4 d-flex align-items-end gap-2">
+                                    <div class="col-md-2 d-flex align-items-end gap-2">
                                         <input class="form-control me-2" type="search" name="search"
                                             placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
                                         <button class="btn btn-outline-success" type="submit">Search</button>
@@ -148,24 +159,27 @@
                                             <td>{{ $data->total_receive_quantity }}</td>
                                             <td>{{ $data->total_receive_waste_quantity }}</td>
                                             <td>
-                                               
-                                                <a href="{{ route('print_receive_data.show', $data->id) }}" class="btn btn-sm btn-outline-info">
+
+                                                <a href="{{ route('print_receive_data.show', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-info-circle"></i> Show
                                                 </a>
                                                 @canany(['Admin', 'Supervisor'])
-                                                 <a href="{{ route('print_receive_data.edit', $data->id) }}" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </a>
-                                                <button class="btn btn-sm btn-outline-danger"
-                                                    onclick="confirmDelete('{{ route('print_receive_data.destroy', $data->id) }}')">
-                                                    <i class="bi bi-trash"></i> Delete
-                                                </button>
+                                                    <a href="{{ route('print_receive_data.edit', $data->id) }}"
+                                                        class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-pencil"></i> Edit
+                                                    </a>
+                                                    <button class="btn btn-sm btn-outline-danger"
+                                                        onclick="confirmDelete('{{ route('print_receive_data.destroy', $data->id) }}')">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
                                                 @endcanany
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 6 + (count($allSizes) * 2) + 3 }}" class="text-center">No print/emb receive data found</td>
+                                            <td colspan="{{ 6 + count($allSizes) * 2 + 3 }}" class="text-center">No
+                                                print/emb receive data found</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -203,8 +217,8 @@
             });
         }
     </script>
-     <script>
-        $(document).ready(function () {
+    <script>
+        $(document).ready(function() {
             $('#style_id, #color_id, #po_number').select2({
                 placeholder: 'Select an option',
                 allowClear: true,
@@ -213,5 +227,3 @@
         });
     </script>
 </x-backend.layouts.master>
-                        
-                        

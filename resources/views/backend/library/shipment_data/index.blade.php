@@ -25,9 +25,9 @@
                         <i class="fas fa-arrow-left"></i> Close
                     </a>
                     @canany(['Admin', 'Shipment', 'Supervisor'])
-                    <a href="{{ route('shipment_data.create') }}" class="btn btn-lg btn-outline-primary">
-                        <i class="fas fa-plus"></i> Add Shipment Data
-                    </a>
+                        <a href="{{ route('shipment_data.create') }}" class="btn btn-lg btn-outline-primary">
+                            <i class="fas fa-plus"></i> Add Shipment Data
+                        </a>
                     @endcanany
                     <a href="{{ route('shipment_data.report.total_shipment') }}" class="btn btn-lg btn-outline-info">
                         <i class="fas fa-ship"></i> Total Shipment Report
@@ -95,6 +95,9 @@
                                     <input type="date" name="start_date" id="start_date" class="form-control"
                                         value="{{ request('start_date') }}">
                                 </div>
+                            </div>
+
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="end_date">End Date</label>
                                     <input type="date" name="end_date" id="end_date" class="form-control"
@@ -102,7 +105,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-4 d-flex align-items-end gap-2">
+                            <div class="col-md-2 d-flex align-items-end gap-2">
                                 <input class="form-control me-2" type="search" name="search"
                                     placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
                                 <button class="btn btn-outline-success" type="submit">Search</button>
@@ -163,16 +166,16 @@
                                         <td>
                                             <a href="{{ route('shipment_data.show', $data->id) }}"
                                                 class="btn btn-sm btn-info">Show</a>
-                                                @canany(['Admin', 'Shipment', 'Supervisor'])
-                                            <a href="{{ route('shipment_data.edit', $data->id) }}"
-                                                class="btn btn-sm btn-warning">Edit</a>
-                                            <form action="{{ route('shipment_data.destroy', $data->id) }}"
-                                                method="POST" class="d-inline"
-                                                onsubmit="return confirm('Are you sure you want to delete this?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                            </form>
+                                            @canany(['Admin', 'Shipment', 'Supervisor'])
+                                                <a href="{{ route('shipment_data.edit', $data->id) }}"
+                                                    class="btn btn-sm btn-warning">Edit</a>
+                                                <form action="{{ route('shipment_data.destroy', $data->id) }}"
+                                                    method="POST" class="d-inline"
+                                                    onsubmit="return confirm('Are you sure you want to delete this?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                                </form>
                                             @endcanany
                                         </td>
                                     </tr>
@@ -192,8 +195,8 @@
             </div>
         </div>
     </section>
-     <script>
-        $(document).ready(function () {
+    <script>
+        $(document).ready(function() {
             $('#style_id, #color_id, #po_number').select2({
                 placeholder: 'Select an option',
                 allowClear: true,

@@ -30,116 +30,119 @@
                                 <a href="{{ route('sublimation_print_send_data.index') }}" class="btn btn-outline-secondary">Reset</a>
                             </form>
                         </div> --}}
-                         <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <div class="d-flex flex-wrap gap-2">
-                        <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
-                                <i class="fas fa-arrow-left"></i> Close
-                            </a>
-                            <a href="{{ route('sublimation_print_send_data.create') }}"
-                                class="btn btn-lg btn-outline-primary">
-                                <i class="fas fa-plus"></i> Add Print/Emb Send
-                            </a>
-                            <div class="btn-group ml-2">
-                                <h4 class="btn btn-lg text-center">Reports</h4>
+                        <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="{{ route('home') }}" class="btn btn-lg btn-outline-danger">
+                                    <i class="fas fa-arrow-left"></i> Close
+                                </a>
+                                <a href="{{ route('sublimation_print_send_data.create') }}"
+                                    class="btn btn-lg btn-outline-primary">
+                                    <i class="fas fa-plus"></i> Add Print/Emb Send
+                                </a>
+                                <div class="btn-group ml-2">
+                                    <h4 class="btn btn-lg text-center">Reports</h4>
 
-                                <button class="btn btn-lg btn-outline-primary"
-                                    onclick="location.href='{{ route('sublimation_print_send_data.report.total') }}'">Total
-                                    Print/Emb Send</button>
-                                <button class="btn btn-lg btn-outline-primary"
-                                    onclick="location.href='{{ route('sublimation_print_send_data.report.wip') }}'">WIP
-                                    (Waiting)</button>
-                                <button class="btn btn-lg btn-outline-primary"
-                                    onclick="location.href='{{ route('sublimation_print_send_data.report.ready') }}'">Ready
-                                    to
-                                    Input</button>
+                                    <button class="btn btn-lg btn-outline-primary"
+                                        onclick="location.href='{{ route('sublimation_print_send_data.report.total') }}'">Total
+                                        Print/Emb Send</button>
+                                    <button class="btn btn-lg btn-outline-primary"
+                                        onclick="location.href='{{ route('sublimation_print_send_data.report.wip') }}'">WIP
+                                        (Waiting)</button>
+                                    <button class="btn btn-lg btn-outline-primary"
+                                        onclick="location.href='{{ route('sublimation_print_send_data.report.ready') }}'">Ready
+                                        to
+                                        Input</button>
 
-                            </div>
-                    </div>
-
-                    <form class="d-flex flex-wrap align-items-end gap-2" action="{{ route('sublimation_print_send_data.index') }}"
-                        method="GET">
-                        <div class="row g-2">
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label for="style_id">Style</label>
-                                    <select name="style_id[]" id="style_id" class="form-control" multiple>
-                                        <option value="">Select Style</option>
-                                        @foreach ($allStyles as $style)
-                                            <option value="{{ $style->id }}"
-                                                {{ in_array($style->id, (array) request('style_id')) ? 'selected' : '' }}>
-                                                {{ $style->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
                                 </div>
                             </div>
 
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label for="color_id">Color</label>
-                                    <select name="color_id[]" id="color_id" class="form-control" multiple>
-                                        <option value="">Select Color</option>
-                                        @foreach ($allColors as $color)
-                                            <option value="{{ $color->id }}"
-                                                {{ in_array($color->id, (array) request('color_id')) ? 'selected' : '' }}>
-                                                {{ $color->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
+                            <form class="d-flex flex-wrap align-items-end gap-2"
+                                action="{{ route('sublimation_print_send_data.index') }}" method="GET">
+                                <div class="row g-2">
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label for="style_id">Style</label>
+                                            <select name="style_id[]" id="style_id" class="form-control" multiple>
+                                                <option value="">Select Style</option>
+                                                @foreach ($allStyles as $style)
+                                                    <option value="{{ $style->id }}"
+                                                        {{ in_array($style->id, (array) request('style_id')) ? 'selected' : '' }}>
+                                                        {{ $style->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
 
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label for="po_number">PO Number</label>
-                                    <select name="po_number[]" id="po_number" class="form-control" multiple>
-                                        <option value="">Select PO Number</option>
-                                        @foreach ($distinctPoNumbers as $poNumber)
-                                            <option value="{{ $poNumber }}"
-                                                {{ in_array($poNumber, (array) request('po_number')) ? 'selected' : '' }}>
-                                                {{ $poNumber }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label for="color_id">Color</label>
+                                            <select name="color_id[]" id="color_id" class="form-control" multiple>
+                                                <option value="">Select Color</option>
+                                                @foreach ($allColors as $color)
+                                                    <option value="{{ $color->id }}"
+                                                        {{ in_array($color->id, (array) request('color_id')) ? 'selected' : '' }}>
+                                                        {{ $color->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
 
-                            <div class="col-md-2">
-                                <div class="form-group">
-                                    <label for="start_date">Start Date</label>
-                                    <input type="date" name="start_date" id="start_date" class="form-control"
-                                        value="{{ request('start_date') }}">
-                                </div>
-                                <div class="form-group">
-                                    <label for="end_date">End Date</label>
-                                    <input type="date" name="end_date" id="end_date" class="form-control"
-                                        value="{{ request('end_date') }}">
-                                </div>
-                            </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label for="po_number">PO Number</label>
+                                            <select name="po_number[]" id="po_number" class="form-control" multiple>
+                                                <option value="">Select PO Number</option>
+                                                @foreach ($distinctPoNumbers as $poNumber)
+                                                    <option value="{{ $poNumber }}"
+                                                        {{ in_array($poNumber, (array) request('po_number')) ? 'selected' : '' }}>
+                                                        {{ $poNumber }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
 
-                            <div class="col-md-4 d-flex align-items-end gap-2">
-                                <input class="form-control me-2" type="search" name="search"
-                                    placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
-                                <button class="btn btn-outline-success" type="submit">Search</button>
-                                @if (request('search') ||
-                                        request('date') ||
-                                        request('style_id') ||
-                                        request('color_id') ||
-                                        request('po_number') ||
-                                        request('start_date') ||
-                                        request('end_date'))
-                                    <a href="{{ route('sublimation_print_send_data.index') }}"
-                                        class="btn btn-outline-secondary">Reset</a>
-                                @endif
-                            </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label for="start_date">Start Date</label>
+                                            <input type="date" name="start_date" id="start_date" class="form-control"
+                                                value="{{ request('start_date') }}">
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label for="end_date">End Date</label>
+                                            <input type="date" name="end_date" id="end_date" class="form-control"
+                                                value="{{ request('end_date') }}">
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-2 d-flex align-items-end gap-2">
+                                        <input class="form-control me-2" type="search" name="search"
+                                            placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
+                                        <button class="btn btn-outline-success" type="submit">Search</button>
+                                        @if (request('search') ||
+                                                request('date') ||
+                                                request('style_id') ||
+                                                request('color_id') ||
+                                                request('po_number') ||
+                                                request('start_date') ||
+                                                request('end_date'))
+                                            <a href="{{ route('sublimation_print_send_data.index') }}"
+                                                class="btn btn-outline-secondary">Reset</a>
+                                        @endif
+                                    </div>
+                                </div>
+                            </form>
                         </div>
-                    </form>
-                </div>
                         <div class="card-body" style="overflow-x: auto;">
                             <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
-                                       
+
                                         <th rowspan="2">Date</th>
                                         <th rowspan="2">PO Number</th>
                                         <th rowspan="2">Style</th>
@@ -161,7 +164,7 @@
                                 <tbody>
                                     @forelse ($printSendData as $data)
                                         <tr>
-                                            
+
                                             <td>{{ $data->date }}</td>
                                             <td>{{ $data->po_number }}</td>
                                             <td>{{ $data->productCombination->style->name ?? 'N/A' }}</td>
@@ -169,30 +172,29 @@
                                             @foreach ($allSizes as $size)
                                                 <td>
                                                     {{-- Accessing by size name directly --}}
-                                                    {{ $data->sublimation_print_send_quantities[$size->id] ?? 0 }}  
+                                                    {{ $data->sublimation_print_send_quantities[$size->id] ?? 0 }}
                                                 </td>
-                                                    <td>
+                                                <td>
                                                     {{ $data->sublimation_print_send_waste_quantities[$size->id] ?? 0 }}
                                                 </td>
                                             @endforeach
                                             <td>{{ $data->total_sublimation_print_send_quantity }}</td>
                                             <td>{{ $data->total_sublimation_print_send_waste_quantity }}</td>
                                             <td>
-                                                   <a href="{{ route('sublimation_print_send_data.show', $data->id) }}"
+                                                <a href="{{ route('sublimation_print_send_data.show', $data->id) }}"
                                                     class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-info-circle"></i> Show
                                                 </a>
                                                 @canany(['Admin', 'Supervisor'])
+                                                    <a href="{{ route('sublimation_print_send_data.edit', $data->id) }}"
+                                                        class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-pencil"></i> Edit
+                                                    </a>
 
-                                                <a href="{{ route('sublimation_print_send_data.edit', $data->id) }}"
-                                                    class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </a>
-                                             
-                                                <button class="btn btn-sm btn-outline-danger"
-                                                    onclick="confirmDelete('{{ route('sublimation_print_send_data.destroy', $data->id) }}')">
-                                                    <i class="bi bi-trash"></i> Delete
-                                                </button>
+                                                    <button class="btn btn-sm btn-outline-danger"
+                                                        onclick="confirmDelete('{{ route('sublimation_print_send_data.destroy', $data->id) }}')">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
                                                 @endcanany
                                             </td>
                                         </tr>
@@ -246,8 +248,8 @@
             });
         });
     </script>
-     <script>
-        $(document).ready(function () {
+    <script>
+        $(document).ready(function() {
             $('#style_id, #color_id, #po_number').select2({
                 placeholder: 'Select an option',
                 allowClear: true,

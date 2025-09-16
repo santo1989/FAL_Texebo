@@ -27,7 +27,7 @@
                             <form class="d-flex float-right"
                                 action="{{ route('sublimation_print_receive_data.report.total_receive') }}"
                                 method="GET">
-                                 <div class="row g-2">
+                                <div class="row g-2">
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="style_id">Style</label>
@@ -79,6 +79,9 @@
                                             <input type="date" name="start_date" id="start_date" class="form-control"
                                                 value="{{ request('start_date') }}">
                                         </div>
+                                    </div>
+
+                                    <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="end_date">End Date</label>
                                             <input type="date" name="end_date" id="end_date" class="form-control"
@@ -86,7 +89,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="col-md-4 d-flex align-items-end gap-2">
+                                    <div class="col-md-2 d-flex align-items-end gap-2">
                                         <input class="form-control me-2" type="search" name="search"
                                             placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
                                         <button class="btn btn-outline-success" type="submit">Search</button>
@@ -142,8 +145,8 @@
             </div>
         </div>
     </section>
-     <script>
-        $(document).ready(function () {
+    <script>
+        $(document).ready(function() {
             $('#style_id, #color_id, #po_number').select2({
                 placeholder: 'Select an option',
                 allowClear: true,

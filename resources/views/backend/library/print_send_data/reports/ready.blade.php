@@ -19,11 +19,13 @@
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title text-center">Ready to Input for Finishing Report</h3>
-                            <a href="{{ route('print_send_data.index') }}" class="btn btn-lg btn-outline-danger float-right">
+                            <a href="{{ route('print_send_data.index') }}"
+                                class="btn btn-lg btn-outline-danger float-right">
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
-                            <form class="d-flex float-right" action="{{ route('print_send_data.report.ready') }}" method="GET">
-                                 <div class="row g-2">
+                            <form class="d-flex float-right" action="{{ route('print_send_data.report.ready') }}"
+                                method="GET">
+                                <div class="row g-2">
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="style_id">Style</label>
@@ -75,6 +77,9 @@
                                             <input type="date" name="start_date" id="start_date" class="form-control"
                                                 value="{{ request('start_date') }}">
                                         </div>
+                                    </div>
+
+                                    <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="end_date">End Date</label>
                                             <input type="date" name="end_date" id="end_date" class="form-control"
@@ -82,7 +87,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="col-md-4 d-flex align-items-end gap-2">
+                                    <div class="col-md-2 d-flex align-items-end gap-2">
                                         <input class="form-control me-2" type="search" name="search"
                                             placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
                                         <button class="btn btn-outline-success" type="submit">Search</button>
@@ -98,7 +103,7 @@
                                         @endif
                                     </div>
                                 </div>
-                             </form>
+                            </form>
                         </div>
                         <div class="card-body" style="overflow-x: auto;">
                             <table class="table table-bordered table-hover text-center">
@@ -128,7 +133,8 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="8" class="text-center">No data found for ready to input.</td>
+                                            <td colspan="8" class="text-center">No data found for ready to input.
+                                            </td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -139,8 +145,8 @@
             </div>
         </div>
     </section>
-     <script>
-        $(document).ready(function () {
+    <script>
+        $(document).ready(function() {
             $('#style_id, #color_id, #po_number').select2({
                 placeholder: 'Select an option',
                 allowClear: true,

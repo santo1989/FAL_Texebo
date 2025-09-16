@@ -75,7 +75,9 @@
                                     <input type="date" name="start_date" id="start_date" class="form-control"
                                         value="{{ request('start_date') }}">
                                 </div>
+                            </div>
 
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="end_date">End Date</label>
                                     <input type="date" name="end_date" id="end_date" class="form-control"
@@ -84,7 +86,7 @@
                             </div>
 
 
-                            <div class="col-md-3 d-flex align-items-end">
+                            <div class="col-md-2 d-flex align-items-end">
                                 <button type="submit" class="btn btn-info mr-2">Search</button>
                                 <a href="{{ route('order_data.report.total_order') }}"
                                     class="btn btn-secondary">Reset</a>
@@ -149,8 +151,8 @@
             </div>
         </div>
     </section>
-     <script>
-        $(document).ready(function () {
+    <script>
+        $(document).ready(function() {
             $('#style_id, #color_id, #po_number').select2({
                 placeholder: 'Select an option',
                 allowClear: true,

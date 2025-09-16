@@ -21,9 +21,9 @@
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
                             @canany(['Admin', 'Input', 'Supervisor'])
-                            <a href="{{ route('line_input_data.create') }}" class="btn btn-lg btn-outline-primary">
-                                <i class="fas fa-plus"></i> Add Sewing Input
-                            </a>
+                                <a href="{{ route('line_input_data.create') }}" class="btn btn-lg btn-outline-primary">
+                                    <i class="fas fa-plus"></i> Add Sewing Input
+                                </a>
                             @endcanany
                             <div class="btn-group ml-2">
                                 <h4 class="btn btn-lg text-center">Reports</h4>
@@ -37,7 +37,7 @@
 
                             <form class="d-flex float-right" action="{{ route('line_input_data.index') }}"
                                 method="GET">
-                               <div class="row g-2">
+                                <div class="row g-2">
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="style_id">Style</label>
@@ -89,6 +89,9 @@
                                             <input type="date" name="start_date" id="start_date" class="form-control"
                                                 value="{{ request('start_date') }}">
                                         </div>
+                                    </div>
+
+                                    <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="end_date">End Date</label>
                                             <input type="date" name="end_date" id="end_date" class="form-control"
@@ -96,7 +99,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="col-md-4 d-flex align-items-end gap-2">
+                                    <div class="col-md-2 d-flex align-items-end gap-2">
                                         <input class="form-control me-2" type="search" name="search"
                                             placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
                                         <button class="btn btn-outline-success" type="submit">Search</button>
@@ -155,20 +158,20 @@
                                             <td>{{ $data->total_input_quantity }}</td>
                                             <td>{{ $data->total_input_waste_quantity ?? 0 }}</td>
                                             <td>
-                                               
+
                                                 <a href="{{ route('line_input_data.show', $data->id) }}"
                                                     class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-info-circle"></i> Show
                                                 </a>
                                                 @canany(['Admin', 'Input', 'Supervisor'])
-                                                 <a href="{{ route('line_input_data.edit', $data->id) }}"
-                                                    class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </a>
-                                                <button class="btn btn-sm btn-outline-danger"
-                                                    onclick="confirmDelete('{{ route('line_input_data.destroy', $data->id) }}')">
-                                                    <i class="bi bi-trash"></i> Delete
-                                                </button>
+                                                    <a href="{{ route('line_input_data.edit', $data->id) }}"
+                                                        class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-pencil"></i> Edit
+                                                    </a>
+                                                    <button class="btn btn-sm btn-outline-danger"
+                                                        onclick="confirmDelete('{{ route('line_input_data.destroy', $data->id) }}')">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
                                                 @endcanany
                                             </td>
                                         </tr>
@@ -213,8 +216,8 @@
             });
         }
     </script>
-     <script>
-        $(document).ready(function () {
+    <script>
+        $(document).ready(function() {
             $('#style_id, #color_id, #po_number').select2({
                 placeholder: 'Select an option',
                 allowClear: true,

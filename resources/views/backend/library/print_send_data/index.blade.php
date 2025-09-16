@@ -21,25 +21,31 @@
                                 <i class="fas fa-arrow-left"></i> Close
                             </a>
                             @canany(['Admin', 'Print Send', 'Supervisor'])
-                            <a href="{{ route('print_send_data.create') }}" class="btn btn-lg btn-outline-primary">
-                                <i class="fas fa-plus"></i> Add Print/Emb Send
-                            </a>
+                                <a href="{{ route('print_send_data.create') }}" class="btn btn-lg btn-outline-primary">
+                                    <i class="fas fa-plus"></i> Add Print/Emb Send
+                                </a>
                             @endcanany
                             <div class="btn-group ml-2">
                                 <h4 class="btn btn-lg text-center">Reports</h4>
                                 <div class="dropdown">
-                                    <button class="btn btn-lg btn-outline-primary dropdown-toggle" type="button" id="reportsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <button class="btn btn-lg btn-outline-primary dropdown-toggle" type="button"
+                                        id="reportsDropdown" data-toggle="dropdown" aria-haspopup="true"
+                                        aria-expanded="false">
                                         Select Report
                                     </button>
                                     <div class="dropdown-menu" aria-labelledby="reportsDropdown">
-                                        <a class="dropdown-item" href="{{ route('print_send_data.report.total') }}">Total Print/Emb Send</a>
-                                        <a class="dropdown-item" href="{{ route('print_send_data.report.wip') }}">WIP (Waiting)</a>
-                                        <a class="dropdown-item" href="{{ route('print_send_data.report.ready') }}">Ready to Input</a>
+                                        <a class="dropdown-item"
+                                            href="{{ route('print_send_data.report.total') }}">Total Print/Emb Send</a>
+                                        <a class="dropdown-item" href="{{ route('print_send_data.report.wip') }}">WIP
+                                            (Waiting)</a>
+                                        <a class="dropdown-item"
+                                            href="{{ route('print_send_data.report.ready') }}">Ready to Input</a>
                                     </div>
                                 </div>
                             </div>
 
-                            <form class="d-flex float-right" action="{{ route('print_send_data.index') }}" method="GET">
+                            <form class="d-flex float-right" action="{{ route('print_send_data.index') }}"
+                                method="GET">
                                 <div class="row g-2">
                                     <div class="col-md-2">
                                         <div class="form-group">
@@ -92,6 +98,9 @@
                                             <input type="date" name="start_date" id="start_date" class="form-control"
                                                 value="{{ request('start_date') }}">
                                         </div>
+                                    </div>
+
+                                    <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="end_date">End Date</label>
                                             <input type="date" name="end_date" id="end_date" class="form-control"
@@ -99,7 +108,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="col-md-4 d-flex align-items-end gap-2">
+                                    <div class="col-md-2 d-flex align-items-end gap-2">
                                         <input class="form-control me-2" type="search" name="search"
                                             placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
                                         <button class="btn btn-outline-success" type="submit">Search</button>
@@ -115,7 +124,7 @@
                                         @endif
                                     </div>
                                 </div>
-                             </form>
+                            </form>
                         </div>
                         <div class="card-body" style="overflow-x: auto;">
                             <table class="table table-bordered table-hover text-center">
@@ -161,24 +170,27 @@
                                             <td>{{ $data->total_send_quantity }}</td>
                                             <td>{{ $data->total_send_waste_quantity }}</td>
                                             <td>
-                                                  <a href="{{ route('print_send_data.show', $data->id) }}" class="btn btn-sm btn-outline-info">
+                                                <a href="{{ route('print_send_data.show', $data->id) }}"
+                                                    class="btn btn-sm btn-outline-info">
                                                     <i class="bi bi-info-circle"></i> Show
                                                 </a>
                                                 @canany(['Admin', 'Supervisor'])
-                                                <a href="{{ route('print_send_data.edit', $data->id) }}" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </a>
-                                              
-                                                <button class="btn btn-sm btn-outline-danger"
-                                                    onclick="confirmDelete('{{ route('print_send_data.destroy', $data->id) }}')">
-                                                    <i class="bi bi-trash"></i> Delete
-                                                </button>
+                                                    <a href="{{ route('print_send_data.edit', $data->id) }}"
+                                                        class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-pencil"></i> Edit
+                                                    </a>
+
+                                                    <button class="btn btn-sm btn-outline-danger"
+                                                        onclick="confirmDelete('{{ route('print_send_data.destroy', $data->id) }}')">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
                                                 @endcanany
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 9 + (count($allSizes) * 2) }}" class="text-center">No print/emb send data found</td>
+                                            <td colspan="{{ 9 + count($allSizes) * 2 }}" class="text-center">No
+                                                print/emb send data found</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -226,8 +238,8 @@
             }
         });
     </script>
-     <script>
-        $(document).ready(function () {
+    <script>
+        $(document).ready(function() {
             $('#style_id, #color_id, #po_number').select2({
                 placeholder: 'Select an option',
                 allowClear: true,

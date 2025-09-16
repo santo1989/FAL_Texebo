@@ -25,9 +25,9 @@
                         <i class="fas fa-arrow-left"></i> Close
                     </a>
                     @canany(['Admin', 'Packing', 'Supervisor'])
-                    <a href="{{ route('finish_packing_data.create') }}" class="btn btn-lg btn-outline-primary">
-                        <i class="fas fa-plus"></i> Add Finish Packing Data
-                    </a>
+                        <a href="{{ route('finish_packing_data.create') }}" class="btn btn-lg btn-outline-primary">
+                            <i class="fas fa-plus"></i> Add Finish Packing Data
+                        </a>
                     @endcanany
                     <a href="{{ route('finish_packing_data.report.total_packing') }}"
                         class="btn btn-lg btn-outline-info">
@@ -42,8 +42,8 @@
                         <i class="fas fa-balance-scale"></i> Balance Report
                     </a>
                     <form class="d-flex float-right" action="{{ route('finish_packing_data.index') }}" method="GET">
-                      
-                            <div class="row g-2">
+
+                        <div class="row g-2">
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="style_id">Style</label>
@@ -95,6 +95,9 @@
                                     <input type="date" name="start_date" id="start_date" class="form-control"
                                         value="{{ request('start_date') }}">
                                 </div>
+                            </div>
+
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="end_date">End Date</label>
                                     <input type="date" name="end_date" id="end_date" class="form-control"
@@ -102,7 +105,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-4 d-flex align-items-end gap-2">
+                            <div class="col-md-2 d-flex align-items-end gap-2">
                                 <input class="form-control me-2" type="search" name="search"
                                     placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
                                 <button class="btn btn-outline-success" type="submit">Search</button>
@@ -156,23 +159,24 @@
                                         <td>
                                             <a href="{{ route('finish_packing_data.show', $data->id) }}"
                                                 class="btn btn-sm btn-info">Show</a>
-                                                @canany(['Admin', 'Packing', 'Supervisor'])
-                                            <a href="{{ route('finish_packing_data.edit', $data->id) }}"
-                                                class="btn btn-sm btn-warning">Edit</a>
-                                                
-                                            <form action="{{ route('finish_packing_data.destroy', $data->id) }}"
-                                                method="POST" class="d-inline"
-                                                onsubmit="return confirm('Are you sure you want to delete this?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                            </form>
+                                            @canany(['Admin', 'Packing', 'Supervisor'])
+                                                <a href="{{ route('finish_packing_data.edit', $data->id) }}"
+                                                    class="btn btn-sm btn-warning">Edit</a>
+
+                                                <form action="{{ route('finish_packing_data.destroy', $data->id) }}"
+                                                    method="POST" class="d-inline"
+                                                    onsubmit="return confirm('Are you sure you want to delete this?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                                </form>
                                             @endcanany
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ 8 + count($allSizes) }}" class="text-center">No finish packing data found.</td>
+                                        <td colspan="{{ 8 + count($allSizes) }}" class="text-center">No finish packing
+                                            data found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -211,8 +215,8 @@
         }
     </script>
 
-     <script>
-        $(document).ready(function () {
+    <script>
+        $(document).ready(function() {
             $('#style_id, #color_id, #po_number').select2({
                 placeholder: 'Select an option',
                 allowClear: true,
