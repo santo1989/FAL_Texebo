@@ -205,6 +205,16 @@
             });
         }
     </script>
+
+     <script>
+        $(document).ready(function () {
+            $('#style_id, #color_id, #po_number').select2({
+                placeholder: 'Select an option',
+                allowClear: true,
+                width: '100%'
+            });
+        });
+    </script>
 </x-backend.layouts.master>
 
 

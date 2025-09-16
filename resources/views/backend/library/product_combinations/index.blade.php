@@ -244,4 +244,13 @@
             });
         }
     </script>
+     <script>
+        $(document).ready(function () {
+            $('#style_id, #color_id').select2({
+                placeholder: 'Select an option',
+                allowClear: true,
+                width: '100%'
+            });
+        });
+    </script>
 </x-backend.layouts.master>

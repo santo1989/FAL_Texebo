@@ -112,7 +112,7 @@
     <script src="{{ asset('ui/backend/js/scripts.js') }}"></script>
     <script src="{{ asset('ui/backend/js/datatables-simple-demo.js') }}"></script>
     
-    <script>
+    {{-- <script>
         $(document).ready(function() {
             // Initialize Select2
             $('.select2').select2({
@@ -126,6 +126,6 @@
                 new bootstrap.Tooltip(tooltipTriggerEl)
             );
         });
-    </script>
+    </script> --}}
 </body>
 </html>
