@@ -685,7 +685,7 @@
                             @endcan
 
                             {{-- Modules accessible by Admin or General/Supervisor --}}
-                            @canany(['Admin', 'General', 'Supervisor'])
+                            @canany(['Admin', 'Supervisor'])
                                 <div class="col-3 pt-1 pb-1">
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
                                         href="{{ route('old_data_index') }}">
@@ -734,7 +734,7 @@
                             @endcanany
 
                             @can('OrderDataEntry')
-                            <div class="col-3 pt-1 pb-1">
+                                <div class="col-3 pt-1 pb-1">
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
                                         href="{{ route('order_data.index') }}">
                                         <div class="sb-nav-link-icon"><i class="fas fa-clipboard-list"></i></div>
@@ -840,15 +840,23 @@
                                         Shipment Data
                                     </a>
                                 </div>
-                                @endcanany
-                                <div class="col-3 pt-1 pb-1">
-                                    <a href="{{ route('shipment_data.report.final_balance') }}"
-                                        class="btn btn-outline-info btn-block">
-                                        <div class="sb-nav-link-icon"><i class="fas fa-balance-scale"></i></div>
-                                        Final Balance Report
-                                    </a>
-                                </div>
-                            
+                            @endcanany
+                            <div class="col-3 pt-1 pb-1">
+                                <a href="{{ route('shipment_data.report.final_balance') }}"
+                                    class="btn btn-outline-danger btn-block">
+                                    <div class="sb-nav-link-icon"><i class="fas fa-balance-scale"></i></div>
+                                    Final Balance Report
+                                </a>
+
+                            </div>
+                            <div class="col-3 pt-1 pb-1">
+                                <a href="{{ route('shipment_data.report.waste') }}"
+                                    class="btn btn-outline-info btn-block">
+                                    <div class="sb-nav-link-icon"><i class="fas fa-recycle"></i></div>
+                                    Waste Report
+                                </a>
+                            </div>
+
 
                             {{-- HR Specific --}}
                             @can('HR')
@@ -887,7 +895,7 @@
                     <div class="card-body">
                         <div class="row p-3">
                             {{-- Cutting Reports --}}
-                            @canany(['Admin', 'Cutting', 'Supervisor'])
+                            @canany(['Admin', 'Cutting', 'Supervisor', 'General'])
                                 <div class="col-md-3 mb-3">
                                     <div class="card border-info">
                                         <div class="card-header bg-info text-white">
@@ -908,7 +916,7 @@
                             @endcanany
 
                             {{-- Sublimation Print/Send Reports --}}
-                            @canany(['Admin', 'Print Send', 'Supervisor'])
+                            @canany(['Admin', 'Print Send', 'Supervisor', 'General'])
                                 <div class="col-md-3 mb-3">
                                     <div class="card border-primary">
                                         <div class="card-header bg-primary text-white">
@@ -933,7 +941,7 @@
                             @endcanany
 
                             {{-- Sublimation Print/Receive Reports --}}
-                            @canany(['Admin', 'Print Receive', 'Supervisor'])
+                            @canany(['Admin', 'Print Receive', 'Supervisor', 'General'])
                                 <div class="col-md-3 mb-3">
                                     <div class="card border-primary">
                                         <div class="card-header bg-primary text-white">
@@ -954,7 +962,7 @@
                             @endcanany
 
                             {{-- Print/Send Reports --}}
-                            @canany(['Admin', 'Print Send', 'Supervisor'])
+                            @canany(['Admin', 'Print Send', 'Supervisor', 'General'])
                                 <div class="col-md-3 mb-3">
                                     <div class="card border-primary">
                                         <div class="card-header bg-primary text-white">
@@ -979,7 +987,7 @@
                             @endcanany
 
                             {{-- Print/Receive Reports --}}
-                            @canany(['Admin', 'Print Receive', 'Supervisor'])
+                            @canany(['Admin', 'Print Receive', 'Supervisor', 'General'])
                                 <div class="col-md-3 mb-3">
                                     <div class="card border-primary">
                                         <div class="card-header bg-primary text-white">
@@ -1000,7 +1008,7 @@
                             @endcanany
 
                             {{-- Sewing Input Reports --}}
-                            @canany(['Admin', 'Input', 'Supervisor'])
+                            @canany(['Admin', 'Input', 'Supervisor', 'General'])
                                 <div class="col-md-3 mb-3">
                                     <div class="card border-primary">
                                         <div class="card-header bg-primary text-white">
@@ -1021,7 +1029,7 @@
                             @endcanany
 
                             {{-- Output Finishing Reports --}}
-                            @canany(['Admin', 'Output', 'Supervisor'])
+                            @canany(['Admin', 'Output', 'Supervisor', 'General'])
                                 <div class="col-md-3 mb-3">
                                     <div class="card border-info">
                                         <div class="card-header bg-info text-white">
@@ -1042,7 +1050,7 @@
                             @endcanany
 
                             {{-- Finish Packing Reports --}}
-                            @canany(['Admin', 'Packing', 'Supervisor'])
+                            @canany(['Admin', 'Packing', 'Supervisor', 'General'])
                                 <div class="col-md-3 mb-3">
                                     <div class="card border-info">
                                         <div class="card-header bg-info text-white">
@@ -1067,7 +1075,7 @@
                             @endcanany
 
                             {{-- Shipment Reports --}}
-                            @canany(['Admin', 'Shipment', 'Supervisor'])
+                            @canany(['Admin', 'Shipment', 'Supervisor', 'General'])
                                 <div class="col-md-3 mb-3">
                                     <div class="card border-info">
                                         <div class="card-header bg-info text-white">
@@ -1086,6 +1094,10 @@
                                             <a href="{{ route('shipment_data.report.final_balance') }}"
                                                 class="btn btn-outline-info btn-block">
                                                 <i class="fas fa-balance-scale"></i> Final Balance Report
+                                            </a>
+                                            <a href="{{ route('shipment_data.report.waste') }}"
+                                                class="btn btn-outline-info btn-block">
+                                                <i class="fas fa-recycle"></i> Waste Report
                                             </a>
                                         </div>
                                     </div>

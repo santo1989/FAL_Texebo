@@ -24,11 +24,7 @@
                                      <a href=" {{ route('home') }} " class="btn btn-sm  btn-outline-secondary"><i
                                     class="fas fa-arrow-left"></i>
                                 Close</a>
-                                    @if (Auth::user()->role_id == 1 ||
-                                            Auth::user()->role_id == 5 ||
-                                            Auth::user()->role_id == 4 ||
-                                            (Auth::user()->role_id == 3 && $user->department_id == Auth::user()->department_id) ||
-                                            $user->id == Auth::user()->id)
+                                    @if (Auth::user()->role_id == 1)
                                         <x-backend.form.anchor :href="route('users.edit', ['user' => $user->id])" type="edit" />
                                     @else
                                         <x-backend.form.anchor :href="route('users.show', ['user' => $user->id])" type="view" />

@@ -1494,6 +1494,224 @@ class ShipmentDataController extends Controller
         ];
     }
 
+    //// Controller Method for Waste Quantity Report
+    public function wasteReport(Request $request)
+    {
+        // Get filter parameters
+        $styleId = $request->input('style_id');
+        $colorId = $request->input('color_id');
+        $poNumber = $request->input('po_number');
+        $start_date = $request->input('start_date') ? Carbon::parse($request->input('start_date')) : null;
+        $end_date = $request->input('end_date') ? Carbon::parse($request->input('end_date')) : null;
+
+        // Get styles and colors for filters
+        $styles = Style::get();
+        $colors = Color::get();
+
+        $reportData = [];
+
+        // Base query for product combinations with eager loading
+        $productCombinationQuery = ProductCombination::with('style', 'color', 'size');
+
+        if ($styleId) {
+            $productCombinationQuery->where('style_id', $styleId);
+        }
+        if ($colorId) {
+            $productCombinationQuery->where('color_id', $colorId);
+        }
+
+        $productCombinations = $productCombinationQuery->paginate(10);
+
+        foreach ($productCombinations as $pc) {
+            $style = $pc->style->name;
+            $color = $pc->color->name;
+
+            // Get all PO numbers for this product combination
+            $poNumbers = OrderData::where('product_combination_id', $pc->id)
+                ->pluck('po_number')
+                ->unique()
+                ->toArray();
+
+            // If no PO numbers found, use an empty array
+            if (empty($poNumbers)) {
+                $poNumbers = [''];
+            }
+
+            foreach ($poNumbers as $poNum) {
+                // Skip if PO number filter is set and doesn't match
+                if ($poNumber && !str_contains($poNum, $poNumber)) {
+                    continue;
+                }
+
+                // Date range and PO filter closure
+                $dateFilter = function ($query) use ($start_date, $end_date, $poNum) {
+                    if ($start_date && $end_date) {
+                        $query->whereBetween('date', [$start_date, $end_date]);
+                    } elseif ($start_date) {
+                        $query->where('date', '>=', $start_date);
+                    } elseif ($end_date) {
+                        $query->where('date', '<=', $end_date);
+                    }
+
+                    if ($poNum) {
+                        $query->where('po_number', 'like', '%' . $poNum . '%');
+                    }
+                };
+
+                // Fetch waste quantities from all stages
+                $cuttingWaste = $this->getWasteQuantities(CuttingData::class, 'cut_waste_quantities', $pc->id, $dateFilter);
+
+                // Handle different print types
+                $printSendWaste = [];
+                $printReceiveWaste = [];
+
+                if ($pc->sublimation_print) {
+                    $printSendWaste = $this->getWasteQuantities(SublimationPrintSend::class, 'sublimation_print_send_waste_quantities', $pc->id, $dateFilter);
+                    $printReceiveWaste = $this->getWasteQuantities(SublimationPrintReceive::class, 'sublimation_print_receive_waste_quantities', $pc->id, $dateFilter);
+                }
+
+                if ($pc->print_embroidery) {
+                    $embroiderySendWaste = $this->getWasteQuantities(PrintSendData::class, 'send_waste_quantities', $pc->id, $dateFilter);
+                    $embroideryReceiveWaste = $this->getWasteQuantities(PrintReceiveData::class, 'receive_waste_quantities', $pc->id, $dateFilter);
+
+                    // Merge waste quantities if both print types exist
+                    foreach ($embroiderySendWaste as $sizeId => $qty) {
+                        $printSendWaste[$sizeId] = ($printSendWaste[$sizeId] ?? 0) + $qty;
+                    }
+
+                    foreach ($embroideryReceiveWaste as $sizeId => $qty) {
+                        $printReceiveWaste[$sizeId] = ($printReceiveWaste[$sizeId] ?? 0) + $qty;
+                    }
+                }
+
+                // Fetch other waste quantities
+                $lineInputWaste = $this->getWasteQuantities(LineInputData::class, 'input_waste_quantities', $pc->id, $dateFilter);
+                $finishOutputWaste = $this->getWasteQuantities(OutputFinishingData::class, 'output_waste_quantities', $pc->id, $dateFilter);
+                $finishPackingWaste = $this->getWasteQuantities(FinishPackingData::class, 'packing_waste_quantities', $pc->id, $dateFilter);
+
+                // Fetch shipment waste quantities
+                $shipmentWasteData = $this->getShipmentWasteQuantities($pc->id, $poNum, $start_date, $end_date);
+
+                // Create rows for each size
+                foreach ($pc->sizes as $size) {
+                    $sizeId = (string)$size->id; // Convert to string to match JSON keys
+                    $sizeName = $size->name;
+
+                    // Get waste quantities by size ID
+                    $cutting = $cuttingWaste[$sizeId] ?? 0;
+                    $printSent = $printSendWaste[$sizeId] ?? 0;
+                    $printReceived = $printReceiveWaste[$sizeId] ?? 0;
+                    $lineInput = $lineInputWaste[$sizeId] ?? 0;
+                    $finishOutput = $finishOutputWaste[$sizeId] ?? 0;
+                    $packing = $finishPackingWaste[$sizeId] ?? 0;
+                    $shipment = $shipmentWasteData[$sizeId] ?? 0;
+
+                    // Calculate total waste
+                    $totalWaste = $cutting + $printSent + $printReceived + $lineInput + $finishOutput + $packing + $shipment;
+
+                    $reportData[] = [
+                        'po_number' => $poNum,
+                        'style' => $style,
+                        'color' => $color,
+                        'size' => $sizeName,
+                        'cutting_waste' => $cutting,
+                        'print_send_waste' => $printSent,
+                        'print_receive_waste' => $printReceived,
+                        'sewing_input_waste' => $lineInput,
+                        'finish_output_waste' => $finishOutput,
+                        'packing_waste' => $packing,
+                        'shipment_waste' => $shipment,
+                        'total_waste' => $totalWaste,
+                    ];
+                }
+            }
+        }
+
+        // Group data for rowspan display
+        $groupedData = [];
+        foreach ($reportData as $row) {
+            $key = $row['po_number'] . '_' . $row['style'] . '_' . $row['color'];
+            if (!isset($groupedData[$key])) {
+                $groupedData[$key] = [
+                    'po_number' => $row['po_number'],
+                    'style' => $row['style'],
+                    'color' => $row['color'],
+                    'rows' => [],
+                ];
+            }
+            $groupedData[$key]['rows'][] = $row;
+        }
+
+        return view('backend.library.shipment_data.reports.waste', [
+            'groupedData' => $groupedData,
+            'styles' => $styles,
+            'colors' => $colors,
+            'productCombinations' => $productCombinations,
+            'start_date' => $request->input('start_date'),
+            'end_date' => $request->input('end_date'),
+            'styleId' => $styleId,
+            'colorId' => $colorId,
+            'poNumber' => $poNumber,
+        ]);
+    }
+
+    // Helper method to get waste quantities from various tables
+    private function getWasteQuantities($model, $wasteField, $productCombinationId, $dateFilter)
+    {
+        return $model::where('product_combination_id', $productCombinationId)
+            ->when($dateFilter, function ($query) use ($dateFilter) {
+                return $dateFilter($query);
+            })
+            ->get()
+            ->flatMap(function ($item) use ($wasteField) {
+                $wasteData = $item->$wasteField ?? [];
+                return collect($wasteData)->mapWithKeys(function ($value, $key) {
+                    return [(string)$key => $value]; // Ensure key is string to match JSON format
+                });
+            })
+            ->groupBy(function ($value, $key) {
+                return $key;
+            })
+            ->map(function ($group) {
+                return $group->sum();
+            })
+            ->toArray();
+    }
+
+    // Helper method for shipment waste quantities
+    private function getShipmentWasteQuantities($productCombinationId, $poNumber, $start_date, $end_date)
+    {
+        $query = ShipmentData::where('product_combination_id', $productCombinationId);
+
+        if ($poNumber) {
+            $query->where('po_number', 'like', '%' . $poNumber . '%');
+        }
+
+        if ($start_date && $end_date) {
+            $query->whereBetween('date', [$start_date, $end_date]);
+        } elseif ($start_date) {
+            $query->where('date', '>=', $start_date);
+        } elseif ($end_date) {
+            $query->where('date', '<=', $end_date);
+        }
+
+        return $query->get()
+            ->flatMap(function ($item) {
+                $wasteData = $item->shipment_waste_quantities ?? [];
+                return collect($wasteData)->mapWithKeys(function ($value, $key) {
+                    return [(string)$key => $value]; // Ensure key is string
+                });
+            })
+            ->groupBy(function ($value, $key) {
+                return $key;
+            })
+            ->map(function ($group) {
+                return $group->sum();
+            })
+            ->toArray();
+    }
+
+
     //old_data
 
     public function old_data_create()

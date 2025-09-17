@@ -276,6 +276,9 @@ Route::middleware('auth')->group(function () {
 
     //finalbalanceReport
     Route::get('shipment_data/report/final_balance', [ShipmentDataController::class, 'finalBalanceReport'])->name('shipment_data.report.final_balance');
+
+    Route::get('/shipment-data/waste-report', [ShipmentDataController::class, 'wasteReport'])
+        ->name('shipment_data.report.waste');
 });
 
 
