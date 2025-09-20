@@ -140,7 +140,7 @@ class PrintSendDataController extends Controller
                     PrintSendData::create([
                         'date' => $request->date,
                         'product_combination_id' => $row['product_combination_id'],
-                        'po_number' => implode(',', $request->po_number),
+                        'po_number' =>  $row['po_number'],
                         'old_order' => $request->old_order,
                         'send_quantities' => $sendQuantities,
                         'total_send_quantity' => $totalSendQuantity,

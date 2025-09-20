@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Color;
 use App\Models\CuttingData;
 use App\Models\PrintReceiveData;
+use App\Models\sublimationPrintReceive;
+use App\Models\sublimationPrintSend;
 use Illuminate\Http\Request;
 use App\Models\PrintSendData;
 use App\Models\ProductCombination;
@@ -817,24 +819,21 @@ class PrintReceiveDataController extends Controller
         $endDate = $request->input('end_date');
         $search = $request->input('search');
 
-        // Product combinations with print_embroidery = false OR sublimation_print = false
-        $nonEmbCombinationsQuery = ProductCombination::where(function ($query) {
-            $query->where('print_embroidery', false)
-                ->orWhere('sublimation_print', false);
-        })->with('style', 'color');
+        // Get all product combinations with applied filters
+        $combinationsQuery = ProductCombination::with('style', 'color');
 
         // Apply style and color filters
         if (!empty($styleIds)) {
-            $nonEmbCombinationsQuery->whereIn('style_id', $styleIds);
+            $combinationsQuery->whereIn('style_id', $styleIds);
         }
 
         if (!empty($colorIds)) {
-            $nonEmbCombinationsQuery->whereIn('color_id', $colorIds);
+            $combinationsQuery->whereIn('color_id', $colorIds);
         }
 
         // Apply search filter
         if ($search) {
-            $nonEmbCombinationsQuery->where(function ($q) use ($search) {
+            $combinationsQuery->where(function ($q) use ($search) {
                 $q->whereHas('style', function ($q2) use ($search) {
                     $q2->where('name', 'like', '%' . $search . '%');
                 })->orWhereHas('color', function ($q2) use ($search) {
@@ -843,9 +842,9 @@ class PrintReceiveDataController extends Controller
             });
         }
 
-        $nonEmbCombinations = $nonEmbCombinationsQuery->get();
+        $combinations = $combinationsQuery->get();
 
-        foreach ($nonEmbCombinations as $pc) {
+        foreach ($combinations as $pc) {
             // Apply filters to cutting data
             $cuttingDataQuery = CuttingData::where('product_combination_id', $pc->id);
 
@@ -875,116 +874,214 @@ class PrintReceiveDataController extends Controller
             // Skip if no cut quantities match the filters
             if ($dynamicTotalCut == 0) continue;
 
-            $readyData[] = [
-                'style' => $pc->style->name,
-                'color' => $pc->color->name,
-                'type' => 'No Print/Emb Needed',
-                'total_cut' => $dynamicTotalCut, // Use dynamic total cut
-                'total_sent' => 0,
-                'total_received_good' => 0,
-                'total_received_waste' => 0,
-            ];
-        }
-
-        // Product combinations with print_embroidery = true OR sublimation_print = true
-        $embCombinationsQuery = ProductCombination::where(function ($query) {
-            $query->where('print_embroidery', true)
-                ->orWhere('sublimation_print', true);
-        })->with('style', 'color');
-
-        // Apply style and color filters
-        if (!empty($styleIds)) {
-            $embCombinationsQuery->whereIn('style_id', $styleIds);
-        }
-
-        if (!empty($colorIds)) {
-            $embCombinationsQuery->whereIn('color_id', $colorIds);
-        }
-
-        // Apply search filter
-        if ($search) {
-            $embCombinationsQuery->where(function ($q) use ($search) {
-                $q->whereHas('style', function ($q2) use ($search) {
-                    $q2->where('name', 'like', '%' . $search . '%');
-                })->orWhereHas('color', function ($q2) use ($search) {
-                    $q2->where('name', 'like', '%' . $search . '%');
-                });
-            });
-        }
-
-        $embCombinations = $embCombinationsQuery->get();
-
-        foreach ($embCombinations as $pc) {
-            // Apply filters to cutting data
-            $cuttingDataQuery = CuttingData::where('product_combination_id', $pc->id);
-            $printSendDataQuery = PrintSendData::where('product_combination_id', $pc->id);
-            $printReceiveDataQuery = PrintReceiveData::where('product_combination_id', $pc->id);
-
-            // Apply PO number filter
-            if (!empty($poNumbers)) {
-                $cuttingDataQuery->whereIn('po_number', $poNumbers);
-                $printSendDataQuery->whereIn('po_number', $poNumbers);
-                $printReceiveDataQuery->whereIn('po_number', $poNumbers);
-            }
-
-            // Apply date filter
-            if ($startDate && $endDate) {
-                $cuttingDataQuery->whereBetween('created_at', [$startDate, $endDate]);
-                $printSendDataQuery->whereBetween('date', [$startDate, $endDate]);
-                $printReceiveDataQuery->whereBetween('date', [$startDate, $endDate]);
-            }
-
-            $cuttingData = $cuttingDataQuery->get();
-            $printSendData = $printSendDataQuery->get();
-            $printReceiveData = $printReceiveDataQuery->get();
-
-            // Skip if no cutting data matches the filters
-            if ($cuttingData->isEmpty()) continue;
-
-            // Calculate total_cut dynamically
-            $dynamicTotalCut = 0;
-            foreach ($cuttingData as $cut) {
-                foreach ($cut->cut_quantities as $qty) {
-                    $dynamicTotalCut += $qty;
-                }
-            }
-
-            // Skip if no cut quantities match the filters
-            if ($dynamicTotalCut == 0) continue;
-
-            // Calculate total_sent dynamically by summing from 'send_quantities' JSON
-            $dynamicTotalSent = 0;
-            foreach ($printSendData as $send) {
-                foreach ($send->send_quantities as $qty) {
-                    $dynamicTotalSent += $qty;
-                }
-            }
-
-            // Calculate total_received_good dynamically by summing from 'receive_quantities' JSON
-            $dynamicTotalReceivedGood = 0;
-            foreach ($printReceiveData as $receive) {
-                foreach ($receive->receive_quantities as $qty) {
-                    $dynamicTotalReceivedGood += $qty;
-                }
-            }
-
-            // Calculate total_received_waste dynamically by summing from 'receive_waste_quantities' JSON
-            $dynamicTotalReceivedWaste = 0;
-            foreach ($printReceiveData as $receive) {
-                if ($receive->receive_waste_quantities) {
-                    foreach ($receive->receive_waste_quantities as $qty) {
-                        $dynamicTotalReceivedWaste += $qty;
-                    }
-                }
-            }
-
-            // "Ready to input" means either no print/emb needed OR all sent items have been received (good quantity only).
-            // Here, dynamicTotalSent must match dynamicTotalReceivedGood to be 'ready'.
-            if ($dynamicTotalSent > 0 && $dynamicTotalSent == $dynamicTotalReceivedGood && $dynamicTotalReceivedWaste >= 0) {
+            // Case 1: No print/embroidery needed
+            if (!$pc->print_embroidery && !$pc->sublimation_print) {
                 $readyData[] = [
                     'style' => $pc->style->name,
                     'color' => $pc->color->name,
-                    'type' => 'Print/Emb Completed',
+                    'type' => 'No Print/Emb Needed',
+                    'total_cut' => $dynamicTotalCut,
+                    'total_sent' => 0,
+                    'total_received_good' => 0,
+                    'total_received_waste' => 0,
+                ];
+                continue;
+            }
+
+            // Initialize variables for tracking print processes
+            $printReady = false;
+            $sublimationReady = false;
+            $dynamicTotalSent = 0;
+            $dynamicTotalReceivedGood = 0;
+            $dynamicTotalReceivedWaste = 0;
+            $type = '';
+
+            // Case 2: Only print embroidery (no sublimation)
+            if ($pc->print_embroidery && !$pc->sublimation_print) {
+                $printSendDataQuery = PrintSendData::where('product_combination_id', $pc->id);
+                $printReceiveDataQuery = PrintReceiveData::where('product_combination_id', $pc->id);
+
+                // Apply filters
+                if (!empty($poNumbers)) {
+                    $printSendDataQuery->whereIn('po_number', $poNumbers);
+                    $printReceiveDataQuery->whereIn('po_number', $poNumbers);
+                }
+
+                if ($startDate && $endDate) {
+                    $printSendDataQuery->whereBetween('date', [$startDate, $endDate]);
+                    $printReceiveDataQuery->whereBetween('date', [$startDate, $endDate]);
+                }
+
+                $printSendData = $printSendDataQuery->get();
+                $printReceiveData = $printReceiveDataQuery->get();
+
+                // Calculate totals
+                foreach ($printSendData as $send) {
+                    foreach ($send->send_quantities as $qty) {
+                        $dynamicTotalSent += $qty;
+                    }
+                }
+
+                foreach ($printReceiveData as $receive) {
+                    foreach ($receive->receive_quantities as $qty) {
+                        $dynamicTotalReceivedGood += $qty;
+                    }
+                    if ($receive->receive_waste_quantities) {
+                        foreach ($receive->receive_waste_quantities as $qty) {
+                            $dynamicTotalReceivedWaste += $qty;
+                        }
+                    }
+                }
+
+                $printReady = ($dynamicTotalSent > 0 && $dynamicTotalSent == $dynamicTotalReceivedGood);
+                $type = 'Print/Emb Completed';
+            }
+
+            // Case 3: Only sublimation print (no embroidery)
+            elseif (!$pc->print_embroidery && $pc->sublimation_print) {
+                $sublimationSendDataQuery = SublimationPrintSend::where('product_combination_id', $pc->id);
+                $sublimationReceiveDataQuery = SublimationPrintReceive::where('product_combination_id', $pc->id);
+
+                // Apply filters
+                if (!empty($poNumbers)) {
+                    $sublimationSendDataQuery->whereIn('po_number', $poNumbers);
+                    $sublimationReceiveDataQuery->whereIn('po_number', $poNumbers);
+                }
+
+                if ($startDate && $endDate) {
+                    $sublimationSendDataQuery->whereBetween('date', [$startDate, $endDate]);
+                    $sublimationReceiveDataQuery->whereBetween('date', [$startDate, $endDate]);
+                }
+
+                $sublimationSendData = $sublimationSendDataQuery->get();
+                $sublimationReceiveData = $sublimationReceiveDataQuery->get();
+
+                // Calculate totals
+                foreach ($sublimationSendData as $send) {
+                    foreach ($send->sublimation_print_send_quantities as $qty) {
+                        $dynamicTotalSent += $qty;
+                    }
+                }
+
+                foreach ($sublimationReceiveData as $receive) {
+                    foreach ($receive->sublimation_print_receive_waste_quantities as $qty) {
+                        $dynamicTotalReceivedGood += $qty;
+                    }
+                    if ($receive->receive_waste_quantities) {
+                        foreach ($receive->receive_waste_quantities as $qty) {
+                            $dynamicTotalReceivedWaste += $qty;
+                        }
+                    }
+                }
+
+                $sublimationReady = ($dynamicTotalSent > 0 && $dynamicTotalSent == $dynamicTotalReceivedGood);
+                $type = 'Sublimation Print Completed';
+            }
+
+            // Case 4: Both print embroidery and sublimation print
+            elseif ($pc->print_embroidery && $pc->sublimation_print) {
+                // First check sublimation process
+                $sublimationSendDataQuery = SublimationPrintSend::where('product_combination_id', $pc->id);
+                $sublimationReceiveDataQuery = SublimationPrintReceive::where('product_combination_id', $pc->id);
+
+                // Apply filters
+                if (!empty($poNumbers)) {
+                    $sublimationSendDataQuery->whereIn('po_number', $poNumbers);
+                    $sublimationReceiveDataQuery->whereIn('po_number', $poNumbers);
+                }
+
+                if ($startDate && $endDate) {
+                    $sublimationSendDataQuery->whereBetween('date', [$startDate, $endDate]);
+                    $sublimationReceiveDataQuery->whereBetween('date', [$startDate, $endDate]);
+                }
+
+                $sublimationSendData = $sublimationSendDataQuery->get();
+                $sublimationReceiveData = $sublimationReceiveDataQuery->get();
+
+                // Calculate sublimation totals
+                $sublimationSent = 0;
+                $sublimationReceivedGood = 0;
+                $sublimationReceivedWaste = 0;
+
+                foreach ($sublimationSendData as $send) {
+                    foreach ($send->sublimation_print_send_quantities as $qty) {
+                        $sublimationSent += $qty;
+                    }
+                }
+
+                foreach ($sublimationReceiveData as $receive) {
+                    foreach ($receive->sublimation_print_receive_quantities as $qty) {
+                        $sublimationReceivedGood += $qty;
+                    }
+                    if ($receive->sublimation_print_receive_waste_quantities) {
+                        foreach ($receive->sublimation_print_receive_waste_quantities as $qty) {
+                            $sublimationReceivedWaste += $qty;
+                        }
+                    }
+                }
+
+                $sublimationReady = ($sublimationSent > 0 && $sublimationSent == $sublimationReceivedGood);
+
+                // Then check print process (which happens after sublimation)
+                $printSendDataQuery = PrintSendData::where('product_combination_id', $pc->id);
+                $printReceiveDataQuery = PrintReceiveData::where('product_combination_id', $pc->id);
+
+                // Apply filters
+                if (!empty($poNumbers)) {
+                    $printSendDataQuery->whereIn('po_number', $poNumbers);
+                    $printReceiveDataQuery->whereIn('po_number', $poNumbers);
+                }
+
+                if ($startDate && $endDate) {
+                    $printSendDataQuery->whereBetween('date', [$startDate, $endDate]);
+                    $printReceiveDataQuery->whereBetween('date', [$startDate, $endDate]);
+                }
+
+                $printSendData = $printSendDataQuery->get();
+                $printReceiveData = $printReceiveDataQuery->get();
+
+                // Calculate print totals
+                $printSent = 0;
+                $printReceivedGood = 0;
+                $printReceivedWaste = 0;
+
+                foreach ($printSendData as $send) {
+                    foreach ($send->send_quantities as $qty) {
+                        $printSent += $qty;
+                    }
+                }
+
+                foreach ($printReceiveData as $receive) {
+                    foreach ($receive->receive_quantities as $qty) {
+                        $printReceivedGood += $qty;
+                    }
+                    if ($receive->receive_waste_quantities) {
+                        foreach ($receive->receive_waste_quantities as $qty) {
+                            $printReceivedWaste += $qty;
+                        }
+                    }
+                }
+
+                $printReady = ($printSent > 0 && $printSent == $printReceivedGood);
+
+                // Combine totals
+                $dynamicTotalSent = $sublimationSent + $printSent;
+                $dynamicTotalReceivedGood = $sublimationReceivedGood + $printReceivedGood;
+                $dynamicTotalReceivedWaste = $sublimationReceivedWaste + $printReceivedWaste;
+
+                $type = 'Both Print Processes Completed';
+            }
+
+            // Add to ready data if the appropriate process is complete
+            if (($pc->print_embroidery && !$pc->sublimation_print && $printReady) ||
+                (!$pc->print_embroidery && $pc->sublimation_print && $sublimationReady) ||
+                ($pc->print_embroidery && $pc->sublimation_print && $sublimationReady && $printReady)
+            ) {
+
+                $readyData[] = [
+                    'style' => $pc->style->name,
+                    'color' => $pc->color->name,
+                    'type' => $type,
                     'total_cut' => $dynamicTotalCut,
                     'total_sent' => $dynamicTotalSent,
                     'total_received_good' => $dynamicTotalReceivedGood,
@@ -1000,7 +1097,9 @@ class PrintReceiveDataController extends Controller
             array_merge(
                 CuttingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
                 PrintSendData::distinct()->pluck('po_number')->filter()->values()->toArray(),
-                PrintReceiveData::distinct()->pluck('po_number')->filter()->values()->toArray()
+                PrintReceiveData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                sublimationPrintSend::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                sublimationPrintReceive::distinct()->pluck('po_number')->filter()->values()->toArray()
             )
         );
         sort($distinctPoNumbers);
@@ -1012,6 +1111,217 @@ class PrintReceiveDataController extends Controller
             'distinctPoNumbers' => $distinctPoNumbers
         ]);
     }
+
+    // public function readyToInputReport(Request $request)
+    // {
+    //     $readyData = [];
+
+    //     // Get filter parameters
+    //     $styleIds = $request->input('style_id', []);
+    //     $colorIds = $request->input('color_id', []);
+    //     $poNumbers = $request->input('po_number', []);
+    //     $startDate = $request->input('start_date');
+    //     $endDate = $request->input('end_date');
+    //     $search = $request->input('search');
+
+    //     // Product combinations with print_embroidery = false OR sublimation_print = false
+    //     $nonEmbCombinationsQuery = ProductCombination::where(function ($query) {
+    //         $query->where('print_embroidery', false)
+    //             ->orWhere('sublimation_print', false);
+    //     })->with('style', 'color');
+
+    //     // Apply style and color filters
+    //     if (!empty($styleIds)) {
+    //         $nonEmbCombinationsQuery->whereIn('style_id', $styleIds);
+    //     }
+
+    //     if (!empty($colorIds)) {
+    //         $nonEmbCombinationsQuery->whereIn('color_id', $colorIds);
+    //     }
+
+    //     // Apply search filter
+    //     if ($search) {
+    //         $nonEmbCombinationsQuery->where(function ($q) use ($search) {
+    //             $q->whereHas('style', function ($q2) use ($search) {
+    //                 $q2->where('name', 'like', '%' . $search . '%');
+    //             })->orWhereHas('color', function ($q2) use ($search) {
+    //                 $q2->where('name', 'like', '%' . $search . '%');
+    //             });
+    //         });
+    //     }
+
+    //     $nonEmbCombinations = $nonEmbCombinationsQuery->get();
+
+    //     foreach ($nonEmbCombinations as $pc) {
+    //         // Apply filters to cutting data
+    //         $cuttingDataQuery = CuttingData::where('product_combination_id', $pc->id);
+
+    //         // Apply PO number filter
+    //         if (!empty($poNumbers)) {
+    //             $cuttingDataQuery->whereIn('po_number', $poNumbers);
+    //         }
+
+    //         // Apply date filter
+    //         if ($startDate && $endDate) {
+    //             $cuttingDataQuery->whereBetween('created_at', [$startDate, $endDate]);
+    //         }
+
+    //         $cuttingData = $cuttingDataQuery->get();
+
+    //         // Skip if no cutting data matches the filters
+    //         if ($cuttingData->isEmpty()) continue;
+
+    //         // Calculate total_cut dynamically by summing from 'cut_quantities' JSON
+    //         $dynamicTotalCut = 0;
+    //         foreach ($cuttingData as $cut) {
+    //             foreach ($cut->cut_quantities as $qty) {
+    //                 $dynamicTotalCut += $qty;
+    //             }
+    //         }
+
+    //         // Skip if no cut quantities match the filters
+    //         if ($dynamicTotalCut == 0) continue;
+
+    //         $readyData[] = [
+    //             'style' => $pc->style->name,
+    //             'color' => $pc->color->name,
+    //             'type' => 'No Print/Emb Needed',
+    //             'total_cut' => $dynamicTotalCut, // Use dynamic total cut
+    //             'total_sent' => 0,
+    //             'total_received_good' => 0,
+    //             'total_received_waste' => 0,
+    //         ];
+    //     }
+
+    //     // Product combinations with print_embroidery = true OR sublimation_print = true
+    //     $embCombinationsQuery = ProductCombination::where(function ($query) {
+    //         $query->where('print_embroidery', true)
+    //             ->orWhere('sublimation_print', true);
+    //     })->with('style', 'color');
+
+    //     // Apply style and color filters
+    //     if (!empty($styleIds)) {
+    //         $embCombinationsQuery->whereIn('style_id', $styleIds);
+    //     }
+
+    //     if (!empty($colorIds)) {
+    //         $embCombinationsQuery->whereIn('color_id', $colorIds);
+    //     }
+
+    //     // Apply search filter
+    //     if ($search) {
+    //         $embCombinationsQuery->where(function ($q) use ($search) {
+    //             $q->whereHas('style', function ($q2) use ($search) {
+    //                 $q2->where('name', 'like', '%' . $search . '%');
+    //             })->orWhereHas('color', function ($q2) use ($search) {
+    //                 $q2->where('name', 'like', '%' . $search . '%');
+    //             });
+    //         });
+    //     }
+
+    //     $embCombinations = $embCombinationsQuery->get();
+
+    //     foreach ($embCombinations as $pc) {
+    //         // Apply filters to cutting data
+    //         $cuttingDataQuery = CuttingData::where('product_combination_id', $pc->id);
+    //         $printSendDataQuery = PrintSendData::where('product_combination_id', $pc->id);
+    //         $printReceiveDataQuery = PrintReceiveData::where('product_combination_id', $pc->id);
+
+    //         // Apply PO number filter
+    //         if (!empty($poNumbers)) {
+    //             $cuttingDataQuery->whereIn('po_number', $poNumbers);
+    //             $printSendDataQuery->whereIn('po_number', $poNumbers);
+    //             $printReceiveDataQuery->whereIn('po_number', $poNumbers);
+    //         }
+
+    //         // Apply date filter
+    //         if ($startDate && $endDate) {
+    //             $cuttingDataQuery->whereBetween('created_at', [$startDate, $endDate]);
+    //             $printSendDataQuery->whereBetween('date', [$startDate, $endDate]);
+    //             $printReceiveDataQuery->whereBetween('date', [$startDate, $endDate]);
+    //         }
+
+    //         $cuttingData = $cuttingDataQuery->get();
+    //         $printSendData = $printSendDataQuery->get();
+    //         $printReceiveData = $printReceiveDataQuery->get();
+
+    //         // Skip if no cutting data matches the filters
+    //         if ($cuttingData->isEmpty()) continue;
+
+    //         // Calculate total_cut dynamically
+    //         $dynamicTotalCut = 0;
+    //         foreach ($cuttingData as $cut) {
+    //             foreach ($cut->cut_quantities as $qty) {
+    //                 $dynamicTotalCut += $qty;
+    //             }
+    //         }
+
+    //         // Skip if no cut quantities match the filters
+    //         if ($dynamicTotalCut == 0) continue;
+
+    //         // Calculate total_sent dynamically by summing from 'send_quantities' JSON
+    //         $dynamicTotalSent = 0;
+    //         foreach ($printSendData as $send) {
+    //             foreach ($send->send_quantities as $qty) {
+    //                 $dynamicTotalSent += $qty;
+    //             }
+    //         }
+
+    //         // Calculate total_received_good dynamically by summing from 'receive_quantities' JSON
+    //         $dynamicTotalReceivedGood = 0;
+    //         foreach ($printReceiveData as $receive) {
+    //             foreach ($receive->receive_quantities as $qty) {
+    //                 $dynamicTotalReceivedGood += $qty;
+    //             }
+    //         }
+
+    //         // Calculate total_received_waste dynamically by summing from 'receive_waste_quantities' JSON
+    //         $dynamicTotalReceivedWaste = 0;
+    //         foreach ($printReceiveData as $receive) {
+    //             if ($receive->receive_waste_quantities) {
+    //                 foreach ($receive->receive_waste_quantities as $qty) {
+    //                     $dynamicTotalReceivedWaste += $qty;
+    //                 }
+    //             }
+    //         }
+
+    //         // "Ready to input" means either no print/emb needed OR all sent items have been received (good quantity only).
+    //         // Here, dynamicTotalSent must match dynamicTotalReceivedGood to be 'ready'.
+    //         if ($dynamicTotalSent > 0 && $dynamicTotalSent == $dynamicTotalReceivedGood && $dynamicTotalReceivedWaste >= 0) {
+    //             $readyData[] = [
+    //                 'style' => $pc->style->name,
+    //                 'color' => $pc->color->name,
+    //                 'type' => 'Print/Emb Completed',
+    //                 'total_cut' => $dynamicTotalCut,
+    //                 'total_sent' => $dynamicTotalSent,
+    //                 'total_received_good' => $dynamicTotalReceivedGood,
+    //                 'total_received_waste' => $dynamicTotalReceivedWaste,
+    //             ];
+    //         }
+    //     }
+
+    //     // Get filter options
+    //     $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+    //     $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+    //     $distinctPoNumbers = array_unique(
+    //         array_merge(
+    //             CuttingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //             PrintSendData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //             PrintReceiveData::distinct()->pluck('po_number')->filter()->values()->toArray()
+    //         )
+    //     );
+    //     sort($distinctPoNumbers);
+
+    //     return view('backend.library.print_receive_data.reports.ready', [
+    //         'readyData' => $readyData,
+    //         'allStyles' => $allStyles,
+    //         'allColors' => $allColors,
+    //         'distinctPoNumbers' => $distinctPoNumbers
+    //     ]);
+    // }
+
+
+
 
 
     // public function totalPrintEmbReceiveReport(Request $request)

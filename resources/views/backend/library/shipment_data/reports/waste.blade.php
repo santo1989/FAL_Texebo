@@ -91,15 +91,15 @@
                                         <th rowspan="2">Style</th>
                                         <th rowspan="2">Color</th>
                                         <th rowspan="2">Size</th>
-                                        <th colspan="7">Waste Quantities by Production Stage</th>
+                                        <th colspan="5">Waste Quantities by Production Stage</th>
                                         <th rowspan="2">Total Waste</th>
                                     </tr>
                                     <tr class="text-center">
                                         <th>Cutting</th>
-                                        <th>Print Send</th>
                                         <th>Print Receive</th>
-                                        <th>Sewing Input</th>
-                                        <th>Finishing Output</th>
+                                        {{-- <th>Print Send</th>
+                                        <th>Sewing Input</th> --}}
+                                        <th>Sewing Output</th>
                                         <th>Packing</th>
                                         <th>Shipment</th>
                                     </tr>
@@ -114,9 +114,9 @@
                                     <tr class="font-weight-bold">
                                         <td colspan="4" class="text-center">Total</td>
                                         <td class="text-right">{{ $allRows->sum('cutting_waste') }}</td>
-                                        <td class="text-right">{{ $allRows->sum('print_send_waste') }}</td>
+                                        {{-- <td class="text-right">{{ $allRows->sum('print_send_waste') }}</td> --}}
                                         <td class="text-right">{{ $allRows->sum('print_receive_waste') }}</td>
-                                        <td class="text-right">{{ $allRows->sum('sewing_input_waste') }}</td>
+                                        {{-- <td class="text-right">{{ $allRows->sum('sewing_input_waste') }}</td> --}}
                                         <td class="text-right">{{ $allRows->sum('finish_output_waste') }}</td>
                                         <td class="text-right">{{ $allRows->sum('packing_waste') }}</td>
                                         <td class="text-right">{{ $allRows->sum('shipment_waste') }}</td>
@@ -135,9 +135,9 @@
                                                 @endif
                                                 <td>{{ $row['size'] }}</td>
                                                 <td class="text-right">{{ $row['cutting_waste'] }}</td>
-                                                <td class="text-right">{{ $row['print_send_waste'] }}</td>
+                                                {{-- <td class="text-right">{{ $row['print_send_waste'] }}</td> --}}
                                                 <td class="text-right">{{ $row['print_receive_waste'] }}</td>
-                                                <td class="text-right">{{ $row['sewing_input_waste'] }}</td>
+                                                {{-- <td class="text-right">{{ $row['sewing_input_waste'] }}</td> --}}
                                                 <td class="text-right">{{ $row['finish_output_waste'] }}</td>
                                                 <td class="text-right">{{ $row['packing_waste'] }}</td>
                                                 <td class="text-right">{{ $row['shipment_waste'] }}</td>
@@ -149,9 +149,9 @@
                                     <tr class="font-weight-bold">
                                         <td colspan="4" class="text-center">Total</td>
                                         <td class="text-right">{{ $allRows->sum('cutting_waste') }}</td>
-                                        <td class="text-right">{{ $allRows->sum('print_send_waste') }}</td>
+                                        {{-- <td class="text-right">{{ $allRows->sum('print_send_waste') }}</td> --}}
                                         <td class="text-right">{{ $allRows->sum('print_receive_waste') }}</td>
-                                        <td class="text-right">{{ $allRows->sum('sewing_input_waste') }}</td>
+                                        {{-- <td class="text-right">{{ $allRows->sum('sewing_input_waste') }}</td> --}}
                                         <td class="text-right">{{ $allRows->sum('finish_output_waste') }}</td>
                                         <td class="text-right">{{ $allRows->sum('packing_waste') }}</td>
                                         <td class="text-right">{{ $allRows->sum('shipment_waste') }}</td>

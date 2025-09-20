@@ -143,23 +143,23 @@
                                 <thead>
                                     <tr>
 
-                                        <th rowspan="2">Date</th>
-                                        <th rowspan="2">PO Number</th>
-                                        <th rowspan="2">Style</th>
-                                        <th rowspan="2">Color</th>
+                                        <th >Date</th>
+                                        <th >PO Number</th>
+                                        <th >Style</th>
+                                        <th >Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th colspan="2">{{ strtoupper($size->name) }}</th>
+                                            <th >{{ strtoupper($size->name) }}</th>
                                         @endforeach
-                                        <th rowspan="2">Total Send</th>
-                                        <th rowspan="2">Total Waste</th>
-                                        <th rowspan="2">Actions</th>
+                                        <th >Total Send</th>
+                                        {{-- <th >Total Waste</th> --}}
+                                        <th >Actions</th>
                                     </tr>
-                                    <tr>
+                                    {{-- <tr>
                                         @foreach ($allSizes as $size)
                                             <th>Send</th>
-                                            <th>Waste</th>
+                                            <th>Waste</th> 
                                         @endforeach
-                                    </tr>
+                                    </tr>--}}
                                 </thead>
                                 <tbody>
                                     @forelse ($printSendData as $data)
@@ -174,12 +174,12 @@
                                                     {{-- Accessing by size name directly --}}
                                                     {{ $data->sublimation_print_send_quantities[$size->id] ?? 0 }}
                                                 </td>
-                                                <td>
+                                                {{-- <td>
                                                     {{ $data->sublimation_print_send_waste_quantities[$size->id] ?? 0 }}
-                                                </td>
+                                                </td> --}}
                                             @endforeach
                                             <td>{{ $data->total_sublimation_print_send_quantity }}</td>
-                                            <td>{{ $data->total_sublimation_print_send_waste_quantity }}</td>
+                                            {{-- <td>{{ $data->total_sublimation_print_send_waste_quantity }}</td> --}}
                                             <td>
                                                 <a href="{{ route('sublimation_print_send_data.show', $data->id) }}"
                                                     class="btn btn-sm btn-outline-info">

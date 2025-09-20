@@ -170,7 +170,7 @@ class SublimationPrintReceiveController extends Controller
                 SublimationPrintReceive::create([
                     'date' => $request->date,
                     'product_combination_id' => $row['product_combination_id'],
-                    'po_number' => implode(',', $request->po_number),
+                    'po_number' => $row['po_number'],
                     'old_order' => $request->old_order,
                     'sublimation_print_receive_quantities' => $receiveQuantities,
                     'total_sublimation_print_receive_quantity' => $totalReceiveQuantity,
@@ -403,11 +403,30 @@ class SublimationPrintReceiveController extends Controller
                 return $carry;
             }, []);
 
-        // Calculate available quantities
+        // Base query for waste quantities
+        $wasteQuery = SublimationPrintReceive::where('product_combination_id', $productCombination->id);
+
+        // Filter by PO number if provided
+        if ($poNumber) {
+            $wasteQuery->where('po_number', 'like', '%' . $poNumber . '%');
+        }
+
+        // Sum waste quantities per size using size IDs
+        $wasteQuantities = $wasteQuery->get()
+            ->pluck('sublimation_print_receive_waste_quantities')
+            ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+                foreach ($quantities as $sizeId => $qty) {
+                    $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+                }
+                return $carry;
+            }, []);
+
+        // Calculate available quantities (sent - received - waste)
         foreach ($sizes as $size) {
             $sent = $sentQuantities[$size->id] ?? 0;
             $received = $receivedQuantities[$size->id] ?? 0;
-            $availableQuantities[$size->name] = max(0, $sent - $received);
+            $waste = $wasteQuantities[$size->id] ?? 0;
+            $availableQuantities[$size->name] = max(0, $sent - $received - $waste);
         }
 
         return response()->json([
@@ -416,8 +435,72 @@ class SublimationPrintReceiveController extends Controller
         ]);
     }
 
+    // public function getAvailableReceiveQuantities(ProductCombination $productCombination, $poNumber = null)
+    // {
+    //     $sizes = Size::where('is_active', 1)->get();
+    //     $availableQuantities = [];
+
+    //     // Create a mapping of size IDs to size names
+    //     $sizeIdToName = [];
+    //     foreach ($sizes as $size) {
+    //         $sizeIdToName[$size->id] = $size->name;
+    //     }
+
+    //     // Base query for sent quantities
+    //     $sentQuery = SublimationPrintSend::where('product_combination_id', $productCombination->id);
+
+    //     // Filter by PO number if provided
+    //     if ($poNumber) {
+    //         $sentQuery->where('po_number', $poNumber);
+    //     }
+
+    //     // Sum sent quantities per size using size IDs
+    //     $sentQuantities = $sentQuery->get()
+    //         ->pluck('sublimation_print_send_quantities')
+    //         ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+    //             foreach ($quantities as $sizeId => $qty) {
+    //                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+    //             }
+    //             return $carry;
+    //         }, []);
+
+    //     // Base query for received quantities
+    //     $receivedQuery = SublimationPrintReceive::where('product_combination_id', $productCombination->id);
+
+    //     // Filter by PO number if provided
+    //     if ($poNumber) {
+    //         $receivedQuery->where('po_number', 'like', '%' . $poNumber . '%');
+    //     }
+
+    //     // Sum received quantities per size using size IDs
+    //     $receivedQuantities = $receivedQuery->get()
+    //         ->pluck('sublimation_print_receive_quantities')
+    //         ->reduce(function ($carry, $quantities) use ($sizeIdToName) {
+    //             foreach ($quantities as $sizeId => $qty) {
+    //                 $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+    //             }
+    //             return $carry;
+    //         }, []);
+
+    //     // Calculate available quantities
+    //     foreach ($sizes as $size) {
+    //         $sent = $sentQuantities[$size->id] ?? 0;
+    //         $received = $receivedQuantities[$size->id] ?? 0;
+    //         $availableQuantities[$size->name] = max(0, $sent - $received);
+    //     }
+
+    //     return response()->json([
+    //         'availableQuantities' => $availableQuantities,
+    //         'sizes' => $sizes
+    //     ]);
+    // }
+
+
+
     // Reports
 
+    
+    
     public function totalPrintEmbReceiveReport(Request $request)
     {
         $query = SublimationPrintReceive::with('productCombination.style', 'productCombination.color');

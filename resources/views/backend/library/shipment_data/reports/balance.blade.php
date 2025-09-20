@@ -95,7 +95,7 @@
                                         <th colspan="2">Print Send</th>
                                         <th colspan="2">Print Receive</th>
                                         <th colspan="2">Sewing Input</th>
-                                        <th colspan="2">Finishing Output</th> <!-- New column -->
+                                        <th colspan="2">Sewing Output</th> <!-- New column -->
                                         <th colspan="2">Packing</th>
                                         <th colspan="2">Shipment</th>
                                         <th rowspan="2">Ready Goods Qty</th>

@@ -105,13 +105,14 @@
                         <div class="card-body">
                             <table class="table table-bordered table-hover">
                                 <thead>
+                                    <!-- In your table header -->
                                     <tr>
                                         <th>Sl#</th>
                                         <th>Style</th>
                                         <th>Color</th>
-                                        <th>Type</th>
+                                        <th>Process Type</th>
                                         <th>Total Cut Quantity</th>
-                                        <th>Total Sent to Print/Emb</th>
+                                        <th>Total Sent</th>
                                         <th>Total Received (Good)</th>
                                         <th>Total Received (Waste)</th>
                                     </tr>
@@ -131,8 +132,7 @@
                                     @empty
                                         <tr>
                                             <td colspan="8" class="text-center">No data found for items ready for
-                                                input.
-                                            </td>
+                                                input.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
