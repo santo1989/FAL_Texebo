@@ -358,7 +358,7 @@ class SublimationPrintReceiveController extends Controller
 
     public function getAvailableReceiveQuantities(ProductCombination $productCombination, $poNumber = null)
     {
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $availableQuantities = [];
 
         // Create a mapping of size IDs to size names
@@ -437,7 +437,7 @@ class SublimationPrintReceiveController extends Controller
 
     // public function getAvailableReceiveQuantities(ProductCombination $productCombination, $poNumber = null)
     // {
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $availableQuantities = [];
 
     //     // Create a mapping of size IDs to size names
@@ -499,8 +499,8 @@ class SublimationPrintReceiveController extends Controller
 
     // Reports
 
-    
-    
+
+
     public function totalPrintEmbReceiveReport(Request $request)
     {
         $query = SublimationPrintReceive::with('productCombination.style', 'productCombination.color');
@@ -943,7 +943,7 @@ class SublimationPrintReceiveController extends Controller
 
     // public function getAvailableReceiveQuantities(ProductCombination $productCombination)
     // {
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $availableQuantities = [];
 
     //     // Create a mapping of size IDs to size names

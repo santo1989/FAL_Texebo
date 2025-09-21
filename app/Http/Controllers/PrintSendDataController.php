@@ -262,7 +262,7 @@ class PrintSendDataController extends Controller
     // Update the getAvailableSendQuantities method to accept PO number filtering
     public function getAvailableSendQuantities(ProductCombination $productCombination, $poNumber = null)
     {
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $availableQuantities = [];
 
         // Base query for cut quantities
@@ -377,7 +377,7 @@ class PrintSendDataController extends Controller
 
     public function available($product_combination_id)
     {
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $sizeMap = [];
         foreach ($sizes as $size) {
             $sizeMap[strtolower($size->name)] = $size->id;
@@ -1115,7 +1115,7 @@ class PrintSendDataController extends Controller
 
     // public function getAvailableSendQuantities(ProductCombination $productCombination)
     // {
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $availableQuantities = [];
 
     //     // Get cut quantities from CuttingData

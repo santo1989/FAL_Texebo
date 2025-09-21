@@ -26,29 +26,6 @@ use Illuminate\Validation\ValidationException;
 
 class ShipmentDataController extends Controller
 {
-    // public function index(Request $request)
-    // {
-    //     $query = ShipmentData::with('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-
-    //     if ($request->filled('search')) {
-    //         $search = $request->input('search');
-    //         $query->whereHas('productCombination.style', function ($q) use ($search) {
-    //             $q->where('name', 'like', '%' . $search . '%');
-    //         })->orWhereHas('productCombination.color', function ($q) use ($search) {
-    //             $q->where('name', 'like', '%' . $search . '%');
-    //         });
-    //     }
-    //     if ($request->filled('date')) {
-    //         $query->whereDate('date', $request->input('date'));
-    //     }
-
-    //     $shipmentData = $query->orderBy('date', 'desc')->paginate(10);
-    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
-
-    //     return view('backend.library.shipment_data.index', compact('shipmentData', 'allSizes'));
-    // }
-
-
 
     public function index(Request $request)
     {
@@ -127,7 +104,7 @@ class ShipmentDataController extends Controller
     {
         // Get distinct PO numbers from FinishPackingData
         $distinctPoNumbers = FinishPackingData::distinct()->pluck('po_number')->filter()->values();
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return view('backend.library.shipment_data.create', compact('distinctPoNumbers', 'sizes'));
     }
@@ -180,7 +157,7 @@ class ShipmentDataController extends Controller
                     ShipmentData::create([
                         'date' => $request->date,
                         'product_combination_id' => $row['product_combination_id'],
-                        'po_number' => implode(',', $request->po_number),
+                        'po_number' => $row['po_number'],
                         'shipment_quantities' => $shipmentQuantities,
                         'total_shipment_quantity' => $totalShipmentQuantity,
                         'shipment_waste_quantities' => $wasteQuantities,
@@ -355,7 +332,7 @@ class ShipmentDataController extends Controller
     public function getMaxShipmentQuantities(ProductCombination $pc, $poNumbers = [])
     {
         $maxQuantities = [];
-        $allSizes = Size::where('is_active', 1)->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         // Build query for packing quantities with PO number filter
         $packingQuery = FinishPackingData::where('product_combination_id', $pc->id);

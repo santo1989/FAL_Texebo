@@ -86,7 +86,7 @@ class OrderDataController extends Controller
     public function create()
     {
         $productCombinations = ProductCombination::with('buyer', 'style', 'color')->get();
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $styles = Style::where('is_active', 1)->get();
         $colors = Color::all();
 
@@ -149,7 +149,7 @@ class OrderDataController extends Controller
     public function edit(OrderData $orderDatum)
     {
         $orderDatum->load('productCombination.buyer', 'style', 'color');
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $poStatuses = ['running', 'completed', 'cancelled'];
 
         return view('backend.library.order_data.edit', compact('orderDatum', 'sizes', 'poStatuses'));

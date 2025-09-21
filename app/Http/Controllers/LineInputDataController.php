@@ -92,13 +92,13 @@ class LineInputDataController extends Controller
             'distinctPoNumbers'
         ));
     }
-    
+
 
     public function create()
     {
         // Get distinct PO numbers based on product combination type
         $distinctPoNumbers = $this->getAvailablePoNumbers();
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return view('backend.library.line_input_data.create', compact('distinctPoNumbers', 'sizes'));
     }
@@ -151,7 +151,7 @@ class LineInputDataController extends Controller
                     LineInputData::create([
                         'date' => $request->date,
                         'product_combination_id' => $row['product_combination_id'],
-                        'po_number' => implode(',', $request->po_number),
+                        'po_number' => $row['po_number'],
                         'input_quantities' => $inputQuantities,
                         'total_input_quantity' => $totalInputQuantity,
                         'input_waste_quantities' => $wasteQuantities,
@@ -317,11 +317,11 @@ class LineInputDataController extends Controller
     }
 
     // Reports
-   
+
     public function getMaxInputQuantities(ProductCombination $pc)
     {
         $maxQuantities = [];
-        $allSizes = Size::where('is_active', 1)->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
 
         // Determine source based on product combination type
@@ -407,7 +407,7 @@ class LineInputDataController extends Controller
     public function getAvailableQuantities(ProductCombination $productCombination)
     {
         $maxQuantities = $this->getMaxInputQuantities($productCombination);
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return response()->json([
             'availableQuantities' => $maxQuantities,

@@ -150,7 +150,7 @@ class PrintReceiveDataController extends Controller
                     PrintReceiveData::create([
                         'date' => $request->date,
                         'product_combination_id' => $row['product_combination_id'],
-                        'po_number' => implode(',', $request->po_number),
+                        'po_number' => $row['po_number'],
                         'receive_quantities' => $receiveQuantities,
                         'total_receive_quantity' => $totalReceiveQuantity,
                         'receive_waste_quantities' => $wasteQuantities,
@@ -187,7 +187,7 @@ class PrintReceiveDataController extends Controller
         return view('backend.library.print_receive_data.show', compact('printReceiveDatum', 'allSizes'));
     }
 
-    
+
     public function update(Request $request, PrintReceiveData $printReceiveDatum)
     {
         $request->validate([
@@ -243,13 +243,13 @@ class PrintReceiveDataController extends Controller
             ->withMessage('Print/Embroidery Receive data deleted successfully.');
     }
 
-    
+
 
     // Update the getAvailableReceiveQuantities method to accept PO number filtering
 
     public function getAvailableReceiveQuantities(ProductCombination $productCombination, $poNumber = null)
     {
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $availableQuantities = [];
 
         // Base query for sent quantities
@@ -692,7 +692,7 @@ class PrintReceiveDataController extends Controller
         }
 
         $combinations = $combinationsQuery->get();
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $sizeIdToName = $allSizes->pluck('name', 'id')->toArray();
         $wipData = [];
 
@@ -1800,7 +1800,7 @@ class PrintReceiveDataController extends Controller
 
     // public function getAvailableReceiveQuantities(ProductCombination $productCombination)
     // {
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $availableQuantities = [];
 
     //     // Sum sent quantities per size

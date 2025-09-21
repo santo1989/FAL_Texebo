@@ -91,7 +91,7 @@ class OutputFinishingDataController extends Controller
     {
         // Get distinct PO numbers based on product combination type
         $distinctPoNumbers = $this->getAvailablePoNumbers();
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return view('backend.library.output_finishing_data.create', compact('distinctPoNumbers', 'sizes'));
     }
@@ -144,7 +144,7 @@ class OutputFinishingDataController extends Controller
                     OutputFinishingData::create([
                         'date' => $request->date,
                         'product_combination_id' => $row['product_combination_id'],
-                        'po_number' => implode(',', $request->po_number),
+                        'po_number' => $row['po_number'],
                         'output_quantities' => $outputQuantities,
                         'total_output_quantity' => $totalOutputQuantity,
                         'output_waste_quantities' => $wasteQuantities,
@@ -296,7 +296,7 @@ class OutputFinishingDataController extends Controller
     public function getMaxOutputQuantities(ProductCombination $pc)
     {
         $maxQuantities = [];
-        $allSizes = Size::where('is_active', 1)->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         // Get total input quantities from LineInputData
         $inputQuantities = LineInputData::where('product_combination_id', $pc->id)
@@ -876,7 +876,7 @@ class OutputFinishingDataController extends Controller
     //         ->with('buyer', 'style', 'color')
     //         ->get();
 
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
     //     return view('backend.library.output_finishing_data.create', compact('productCombinations', 'sizes'));
     // }
@@ -930,7 +930,7 @@ class OutputFinishingDataController extends Controller
     // {
     //     $productCombination = ProductCombination::findOrFail($id);
     //     $maxQuantities = $this->getMaxOutputQuantities($productCombination);
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
     //     return response()->json([
     //         'maxQuantities' => $maxQuantities,
@@ -946,7 +946,7 @@ class OutputFinishingDataController extends Controller
     // public function getMaxOutputQuantities(ProductCombination $productCombination)
     // {
     //     $maxQuantities = [];
-    //     $allSizes = Size::where('is_active', 1)->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
     //     // Get total input quantities from LineInputData
     //     $inputQuantities = LineInputData::where('product_combination_id', $productCombination->id)
@@ -998,7 +998,7 @@ class OutputFinishingDataController extends Controller
     // public function edit(OutputFinishingData $outputFinishingDatum)
     // {
     //     $outputFinishingDatum->load('productCombination.style', 'productCombination.color');
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $maxQuantities = $this->getMaxOutputQuantities($outputFinishingDatum->productCombination);
 
     //     // Add back current output quantities to available

@@ -95,7 +95,7 @@ class FinishPackingDataController extends Controller
     {
         // Get distinct PO numbers based on product combination type
         $distinctPoNumbers = $this->getAvailablePoNumbers();
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         return view('backend.library.finish_packing_data.create', compact('distinctPoNumbers', 'sizes'));
     }
@@ -148,7 +148,7 @@ class FinishPackingDataController extends Controller
                     FinishPackingData::create([
                         'date' => $request->date,
                         'product_combination_id' => $row['product_combination_id'],
-                        'po_number' => implode(',', $request->po_number),
+                        'po_number' => $row['po_number'],
                         'packing_quantities' => $packingQuantities,
                         'total_packing_quantity' => $totalPackingQuantity,
                         'packing_waste_quantities' => $wasteQuantities,
@@ -296,7 +296,7 @@ class FinishPackingDataController extends Controller
     }
 
     // Reports
-  
+
 
     private function getAvailablePoNumbers()
     {
@@ -311,7 +311,7 @@ class FinishPackingDataController extends Controller
 
     public function getAvailablePackingQuantities(ProductCombination $pc, $poNumber)
     {
-        $allSizes = Size::where('is_active', 1)->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $availableQuantities = [];
 
         // Get total output quantities for this specific PO number
@@ -399,7 +399,7 @@ class FinishPackingDataController extends Controller
     public function getMaxPackingQuantities(ProductCombination $pc)
     {
         $maxQuantities = [];
-        $allSizes = Size::where('is_active', 1)->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         // Get total output quantities from OutputFinishingData
         $outputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
@@ -825,7 +825,7 @@ class FinishPackingDataController extends Controller
         ]);
     }
 
-    
+
 
     // public function totalPackingReport(Request $request)
     // {
@@ -1171,7 +1171,7 @@ class FinishPackingDataController extends Controller
     // public function getMaxPackingQuantities(ProductCombination $pc, $poNumbers = [])
     // {
     //     $maxQuantities = [];
-    //     $allSizes = Size::where('is_active', 1)->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
     //     // Build query for output quantities with PO number filter
     //     $outputQuery = OutputFinishingData::where('product_combination_id', $pc->id);
@@ -1309,7 +1309,7 @@ class FinishPackingDataController extends Controller
     //         ->with('buyer', 'style', 'color')
     //         ->get();
 
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
     //     return view('backend.library.finish_packing_data.create', compact('productCombinations', 'sizes'));
     // }
@@ -1362,7 +1362,7 @@ class FinishPackingDataController extends Controller
     // public function getMaxPackingQuantities(ProductCombination $pc)
     // {
     //     $maxQuantities = [];
-    //     $allSizes = Size::where('is_active', 1)->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
     //     // Get total input quantities
     //     $inputQuantities = OutputFinishingData::where('product_combination_id', $pc->id)
@@ -1398,7 +1398,7 @@ class FinishPackingDataController extends Controller
     // public function edit(FinishPackingData $finishPackingDatum)
     // {
     //     $finishPackingDatum->load('productCombination.style', 'productCombination.color');
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $maxQuantities = $this->getMaxPackingQuantities($finishPackingDatum->productCombination);
 
     //     $sizeData = $sizes->map(function ($size) use ($finishPackingDatum, $maxQuantities) {
@@ -1565,7 +1565,7 @@ class FinishPackingDataController extends Controller
     // public function getAvailablePackingQuantities(ProductCombination $productCombination)
     // {
     //     $maxQuantities = $this->getMaxPackingQuantities($productCombination);
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
     //     return response()->json([
     //         'availableQuantities' => $maxQuantities,

@@ -58,7 +58,7 @@ class ProductCombinationController extends Controller
         $buyers = Buyer::where('is_active', 0)->get();
         $styles = Style::where('is_active', 1)->get();
         $colors = Color::where('is_active', 1)->get();
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         return view('backend.library.product_combinations.create', compact('buyers', 'styles', 'colors', 'sizes'));
     }
 
@@ -110,7 +110,7 @@ class ProductCombinationController extends Controller
         $buyers = Buyer::where('is_active', 0)->get();
         $styles = Style::where('is_active', 1)->get();
         $colors = Color::where('is_active', 1)->get();
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         return view('backend.library.product_combinations.edit', compact('productCombination', 'buyers', 'styles', 'colors', 'sizes'));
     }
 

@@ -83,7 +83,7 @@ class SublimationPrintSendController extends Controller
 
                 // if any row has no send or waste quantities, skip it and if any size has zero quantity, skip that size
                 if (
-                    empty(array_filter($row['sublimation_print_send_quantities'])) 
+                    empty(array_filter($row['sublimation_print_send_quantities']))
                     // &&
                     // empty(array_filter($row['sublimation_print_send_waste_quantities']))
                 ) {
@@ -337,7 +337,7 @@ class SublimationPrintSendController extends Controller
 
     public function getAvailableSendQuantities(ProductCombination $productCombination, $poNumbers = [])
     {
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $availableQuantities = [];
 
         // Create a mapping of size IDs to size names
@@ -938,7 +938,7 @@ class SublimationPrintSendController extends Controller
     }
     public function available($product_combination_id)
     {
-        $sizes = Size::where('is_active', 1)->get();
+        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $sizeMap = [];
         foreach ($sizes as $size) {
             $sizeMap[strtolower($size->name)] = $size->id;
@@ -1413,7 +1413,7 @@ class SublimationPrintSendController extends Controller
 
     // public function getAvailableSendQuantities(ProductCombination $productCombination)
     // {
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $availableQuantities = [];
 
     //     // Create a mapping of size IDs to size names
@@ -1653,7 +1653,7 @@ class SublimationPrintSendController extends Controller
 
     // public function available($product_combination_id)
     // {
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $sizeMap = [];
     //     foreach ($sizes as $size) {
     //         $sizeMap[strtolower($size->name)] = $size->id;
@@ -1864,7 +1864,7 @@ class SublimationPrintSendController extends Controller
 
     // // public function available($product_combination_id)
     // // {
-    // //     $sizes = Size::where('is_active', 1)->get();
+    // //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     // //     $sizeMap = [];
     // //     foreach ($sizes as $size) {
     // //         $sizeMap[strtolower($size->name)] = $size->id;
@@ -2091,7 +2091,7 @@ class SublimationPrintSendController extends Controller
     // public function getAvailableSendQuantities(ProductCombination $productCombination)
 
     // {
-    //     $sizes = Size::where('is_active', 1)->get();
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $availableQuantities = [];
 
     //     // Create a mapping of size IDs to size names
