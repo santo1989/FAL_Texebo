@@ -110,19 +110,12 @@
                             <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
-                                        <th rowspan="2">Style</th>
-                                        <th rowspan="2">Color</th>
+                                        <th>Style</th>
+                                        <th>Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th colspan="2">{{ strtoupper($size->name) }}</th>
+                                            <th>{{ strtoupper($size->name) }}</th>
                                         @endforeach
-                                        <th rowspan="2">Total Send</th>
-                                        <th rowspan="2">Total Waste</th>
-                                    </tr>
-                                    <tr>
-                                        @foreach ($allSizes as $size)
-                                            <th>Send</th>
-                                            <th>Waste</th>
-                                        @endforeach
+                                        <th>Total Send</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -132,10 +125,8 @@
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
                                                 <td>{{ $data['sizes'][$size->id]['send'] ?? 0 }}</td>
-                                                <td>{{ $data['sizes'][$size->id]['waste'] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data['total_send'] }}</td>
-                                            <td>{{ $data['total_waste'] }}</td>
                                         </tr>
                                     @empty
                                         <tr>
