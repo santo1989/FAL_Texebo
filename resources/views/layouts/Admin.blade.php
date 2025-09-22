@@ -195,7 +195,7 @@
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
                                         href="{{ route('output_finishing_data.index') }}">
                                         <div class="sb-nav-link-icon"><i class="fas fa-sticky-note"></i></div>
-                                        Output Finish Data
+                                        Sewing Output Data
                                     </a>
 
                                 </div>
@@ -352,7 +352,7 @@
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
                                         href="{{ route('output_finishing_data.index') }}">
                                         <div class="sb-nav-link-icon"><i class="fas fa-sticky-note"></i></div>
-                                        Output Finish Data
+                                        Sewing Output Data
                                     </a>
 
                                 </div>
@@ -815,7 +815,7 @@
                                     <a class="btn btn-sm btn-outline-primary" style="width: 10rem;"
                                         href="{{ route('output_finishing_data.index') }}">
                                         <div class="sb-nav-link-icon"><i class="fas fa-check-circle"></i></div>
-                                        Output Finish Data
+                                        Sewing Output Data
                                     </a>
                                 </div>
                             @endcanany
