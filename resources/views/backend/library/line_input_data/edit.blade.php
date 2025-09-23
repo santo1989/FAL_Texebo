@@ -12,6 +12,22 @@
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
 
+  
+    <x-backend.layouts.elements.errors />
+   @if (session('message'))
+       <div class="alert alert-success">
+           <span class="close" data-dismiss="alert">&times;</span>
+           <strong>{{ session('message') }}</strong>
+       </div>
+       
+   @else
+       <div class="alert alert-danger">
+           <span class="close" data-dismiss="alert">&times;</span>
+           <strong>{{ session('error') }}</strong>
+       </div>
+   @endif
+
+
     <section class="content">
         <div class="container-fluid">
             <div class="row">
@@ -24,137 +40,131 @@
                             id="lineInputForm">
                             @csrf
                             @method('patch')
-                            <div class="card-body">
-                                <div class="form-group">
-                                    <label for="date">Date</label>
-                                    <input type="date" name="date" class="form-control" id="date"
-                                        value="{{ old('date', $lineInputDatum->date) }}" required>
-                                    @error('date')
-                                        <div class="text-danger">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                             <div class="row">
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <input type="date" name="date" id="date" class="form-control"
+                        value="{{ old('date', $lineInputDatum->date) }}" required>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="po_number">PO Number</label>
+                    <input type="text" class="form-control" value="{{ $lineInputDatum->po_number }}" readonly>
+                </div>
+            </div>
+        </div>
 
-                                <div class="form-group">
-                                    <label>Product Combination</label>
-                                    <input type="text" class="form-control"
-                                        value="{{ $lineInputDatum->productCombination->style->name }} - {{ $lineInputDatum->productCombination->color->name }}"
-                                        readonly>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>PO Number</label>
-                                    <input type="text" class="form-control" value="{{ $lineInputDatum->po_number }}"
-                                        readonly>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Input Quantities by Size</label>
-                                    <div class="row">
-                                        @foreach ($sizeData as $size)
-                                            <div class="col-md-4 mb-3">
-                                                <div class="card">
-                                                    <div class="card-header">
-                                                        <h5 class="card-title">{{ $size['name'] }}</h5>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        <div class="form-group">
-                                                            <label for="input_quantities_{{ $size['id'] }}">Input
-                                                                Quantity (Max: {{ $size['max_allowed'] }})</label>
-                                                            <input type="number"
-                                                                name="input_quantities[{{ $size['id'] }}]"
-                                                                id="input_quantities_{{ $size['id'] }}"
-                                                                class="form-control input-qty"
-                                                                value="{{ old('input_quantities.' . $size['id'], $size['input_quantity']) }}"
-                                                                min="0" max="{{ $size['max_allowed'] }}"
-                                                                data-size-id="{{ $size['id'] }}"
-                                                                data-max-allowed="{{ $size['max_allowed'] }}">
-                                                            @error('input_quantities.' . $size['id'])
-                                                                <div class="text-danger">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label
-                                                                for="input_waste_quantities_{{ $size['id'] }}">Waste
-                                                                Quantity</label>
-                                                            <input type="number"
-                                                                name="input_waste_quantities[{{ $size['id'] }}]"
-                                                                id="input_waste_quantities_{{ $size['id'] }}"
-                                                                class="form-control waste-qty"
-                                                                value="{{ old('input_waste_quantities.' . $size['id'], $size['waste_quantity']) }}"
-                                                                min="0" data-size-id="{{ $size['id'] }}">
-                                                            @error('input_waste_quantities.' . $size['id'])
-                                                                <div class="text-danger">{{ $message }}</div>
-                                                            @enderror
-                                                        </div>
-                                                        <div class="progress mt-2" style="height: 5px;">
-                                                            <div class="progress-bar" role="progressbar"
-                                                                style="width: 0%;"></div>
-                                                        </div>
-                                                        <small class="form-text text-muted">
-                                                            Order Qty: {{ $size['order_quantity'] }} |
-                                                            Available: {{ $size['max_available'] }} |
-                                                            Current: {{ $size['input_quantity'] }} |
-                                                            Max: {{ $size['max_allowed'] }}
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-footer">
-                                <button type="submit" class="btn btn-primary">Update</button>
-                                <a href="{{ route('line_input_data.index') }}" class="btn btn-danger">Cancel</a>
-                            </div>
-                        </form>
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Product Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="buyer">Buyer</label>
+                            <input type="text" class="form-control" 
+                                value="{{ $lineInputDatum->productCombination->buyer->name ?? 'N/A' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="style">Style</label>
+                            <input type="text" class="form-control" 
+                                value="{{ $lineInputDatum->productCombination->style->name ?? 'N/A' }}" readonly>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="color">Color</label>
+                            <input type="text" class="form-control" 
+                                value="{{ $lineInputDatum->productCombination->color->name ?? 'N/A' }}" readonly>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </section>
+
+        <table class="table table-bordered mt-4 text-center">
+            <thead>
+                <tr>
+                    <th>Size</th>
+                    <th>Order Quantity</th>
+                    <th>Current Input Quantity</th>
+                    <th>Max Available</th>
+                    <th>New Input Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($sizeData as $size)
+                    <tr>
+                        <td>{{ $size['name'] }}</td>
+                        <td>{{ $size['order_quantity'] }}</td>
+                        <td>{{ $size['input_quantity'] }}</td>
+                        <td>{{ $size['max_available'] }}</td>
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <input type="number" 
+                                       name="input_quantities[{{ $size['id'] }}]" 
+                                       class="form-control input-qty-input" 
+                                       min="0" 
+                                       max="{{ $size['max_allowed'] }}" 
+                                       value="{{ old('input_quantities.'.$size['id'], $size['input_quantity']) }}" 
+                                       placeholder="Enter quantity">
+                            </div>
+                            @error('input_quantities.'.$size['id'])
+                                <small class="text-danger">{{ $message }}</small>
+                            @enderror
+                        </td>
+                    </tr>
+                @endforeach
+                <tr>
+                    <td colspan="4" class="text-right"><strong>Total Input Quantity:</strong></td>
+                    <td><span id="total-input-qty">{{ $lineInputDatum->total_input_quantity }}</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <a href="{{ route('line_input_data.index') }}" class="btn btn-secondary">Back to List</a>
+                <button type="submit" class="btn btn-primary">Update Sewing Input Data</button>
+            </div>
+        </div>
+    </form>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Add event listeners for progress bars
-            document.querySelectorAll('.input-qty').forEach(input => {
-                input.addEventListener('input', function() {
-                    const maxAllowed = parseInt(this.getAttribute('data-max-allowed'));
-                    const value = parseInt(this.value) || 0;
-                    const percent = maxAllowed > 0 ? Math.min(100, (value / maxAllowed) * 100) : 0;
-                    const progressBar = this.nextElementSibling.nextElementSibling.querySelector(
-                        '.progress-bar');
-                    progressBar.style.width = `${percent}%`;
-
-                    if (value > maxAllowed) {
-                        this.classList.add('is-invalid');
-                    } else {
-                        this.classList.remove('is-invalid');
-                    }
+            const inputQtyInputs = document.querySelectorAll('.input-qty-input');
+            const totalInputQtySpan = document.getElementById('total-input-qty');
+            
+            function updateTotalInputQuantity() {
+                let total = 0;
+                inputQtyInputs.forEach(input => {
+                    const value = parseInt(input.value) || 0;
+                    total += value;
                 });
-
-                // Trigger the input event to set initial progress
-                input.dispatchEvent(new Event('input'));
+                totalInputQtySpan.textContent = total;
+            }
+            
+            // Add event listeners to all quantity inputs
+            inputQtyInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    const max = parseInt(this.getAttribute('max'));
+                    const value = parseInt(this.value) || 0;
+                    
+                    if (value > max) {
+                        this.value = max;
+                    }
+                    
+                    updateTotalInputQuantity();
+                });
             });
+            
+            // Initialize total on page load
+            updateTotalInputQuantity();
         });
     </script>
-
-    <style>
-        .progress {
-            background-color: #e9ecef;
-        }
-
-        .progress-bar {
-            background-color: #28a745;
-            transition: width 0.3s ease;
-        }
-
-        input[type="number"]:disabled {
-            background-color: #f8f9fa;
-        }
-
-        .card {
-            margin-bottom: 0;
-        }
-    </style>
 </x-backend.layouts.master>

@@ -110,6 +110,7 @@ class PrintReceiveDataController extends Controller
             'po_number.*' => 'required|string',
             'rows' => 'required|array',
             'rows.*.product_combination_id' => 'required|exists:product_combinations,id',
+            'rows.*.po_number' => 'required|string', // Add validation for row-level PO number
             'rows.*.receive_quantities.*' => 'nullable|integer|min:0',
             'rows.*.receive_waste_quantities.*' => 'nullable|integer|min:0',
         ]);
@@ -117,30 +118,67 @@ class PrintReceiveDataController extends Controller
         try {
             DB::beginTransaction();
 
+            $validRowsProcessed = 0;
+
             foreach ($request->rows as $row) {
+                // Check if this row has any available quantities (not all N/A)
+                $hasAvailableQuantities = false;
+                $hasValidQuantities = false;
+
+                // Check receive quantities
+                if (isset($row['receive_quantities'])) {
+                    foreach ($row['receive_quantities'] as $quantity) {
+                        if ($quantity !== null && (int)$quantity > 0) {
+                            $hasValidQuantities = true;
+                            $hasAvailableQuantities = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Check waste quantities
+                if (isset($row['receive_waste_quantities'])) {
+                    foreach ($row['receive_waste_quantities'] as $quantity) {
+                        if ($quantity !== null && (int)$quantity > 0) {
+                            $hasValidQuantities = true;
+                            $hasAvailableQuantities = true;
+                            break;
+                        }
+                    }
+                }
+
+                // If no available quantities at all (all N/A), skip this row entirely
+                if (!$hasAvailableQuantities) {
+                    continue;
+                }
+
                 $receiveQuantities = [];
                 $wasteQuantities = [];
                 $totalReceiveQuantity = 0;
                 $totalWasteQuantity = 0;
 
                 // Process receive quantities
-                foreach ($row['receive_quantities'] as $sizeId => $quantity) {
-                    if ($quantity !== null && (int)$quantity > 0) {
-                        $size = Size::find($sizeId);
-                        if ($size) {
-                            $receiveQuantities[$size->id] = (int)$quantity;
-                            $totalReceiveQuantity += (int)$quantity;
+                if (isset($row['receive_quantities'])) {
+                    foreach ($row['receive_quantities'] as $sizeId => $quantity) {
+                        if ($quantity !== null && (int)$quantity > 0) {
+                            $size = Size::find($sizeId);
+                            if ($size) {
+                                $receiveQuantities[$size->id] = (int)$quantity;
+                                $totalReceiveQuantity += (int)$quantity;
+                            }
                         }
                     }
                 }
 
                 // Process waste quantities
-                foreach ($row['receive_waste_quantities'] as $sizeId => $quantity) {
-                    if ($quantity !== null && (int)$quantity > 0) {
-                        $size = Size::find($sizeId);
-                        if ($size) {
-                            $wasteQuantities[$size->id] = (int)$quantity;
-                            $totalWasteQuantity += (int)$quantity;
+                if (isset($row['receive_waste_quantities'])) {
+                    foreach ($row['receive_waste_quantities'] as $sizeId => $quantity) {
+                        if ($quantity !== null && (int)$quantity > 0) {
+                            $size = Size::find($sizeId);
+                            if ($size) {
+                                $wasteQuantities[$size->id] = (int)$quantity;
+                                $totalWasteQuantity += (int)$quantity;
+                            }
                         }
                     }
                 }
@@ -150,19 +188,27 @@ class PrintReceiveDataController extends Controller
                     PrintReceiveData::create([
                         'date' => $request->date,
                         'product_combination_id' => $row['product_combination_id'],
-                        'po_number' => $row['po_number'],
+                        'po_number' => $row['po_number'], // Use the row-level PO number
                         'receive_quantities' => $receiveQuantities,
                         'total_receive_quantity' => $totalReceiveQuantity,
                         'receive_waste_quantities' => $wasteQuantities,
                         'total_receive_waste_quantity' => $totalWasteQuantity,
                     ]);
+
+                    $validRowsProcessed++;
                 }
             }
 
             DB::commit();
 
-            return redirect()->route('print_receive_data.index')
-                ->withMessage('Print/Embroidery Receive data added successfully.');
+            if ($validRowsProcessed > 0) {
+                return redirect()->route('print_receive_data.index')
+                    ->with('message', 'Print/Embroidery Receive data added successfully.');
+            } else {
+                return redirect()->back()
+                    ->with('warning', 'No valid data to save. Please check your entries.')
+                    ->withInput();
+            }
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -249,6 +295,7 @@ class PrintReceiveDataController extends Controller
 
     public function getAvailableReceiveQuantities(ProductCombination $productCombination, $poNumber = null)
     {
+        // dd($poNumber);
         $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $availableQuantities = [];
 
@@ -278,8 +325,11 @@ class PrintReceiveDataController extends Controller
             $receivedQuery->where('po_number', 'like', '%' . $poNumber . '%');
         }
 
-        // Sum received quantities per size
-        $receivedQuantities = $receivedQuery->get()
+        // Get all receive records
+        $receiveRecords = $receivedQuery->get();
+
+        // Sum received quantities per size (good quantities)
+        $receivedGoodQuantities = $receiveRecords
             ->pluck('receive_quantities')
             ->reduce(function ($carry, $quantities) {
                 foreach ($quantities as $sizeId => $qty) {
@@ -288,10 +338,28 @@ class PrintReceiveDataController extends Controller
                 return $carry;
             }, []);
 
-        // Calculate available quantities
+        // Sum waste quantities per size
+        $receivedWasteQuantities = $receiveRecords
+            ->pluck('receive_waste_quantities')
+            ->reduce(function ($carry, $quantities) {
+                foreach ($quantities as $sizeId => $qty) {
+                    $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+                }
+                return $carry;
+            }, []);
+
+        // Combine good and waste quantities for total received
+        $totalReceivedQuantities = [];
+        foreach ($sizes as $size) {
+            $good = $receivedGoodQuantities[$size->id] ?? 0;
+            $waste = $receivedWasteQuantities[$size->id] ?? 0;
+            $totalReceivedQuantities[$size->id] = $good + $waste;
+        }
+
+        // Calculate available quantities (sent - total received including waste)
         foreach ($sizes as $size) {
             $sent = $sentQuantities[$size->id] ?? 0;
-            $received = $receivedQuantities[$size->id] ?? 0;
+            $received = $totalReceivedQuantities[$size->id] ?? 0;
             $availableQuantities[$size->id] = max(0, $sent - $received);
         }
 
@@ -302,6 +370,61 @@ class PrintReceiveDataController extends Controller
     }
 
     // Update the find method to use PO-filtered available quantities
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     $result = [];
+    //     $processedCombinations = [];
+
+    //     // dd($poNumbers);
+
+    //     foreach ($poNumbers as $poNumber) {
+    //         // Get print send data for the selected PO number
+    //         $printSendData = PrintSendData::where('po_number', 'like', '%' . $poNumber . '%')
+    //             ->with(['productCombination.style', 'productCombination.color'])
+    //             ->get();
+
+    //         foreach ($printSendData as $data) {
+    //             if (!$data->productCombination) {
+    //                 continue;
+    //             }
+
+    //             // Create a unique key for this combination
+    //             $combinationKey = $data->productCombination->id . '-' .
+    //                 $data->productCombination->style->name . '-' .
+    //                 $data->productCombination->color->name;
+
+    //             // Skip if we've already processed this combination
+    //             if (in_array($combinationKey, $processedCombinations)) {
+    //                 continue;
+    //             }
+
+    //             // Mark this combination as processed
+    //             $processedCombinations[] = $combinationKey;
+
+    //             // Get available quantities filtered by PO number
+    //             $availableQuantities = $this->getAvailableReceiveQuantities($data->productCombination, $poNumber)->getData()->availableQuantities;
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $data->productCombination->id,
+    //                 'style' => $data->productCombination->style->name,
+    //                 'color' => $data->productCombination->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => $data->productCombination->sizes->pluck('id')->toArray()
+    //             ];
+    //         }
+    //     }
+
+    //     // dd($result);
+
+    //     return response()->json($result);
+    // }
+
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
@@ -311,7 +434,8 @@ class PrintReceiveDataController extends Controller
         }
 
         $result = [];
-        $processedCombinations = [];
+        // Remove the global processed combinations array
+        // $processedCombinations = [];
 
         foreach ($poNumbers as $poNumber) {
             // Get print send data for the selected PO number
@@ -319,23 +443,26 @@ class PrintReceiveDataController extends Controller
                 ->with(['productCombination.style', 'productCombination.color'])
                 ->get();
 
+            // Create a processed combinations array PER PO NUMBER
+            $processedCombinationsForPo = [];
+
             foreach ($printSendData as $data) {
                 if (!$data->productCombination) {
                     continue;
                 }
 
-                // Create a unique key for this combination
+                // Create a unique key for this combination WITHIN THIS PO
                 $combinationKey = $data->productCombination->id . '-' .
                     $data->productCombination->style->name . '-' .
                     $data->productCombination->color->name;
 
-                // Skip if we've already processed this combination
-                if (in_array($combinationKey, $processedCombinations)) {
+                // Skip if we've already processed this combination FOR THIS PO
+                if (in_array($combinationKey, $processedCombinationsForPo)) {
                     continue;
                 }
 
-                // Mark this combination as processed
-                $processedCombinations[] = $combinationKey;
+                // Mark this combination as processed FOR THIS PO
+                $processedCombinationsForPo[] = $combinationKey;
 
                 // Get available quantities filtered by PO number
                 $availableQuantities = $this->getAvailableReceiveQuantities($data->productCombination, $poNumber)->getData()->availableQuantities;

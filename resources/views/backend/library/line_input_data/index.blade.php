@@ -10,6 +10,7 @@
             <li class="breadcrumb-item active">Sewing Input</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
+    
 
     <section class="content">
         <div class="container-fluid">
@@ -131,7 +132,6 @@
                                             <th>{{ strtoupper($size->name) }}</th>
                                         @endforeach
                                         <th>Total Input</th>
-                                        <th>Total Waste</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -148,15 +148,12 @@
                                                 <td>
                                                     @if (isset($data->input_quantities[$size->id]))
                                                         {{ $data->input_quantities[$size->id] }}
-                                                        @if (isset($data->input_waste_quantities[$size->id]))
-                                                            <br><small class="text-muted">W:
-                                                                {{ $data->input_waste_quantities[$size->id] }}</small>
-                                                        @endif
+                                                    @else
+                                                        0
                                                     @endif
                                                 </td>
                                             @endforeach
                                             <td>{{ $data->total_input_quantity }}</td>
-                                            <td>{{ $data->total_input_waste_quantity ?? 0 }}</td>
                                             <td>
 
                                                 <a href="{{ route('line_input_data.show', $data->id) }}"

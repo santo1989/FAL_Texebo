@@ -96,41 +96,64 @@ class PrintSendDataController extends Controller
             'old_order' => 'required|in:yes,no',
             'rows' => 'required|array',
             'rows.*.product_combination_id' => 'required|exists:product_combinations,id',
+            'rows.*.po_number' => 'required|string', // Add validation for row-level PO number
             'rows.*.send_quantities.*' => 'nullable|integer|min:0',
             'rows.*.send_waste_quantities.*' => 'nullable|integer|min:0',
         ]);
 
         try {
             DB::beginTransaction();
+            $validRowsProcessed = 0;
 
             foreach ($request->rows as $row) {
+                // Check if this row has any available quantities (not all N/A)
+                $hasAvailableQuantities = false;
+                $hasValidQuantities = false;
+
+                // Check send quantities
+                if (isset($row['send_quantities'])) {
+                    foreach ($row['send_quantities'] as $quantity) {
+                        if ($quantity !== null) {
+                            $hasAvailableQuantities = true;
+                            if ((int)$quantity > 0) {
+                                $hasValidQuantities = true;
+                            }
+                        }
+                    }
+                }
+
+                // If no available quantities at all (all N/A), skip this row entirely
+                if (!$hasAvailableQuantities) {
+                    continue;
+                }
+
                 $sendQuantities = [];
                 $wasteQuantities = [];
                 $totalSendQuantity = 0;
                 $totalWasteQuantity = 0;
 
                 // Process send quantities
-                foreach ($row['send_quantities'] as $sizeId => $quantity) {
-                    // Ensure quantity is not null and greater than 0
-                    if ($quantity !== null && (int)$quantity > 0) {
-                        $size = Size::find($sizeId);
-                        // Only add if the size exists in the database
-                        if ($size) {
-                            $sendQuantities[$size->id] = (int)$quantity;
-                            $totalSendQuantity += (int)$quantity;
+                if (isset($row['send_quantities'])) {
+                    foreach ($row['send_quantities'] as $sizeId => $quantity) {
+                        if ($quantity !== null && (int)$quantity > 0) {
+                            $size = Size::find($sizeId);
+                            if ($size) {
+                                $sendQuantities[$size->id] = (int)$quantity;
+                                $totalSendQuantity += (int)$quantity;
+                            }
                         }
                     }
                 }
 
                 // Process waste quantities
-                foreach ($row['send_waste_quantities'] as $sizeId => $quantity) {
-                    // Ensure quantity is not null and greater than 0
-                    if ($quantity !== null && (int)$quantity > 0) {
-                        $size = Size::find($sizeId);
-                        // Only add if the size exists in the database
-                        if ($size) {
-                            $wasteQuantities[$size->id] = (int)$quantity;
-                            $totalWasteQuantity += (int)$quantity;
+                if (isset($row['send_waste_quantities'])) {
+                    foreach ($row['send_waste_quantities'] as $sizeId => $quantity) {
+                        if ($quantity !== null && (int)$quantity > 0) {
+                            $size = Size::find($sizeId);
+                            if ($size) {
+                                $wasteQuantities[$size->id] = (int)$quantity;
+                                $totalWasteQuantity += (int)$quantity;
+                            }
                         }
                     }
                 }
@@ -140,20 +163,28 @@ class PrintSendDataController extends Controller
                     PrintSendData::create([
                         'date' => $request->date,
                         'product_combination_id' => $row['product_combination_id'],
-                        'po_number' =>  $row['po_number'],
+                        'po_number' => $row['po_number'], // Use the row-level PO number
                         'old_order' => $request->old_order,
                         'send_quantities' => $sendQuantities,
                         'total_send_quantity' => $totalSendQuantity,
                         'send_waste_quantities' => $wasteQuantities,
                         'total_send_waste_quantity' => $totalWasteQuantity,
                     ]);
+
+                    $validRowsProcessed++;
                 }
             }
 
             DB::commit();
 
-            return redirect()->route('print_send_data.index')
-                ->withMessage('Print/Embroidery Send data added successfully.');
+            if ($validRowsProcessed > 0) {
+                return redirect()->route('print_send_data.index')
+                    ->with('message', 'Print/Embroidery Send data added successfully.');
+            } else {
+                return redirect()->back()
+                    ->with('warning', 'No valid data to save. Please check your entries.')
+                    ->withInput();
+            }
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -321,6 +352,60 @@ class PrintSendDataController extends Controller
     }
 
     // Update the find method to use PO-filtered available quantities
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     $result = [];
+    //     $processedCombinations = []; // Track processed combinations
+
+    //     foreach ($poNumbers as $poNumber) {
+    //         // Get cutting data for the selected PO number with print_embroidery = true
+    //         $cuttingData = CuttingData::where('po_number', 'like', '%' . $poNumber . '%')
+    //             ->with(['productCombination.style', 'productCombination.color', 'productCombination.size'])
+    //             ->whereHas('productCombination', function ($query) {
+    //                 $query->where('print_embroidery', true);
+    //             })
+    //             ->get();
+
+    //         foreach ($cuttingData as $cutting) {
+    //             if (!$cutting->productCombination) {
+    //                 continue;
+    //             }
+
+    //             // Create a unique key for this combination
+    //             $combinationKey = $cutting->productCombination->id . '-' .
+    //                 $cutting->productCombination->style->name . '-' .
+    //                 $cutting->productCombination->color->name;
+
+    //             // Skip if we've already processed this combination
+    //             if (in_array($combinationKey, $processedCombinations)) {
+    //                 continue;
+    //             }
+
+    //             // Mark this combination as processed
+    //             $processedCombinations[] = $combinationKey;
+
+    //             // Get available quantities filtered by PO number
+    //             $availableQuantities = $this->getAvailableSendQuantities($cutting->productCombination, $poNumber)->getData()->availableQuantities;
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $cutting->productCombination->id,
+    //                 'style' => $cutting->productCombination->style->name,
+    //                 'color' => $cutting->productCombination->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => $cutting->productCombination->sizes->pluck('id')->toArray()
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
@@ -330,7 +415,8 @@ class PrintSendDataController extends Controller
         }
 
         $result = [];
-        $processedCombinations = []; // Track processed combinations
+        // Remove the global processed combinations array
+        // $processedCombinations = []; 
 
         foreach ($poNumbers as $poNumber) {
             // Get cutting data for the selected PO number with print_embroidery = true
@@ -341,23 +427,26 @@ class PrintSendDataController extends Controller
                 })
                 ->get();
 
+            // Create a processed combinations array PER PO NUMBER
+            $processedCombinationsForPo = [];
+
             foreach ($cuttingData as $cutting) {
                 if (!$cutting->productCombination) {
                     continue;
                 }
 
-                // Create a unique key for this combination
+                // Create a unique key for this combination WITHIN THIS PO
                 $combinationKey = $cutting->productCombination->id . '-' .
                     $cutting->productCombination->style->name . '-' .
                     $cutting->productCombination->color->name;
 
-                // Skip if we've already processed this combination
-                if (in_array($combinationKey, $processedCombinations)) {
+                // Skip if we've already processed this combination FOR THIS PO
+                if (in_array($combinationKey, $processedCombinationsForPo)) {
                     continue;
                 }
 
-                // Mark this combination as processed
-                $processedCombinations[] = $combinationKey;
+                // Mark this combination as processed FOR THIS PO
+                $processedCombinationsForPo[] = $combinationKey;
 
                 // Get available quantities filtered by PO number
                 $availableQuantities = $this->getAvailableSendQuantities($cutting->productCombination, $poNumber)->getData()->availableQuantities;
@@ -375,52 +464,69 @@ class PrintSendDataController extends Controller
         return response()->json($result);
     }
 
-    public function available($product_combination_id)
-    {
-        $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
-        $sizeMap = [];
-        foreach ($sizes as $size) {
-            $sizeMap[strtolower($size->name)] = $size->id;
-        }
+    // public function available($product_combination_id)
+    // {
+    //     $sizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+    //     $sizeMap = [];
+    //     foreach ($sizes as $size) {
+    //         $sizeMap[strtolower($size->name)] = $size->id;
+    //     }
 
-        $cutQuantities = CuttingData::where('product_combination_id', $product_combination_id)
-            ->get()
-            ->flatMap(function ($record) use ($sizeMap) {
-                $quantities = [];
-                foreach ($record->cut_quantities as $sizeName => $quantity) {
-                    $normalized = strtolower(trim($sizeName));
-                    if (isset($sizeMap[$normalized])) {
-                        $sizeId = $sizeMap[$normalized];
-                        $quantities[$sizeId] = $quantity;
-                    }
-                }
-                return $quantities;
-            })
-            ->groupBy(function ($item, $sizeId) {
-                return $sizeId;
-            })
-            ->map->sum();
+    //     $cutQuantities = CuttingData::where('product_combination_id', $product_combination_id)
+    //         ->get()
+    //         ->flatMap(function ($record) use ($sizeMap) {
+    //             $quantities = [];
+    //             foreach ($record->cut_quantities as $sizeName => $quantity) {
+    //                 $normalized = strtolower(trim($sizeName));
+    //                 if (isset($sizeMap[$normalized])) {
+    //                     $sizeId = $sizeMap[$normalized];
+    //                     $quantities[$sizeId] = $quantity;
+    //                 }
+    //             }
+    //             return $quantities;
+    //         })
+    //         ->groupBy(function ($item, $sizeId) {
+    //             return $sizeId;
+    //         })
+    //         ->map->sum();
 
-        $sentQuantities = PrintSendData::where('product_combination_id', $product_combination_id)
-            ->get()
-            ->flatMap(function ($record) {
-                return collect($record->send_quantities)
-                    ->mapWithKeys(fn($qty, $sizeId) => [(int)$sizeId => $qty]);
-            })
-            ->groupBy('key')
-            ->map->sum('value');
+    //     $sentQuantities = PrintSendData::where('product_combination_id', $product_combination_id)
+    //         ->get()
+    //         ->flatMap(function ($record) {
+    //             return collect($record->send_quantities)
+    //                 ->mapWithKeys(fn($qty, $sizeId) => [(int)$sizeId => $qty]);
+    //         })
+    //         ->groupBy('key')
+    //         ->map->sum('value');
 
-        $availableQuantities = [];
-        foreach ($cutQuantities as $sizeId => $cutQty) {
-            $sentQty = $sentQuantities->get($sizeId, 0);
-            $availableQuantities[(string)$sizeId] = $cutQty - $sentQty;
-        }
+    //     $availableQuantities = [];
+    //     foreach ($cutQuantities as $sizeId => $cutQty) {
+    //         $sentQty = $sentQuantities->get($sizeId, 0);
+    //         $availableQuantities[(string)$sizeId] = $cutQty - $sentQty;
+    //     }
 
-        return response()->json([
-            'available' => array_sum($availableQuantities),
-            'available_per_size' => $availableQuantities
-        ]);
-    }
+    //     //if sublimation print true and print true then capture data from SublimationPrintReceive also  
+    //     if ($this->isSublimationPrint($product_combination_id)) {
+    //         $sublimationData = SublimationPrintReceive::where('product_combination_id', $product_combination_id)
+    //             ->get()
+    //             ->flatMap(function ($record) {
+    //                 return collect($record->receive_quantities)
+    //                     ->mapWithKeys(fn($qty, $sizeId) => [(int)$sizeId => $qty]);
+    //             })
+    //             ->groupBy('key')
+    //             ->map->sum('value');
+
+    //         // Merge sublimation data into available quantities
+    //         foreach ($sublimationData as $sizeId => $qty) {
+    //             $availableQuantities[(string)$sizeId] = ($availableQuantities[(string)$sizeId] ?? 0) + $qty;
+    //         }
+    //     }
+
+    //     return response()->json([
+    //         'available' => array_sum($availableQuantities),
+    //         'available_per_size' => $availableQuantities
+    //     ]);
+    // }
 
     // Reports
 

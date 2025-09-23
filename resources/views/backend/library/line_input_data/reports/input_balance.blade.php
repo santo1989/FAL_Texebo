@@ -111,11 +111,10 @@
                                         <th>Style</th>
                                         <th>Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th colspan="4" class="text-center">{{ strtoupper($size->name) }}</th>
+                                            <th colspan="3" class="text-center">{{ strtoupper($size->name) }}</th>
                                         @endforeach
                                         <th>Total Available</th>
                                         <th>Total Input</th>
-                                        <th>Total Waste</th>
                                         <th>Total Balance</th>
                                     </tr>
                                     <tr>
@@ -124,7 +123,6 @@
                                         @foreach ($allSizes as $size)
                                             <th>Available</th>
                                             <th>Input</th>
-                                            <th>Waste</th>
                                             <th>Balance</th>
                                         @endforeach
                                         <th></th>
@@ -146,18 +144,15 @@
                                                     ) ?? [
                                                         'available' => 0,
                                                         'input' => 0,
-                                                        'waste' => 0,
                                                         'balance' => 0,
                                                     ];
                                                 @endphp
                                                 <td>{{ $sizeData['available'] }}</td>
                                                 <td>{{ $sizeData['input'] }}</td>
-                                                <td>{{ $sizeData['waste'] }}</td>
                                                 <td>{{ $sizeData['balance'] }}</td>
                                             @endforeach
                                             <td>{{ $data['total_available'] }}</td>
                                             <td>{{ $data['total_input'] }}</td>
-                                            <td>{{ $data['total_waste'] }}</td>
                                             <td>{{ $data['total_balance'] }}</td>
                                         </tr>
                                     @empty
