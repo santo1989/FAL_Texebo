@@ -294,62 +294,64 @@ class LineInputDataController extends Controller
         return view('backend.library.line_input_data.show', compact('lineInputDatum', 'allSizes'));
     }
 
-    public function edit(LineInputData $lineInputDatum)
-    {
-        $lineInputDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
-        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+    // public function edit(LineInputData $lineInputDatum)
+    // {
+    //     $lineInputDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        // Only valid sizes
-        $validSizes = $allSizes->filter(function ($size) use ($lineInputDatum) {
-            return isset($lineInputDatum->input_quantities[$size->id]) ||
-                isset($lineInputDatum->input_waste_quantities[$size->id]);
-        });
+    //     // Only valid sizes
+    //     $validSizes = $allSizes->filter(function ($size) use ($lineInputDatum) {
+    //         return isset($lineInputDatum->input_quantities[$size->id]) ||
+    //             isset($lineInputDatum->input_waste_quantities[$size->id]);
+    //     });
 
-        $allSizes = $validSizes->values();
+    //     $allSizes = $validSizes->values();
 
-        // Get max available quantities for this product combination
-        $maxQuantities = $this->getMaxInputQuantities($lineInputDatum->productCombination);
+    //     // Get max available quantities for this product combination
+    //     $maxQuantities = $this->getMaxInputQuantitiesByPo($lineInputDatum);
 
-        // Get order quantities from order_data table
-        $poNumbers = explode(',', $lineInputDatum->po_number);
-        $orderQuantities = [];
+    //     // dd($maxQuantities);
 
-        foreach ($poNumbers as $poNumber) {
-            $orderData = OrderData::where('product_combination_id', $lineInputDatum->product_combination_id)
-                ->where('po_number', $poNumber)
-                ->first();
+    //     // Get order quantities from order_data table
+    //     $poNumbers = explode(',', $lineInputDatum->po_number);
+    //     $orderQuantities = [];
 
-            if ($orderData && $orderData->order_quantities) {
-                foreach ($orderData->order_quantities as $sizeId => $qty) {
-                    $orderQuantities[$sizeId] = ($orderQuantities[$sizeId] ?? 0) + $qty;
-                }
-            }
-        }
+    //     foreach ($poNumbers as $poNumber) {
+    //         $orderData = OrderData::where('product_combination_id', $lineInputDatum->product_combination_id)
+    //             ->where('po_number', $poNumber)
+    //             ->first();
 
-        // Prepare size data with max available quantities and order quantities
-        $sizeData = [];
-        foreach ($allSizes as $size) {
-            $inputQty = $lineInputDatum->input_quantities[$size->id] ?? 0;
-            $wasteQty = $lineInputDatum->input_waste_quantities[$size->id] ?? 0;
-            $maxAvailable = $maxQuantities[$size->id] ?? 0;
-            $orderQty = $orderQuantities[$size->id] ?? 0;
+    //         if ($orderData && $orderData->order_quantities) {
+    //             foreach ($orderData->order_quantities as $sizeId => $qty) {
+    //                 $orderQuantities[$sizeId] = ($orderQuantities[$sizeId] ?? 0) + $qty;
+    //             }
+    //         }
+    //     }
 
-            // Calculate the maximum allowed (available + current input)
-            $maxAllowed = $maxAvailable + $inputQty;
+    //     // Prepare size data with max available quantities and order quantities
+    //     $sizeData = [];
+    //     foreach ($allSizes as $size) {
+    //         $inputQty = $lineInputDatum->input_quantities[$size->id] ?? 0;
+    //         $wasteQty = $lineInputDatum->input_waste_quantities[$size->id] ?? 0;
+    //         $maxAvailable = $maxQuantities[$size->id] ?? 0;
+    //         $orderQty = $orderQuantities[$size->id] ?? 0;
 
-            $sizeData[] = [
-                'id' => $size->id,
-                'name' => $size->name,
-                'input_quantity' => $inputQty,
-                'waste_quantity' => $wasteQty,
-                'max_available' => $maxAvailable,
-                'max_allowed' => $maxAllowed,
-                'order_quantity' => $orderQty,
-            ];
-        }
+    //         // Calculate the maximum allowed (available + current input)
+    //         $maxAllowed = $maxAvailable + $inputQty;
 
-        return view('backend.library.line_input_data.edit', compact('lineInputDatum', 'sizeData'));
-    }
+    //         $sizeData[] = [
+    //             'id' => $size->id,
+    //             'name' => $size->name,
+    //             'input_quantity' => $inputQty,
+    //             'waste_quantity' => $wasteQty,
+    //             'max_available' => $maxAvailable,
+    //             'max_allowed' => $maxAllowed,
+    //             'order_quantity' => $orderQty,
+    //         ];
+    //     }
+
+    //     return view('backend.library.line_input_data.edit', compact('lineInputDatum', 'sizeData'));
+    // }
     // public function update(Request $request, LineInputData $lineInputDatum)
     // {
     //     $request->validate([
@@ -395,55 +397,23 @@ class LineInputDataController extends Controller
         // dd($request->all());
 
         try {
-            // Get max available quantities based on PO number, not product combination
-            $maxQuantities = $this->getMaxInputQuantitiesByPo($lineInputDatum);
-
             $inputQuantities = [];
             $totalInputQuantity = 0;
-            $validationErrors = [];
-            // dd($maxQuantities);
 
-            // Process input quantities with availability check
+            // Process input quantities
             foreach ($request->input_quantities as $sizeId => $quantity) {
                 if ($quantity !== null && (int)$quantity > 0) {
-                    $currentQty = $lineInputDatum->input_quantities[$sizeId] ?? 0;
-                    $newQty = (int)$quantity;
-                    $maxAvailable = $maxQuantities[$sizeId] ?? 0;
-
-                    // Calculate the maximum allowed (available + current input)
-                    $maxAllowed = $maxAvailable + $currentQty;
-
-                    // Check if new quantity exceeds maximum allowed
-                    if ($newQty > $maxAllowed) {
-                        $size = Size::find($sizeId);
-                        $sizeName = $size ? $size->name : "Size $sizeId";
-                        $validationErrors[] = "Quantity for $sizeName ($newQty) exceeds maximum allowed ($maxAllowed). Available: $maxAvailable, Current: $currentQty";
-                        continue;
-                    }
-
-                    $inputQuantities[$sizeId] = $newQty;
-                    $totalInputQuantity += $newQty;
+                    $inputQuantities[$sizeId] = (int)$quantity;
+                    $totalInputQuantity += (int)$quantity;
                 }
-            }
-
-            // If there are validation errors, return with errors
-            if (!empty($validationErrors)) {
-                return redirect()->back()
-                    ->with('error', implode('<br>', $validationErrors))
-                    ->withInput();
-            }
-
-            // If no valid quantities to update
-            if (empty($inputQuantities)) {
-                return redirect()->back()
-                    ->with('warning', 'No valid quantities to update.')
-                    ->withInput();
             }
 
             $lineInputDatum->update([
                 'date' => $request->date,
                 'input_quantities' => $inputQuantities,
                 'total_input_quantity' => $totalInputQuantity,
+                'total_input_waste_quantity' => 0, // Reset waste quantity on update
+                'input_waste_quantities' => [], // Reset waste quantities on update
             ]);
 
             return redirect()->route('line_input_data.index')
@@ -705,54 +675,11 @@ class LineInputDataController extends Controller
         }
 
         $result = [];
+        // Remove the global processed combinations array
+        // $processedCombinations = [];
 
         foreach ($poNumbers as $poNumber) {
-            // Initialize quantities for this PO number
-            $availableQuantities = [];
-            $orderQuantities = [];
-            $processedStylesColors = [];
-
-            // Get all data for this PO number across all product combinations
-            $cuttingData = CuttingData::where('po_number', 'like', '%' . $poNumber . '%')->get();
-            $printData = PrintReceiveData::where('po_number', 'like', '%' . $poNumber . '%')->get();
-            $sublimationData = SublimationPrintReceive::where('po_number', 'like', '%' . $poNumber . '%')->get();
-            $lineInputData = LineInputData::where('po_number', 'like', '%' . $poNumber . '%')->get();
-            $orderData = OrderData::where('po_number', 'like', '%' . $poNumber . '%')->get();
-
-            // Calculate total source quantities for this PO
-            foreach ($cuttingData as $item) {
-                foreach ($item->cut_quantities as $sizeId => $quantity) {
-                    $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-                }
-            }
-
-            foreach ($printData as $item) {
-                foreach ($item->receive_quantities as $sizeId => $quantity) {
-                    $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-                }
-            }
-
-            foreach ($sublimationData as $item) {
-                foreach ($item->receive_quantities as $sizeId => $quantity) {
-                    $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-                }
-            }
-
-            // Subtract already input quantities
-            foreach ($lineInputData as $item) {
-                foreach ($item->input_quantities as $sizeId => $quantity) {
-                    $availableQuantities[$sizeId] = max(0, ($availableQuantities[$sizeId] ?? 0) - $quantity);
-                }
-            }
-
-            // Calculate order quantities
-            foreach ($orderData as $item) {
-                foreach ($item->order_quantities as $sizeId => $quantity) {
-                    $orderQuantities[$sizeId] = ($orderQuantities[$sizeId] ?? 0) + $quantity;
-                }
-            }
-
-            // Get unique style-color combinations for this PO
+            // Get all product combinations that have data in any of the sources for this PO number
             $productCombinations = ProductCombination::where(function ($query) use ($poNumber) {
                 $query->whereHas('cuttingData', function ($q) use ($poNumber) {
                     $q->where('po_number', 'like', '%' . $poNumber . '%');
@@ -764,175 +691,289 @@ class LineInputDataController extends Controller
                         $q->where('po_number', 'like', '%' . $poNumber . '%');
                     });
             })
-                ->with('style', 'color')
+                ->with('style', 'color', 'size')
                 ->get();
 
-            $styleColorData = [];
+            // Create a processed combinations array PER PO NUMBER
+            $processedCombinationsForPo = [];
+
             foreach ($productCombinations as $pc) {
                 if (!$pc->style || !$pc->color) {
                     continue;
                 }
 
-                $key = $pc->style->name . '-' . $pc->color->name;
-                if (!in_array($key, $processedStylesColors)) {
-                    $processedStylesColors[] = $key;
+                $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
 
-                    $styleColorData[] = [
-                        'combination_id' => $pc->id,
-                        'style' => $pc->style->name,
-                        'color' => $pc->color->name,
-                        'available_quantities' => $availableQuantities, // Same for all combinations under this PO
-                        'order_quantities' => $orderQuantities, // Same for all combinations under this PO
-                        'size_ids' => array_keys($availableQuantities)
-                    ];
+                // Skip if we've already processed this combination FOR THIS PO
+                if (in_array($combinationKey, $processedCombinationsForPo)) {
+                    continue;
                 }
-            }
 
-            $result[$poNumber] = $styleColorData;
+                // Mark this combination as processed FOR THIS PO
+                $processedCombinationsForPo[] = $combinationKey;
+
+                // Get order quantities for this PO and product combination
+                $orderData = OrderData::where('product_combination_id', $pc->id)
+                    ->where('po_number', $poNumber)
+                    ->first();
+
+                if (!$orderData) {
+                    continue;
+                }
+
+                // Get available quantities from previous stages based on product combination type
+                $availableQuantities = [];
+
+                if ($pc->print_embroidery && !$pc->sublimation_print) {
+                    // Print/Embroidery
+                    PrintReceiveData::where('product_combination_id', $pc->id)
+                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->receive_quantities as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+                } elseif (!$pc->print_embroidery && $pc->sublimation_print) {
+                    // Sublimation
+                    SublimationPrintReceive::where('product_combination_id', $pc->id)
+                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->sublimation_print_receive_quantities as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+                } elseif ($pc->print_embroidery && $pc->sublimation_print) {
+                    // Both print and sublimation
+                    PrintReceiveData::where('product_combination_id', $pc->id)
+                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->receive_quantities as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+
+                    SublimationPrintReceive::where('product_combination_id', $pc->id)
+                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->sublimation_print_receive_quantities as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+                } else {
+                    // Cutting only
+                    CuttingData::where('product_combination_id', $pc->id)
+                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->cut_quantities as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+                }
+
+                // Subtract already input quantities
+                $inputQuantities = [];
+                LineInputData::where('product_combination_id', $pc->id)
+                    ->where('po_number', 'like', '%' . $poNumber . '%')
+                    ->get()
+                    ->each(function ($item) use (&$inputQuantities) {
+                        foreach ($item->input_quantities as $sizeId => $quantity) {
+                            $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $quantity;
+                        }
+                    });
+
+                foreach ($availableQuantities as $sizeId => &$qty) {
+                    $inputQty = $inputQuantities[$sizeId] ?? 0;
+                    $qty = max(0, $qty - $inputQty);
+                }
+
+                $result[$poNumber][] = [
+                    'combination_id' => $pc->id,
+                    'style' => $pc->style->name,
+                    'color' => $pc->color->name,
+                    'available_quantities' => $availableQuantities,
+                    'order_quantities' => $orderData->order_quantities ?? [],
+                    'size_ids' => array_keys($availableQuantities)
+                ];
+            }
         }
 
         return response()->json($result);
     }
 
 
-
-    // public function find(Request $request)
+    // public function inputBalanceReport(Request $request)
     // {
-    //     $poNumbers = $request->input('po_numbers', []);
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+    //     $balanceData = [];
 
-    //     if (empty($poNumbers)) {
-    //         return response()->json([]);
+    //     // Get filter parameters
+    //     $poNumbers = $request->input('po_number', []);
+    //     $startDate = $request->input('start_date');
+    //     $endDate = $request->input('end_date');
+
+    //     // Get all PO numbers that have data
+    //     $allPoNumbers = array_unique(array_merge(
+    //         CuttingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //         PrintReceiveData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //         SublimationPrintReceive::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //         LineInputData::distinct()->pluck('po_number')->filter()->values()->toArray()
+    //     ));
+
+    //     // Filter PO numbers if specified
+    //     if (!empty($poNumbers)) {
+    //         $allPoNumbers = array_intersect($allPoNumbers, $poNumbers);
     //     }
 
-    //     $result = [];
-    //     // Remove the global processed combinations array
-    //     // $processedCombinations = [];
+    //     foreach ($allPoNumbers as $poNumber) {
+    //         // Initialize PO data
+    //         $balanceData[$poNumber] = [
+    //             'po_number' => $poNumber,
+    //             'sizes' => [],
+    //             'total_available' => 0,
+    //             'total_input' => 0,
+    //             'total_waste' => 0,
+    //             'total_balance' => 0,
+    //         ];
 
-    //     foreach ($poNumbers as $poNumber) {
-    //         // Get all product combinations that have data in any of the sources for this PO number
-    //         $productCombinations = ProductCombination::where(function ($query) use ($poNumber) {
-    //             $query->whereHas('cuttingData', function ($q) use ($poNumber) {
-    //                 $q->where('po_number', 'like', '%' . $poNumber . '%');
-    //             })
-    //                 ->orWhereHas('printReceives', function ($q) use ($poNumber) {
-    //                     $q->where('po_number', 'like', '%' . $poNumber . '%');
-    //                 })
-    //                 ->orWhereHas('sublimationPrintReceives', function ($q) use ($poNumber) {
-    //                     $q->where('po_number', 'like', '%' . $poNumber . '%');
-    //                 });
-    //         })
-    //             ->with('style', 'color', 'size')
-    //             ->get();
-
-    //         // Create a processed combinations array PER PO NUMBER
-    //         $processedCombinationsForPo = [];
-
-    //         foreach ($productCombinations as $pc) {
-    //             if (!$pc->style || !$pc->color) {
-    //                 continue;
-    //             }
-
-    //             $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
-
-    //             // Skip if we've already processed this combination FOR THIS PO
-    //             if (in_array($combinationKey, $processedCombinationsForPo)) {
-    //                 continue;
-    //             }
-
-    //             // Mark this combination as processed FOR THIS PO
-    //             $processedCombinationsForPo[] = $combinationKey;
-
-    //             // Get order quantities for this PO and product combination
-    //             $orderData = OrderData::where('product_combination_id', $pc->id)
-    //                 ->where('po_number', $poNumber)
-    //                 ->first();
-
-    //             if (!$orderData) {
-    //                 continue;
-    //             }
-
-    //             // Get available quantities from previous stages based on product combination type
-    //             $availableQuantities = [];
-
-    //             if ($pc->print_embroidery && !$pc->sublimation_print) {
-    //                 // Print/Embroidery
-    //                 PrintReceiveData::where('product_combination_id', $pc->id)
-    //                     ->where('po_number', 'like', '%' . $poNumber . '%')
-    //                     ->get()
-    //                     ->each(function ($item) use (&$availableQuantities) {
-    //                         foreach ($item->receive_quantities as $sizeId => $quantity) {
-    //                             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-    //                         }
-    //                     });
-    //             } elseif (!$pc->print_embroidery && $pc->sublimation_print) {
-    //                 // Sublimation
-    //                 SublimationPrintReceive::where('product_combination_id', $pc->id)
-    //                     ->where('po_number', 'like', '%' . $poNumber . '%')
-    //                     ->get()
-    //                     ->each(function ($item) use (&$availableQuantities) {
-    //                         foreach ($item->sublimation_print_receive_quantities as $sizeId => $quantity) {
-    //                             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-    //                         }
-    //                     });
-    //             } elseif ($pc->print_embroidery && $pc->sublimation_print) {
-    //                 // Both print and sublimation
-    //                 PrintReceiveData::where('product_combination_id', $pc->id)
-    //                     ->where('po_number', 'like', '%' . $poNumber . '%')
-    //                     ->get()
-    //                     ->each(function ($item) use (&$availableQuantities) {
-    //                         foreach ($item->receive_quantities as $sizeId => $quantity) {
-    //                             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-    //                         }
-    //                     });
-
-    //                 SublimationPrintReceive::where('product_combination_id', $pc->id)
-    //                     ->where('po_number', 'like', '%' . $poNumber . '%')
-    //                     ->get()
-    //                     ->each(function ($item) use (&$availableQuantities) {
-    //                         foreach ($item->sublimation_print_receive_quantities as $sizeId => $quantity) {
-    //                             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-    //                         }
-    //                     });
-    //             } else {
-    //                 // Cutting only
-    //                 CuttingData::where('product_combination_id', $pc->id)
-    //                     ->where('po_number', 'like', '%' . $poNumber . '%')
-    //                     ->get()
-    //                     ->each(function ($item) use (&$availableQuantities) {
-    //                         foreach ($item->cut_quantities as $sizeId => $quantity) {
-    //                             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-    //                         }
-    //                     });
-    //             }
-
-    //             // Subtract already input quantities
-    //             $inputQuantities = [];
-    //             LineInputData::where('product_combination_id', $pc->id)
-    //                 ->where('po_number', 'like', '%' . $poNumber . '%')
-    //                 ->get()
-    //                 ->each(function ($item) use (&$inputQuantities) {
-    //                     foreach ($item->input_quantities as $sizeId => $quantity) {
-    //                         $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $quantity;
-    //                     }
-    //                 });
-
-    //             foreach ($availableQuantities as $sizeId => &$qty) {
-    //                 $inputQty = $inputQuantities[$sizeId] ?? 0;
-    //                 $qty = max(0, $qty - $inputQty);
-    //             }
-
-    //             $result[$poNumber][] = [
-    //                 'combination_id' => $pc->id,
-    //                 'style' => $pc->style->name,
-    //                 'color' => $pc->color->name,
-    //                 'available_quantities' => $availableQuantities,
-    //                 'order_quantities' => $orderData->order_quantities ?? [],
-    //                 'size_ids' => array_keys($availableQuantities)
+    //         // Initialize size data
+    //         foreach ($allSizes as $size) {
+    //             $balanceData[$poNumber]['sizes'][$size->id] = [
+    //                 'name' => $size->name,
+    //                 'available' => 0,
+    //                 'input' => 0,
+    //                 'waste' => 0,
+    //                 'balance' => 0
     //             ];
+    //         }
+
+    //         // Calculate source quantities for this PO (across all product combinations)
+    //         $sourceQuantities = [];
+
+    //         // Cutting data
+    //         $cuttingQuery = CuttingData::where('po_number', 'like', '%' . $poNumber . '%');
+    //         if ($startDate && $endDate) {
+    //             $cuttingQuery->whereBetween('created_at', [$startDate, $endDate]);
+    //         }
+    //         $cuttingData = $cuttingQuery->get();
+
+    //         //null check and non-null continue
+    //        if($cuttingData->isNotEmpty()) {
+
+    //         foreach ($cuttingData as $item) {
+    //             foreach ($item->cut_quantities as $sizeId => $quantity) {
+    //                 $sourceQuantities[$sizeId] = ($sourceQuantities[$sizeId] ?? 0) + $quantity;
+    //             }
     //         }
     //     }
 
-    //     return response()->json($result);
+
+
+
+    //         // Print data
+    //         $printQuery = PrintReceiveData::where('po_number', 'like', '%' . $poNumber . '%');
+    //         if ($startDate && $endDate) {
+    //             $printQuery->whereBetween('date', [$startDate, $endDate]);
+    //         }
+    //         $printData = $printQuery->get();
+
+    //         if($printData->isNotEmpty()) {
+
+    //         foreach ($printData as $item) {
+    //             foreach ($item->receive_quantities as $sizeId => $quantity) {
+    //                 $sourceQuantities[$sizeId] = ($sourceQuantities[$sizeId] ?? 0) + $quantity;
+    //             }
+    //         }
+    //     }
+
+    //         // Sublimation data
+    //         $sublimationQuery = SublimationPrintReceive::where('po_number', 'like', '%' . $poNumber . '%');
+    //         if ($startDate && $endDate) {
+    //             $sublimationQuery->whereBetween('date', [$startDate, $endDate]);
+    //         }
+    //         $sublimationData = $sublimationQuery->get();
+
+    //         if($sublimationData->isNotEmpty()) {
+
+    //         foreach ($sublimationData as $item) {
+    //             foreach ($item->receive_quantities as $sizeId => $quantity) {
+    //                 $sourceQuantities[$sizeId] = ($sourceQuantities[$sizeId] ?? 0) + $quantity;
+    //             }
+    //         }
+    //     }
+
+    //         // Calculate input quantities for this PO
+    //         $inputQuery = LineInputData::where('po_number', 'like', '%' . $poNumber . '%');
+    //         if ($startDate && $endDate) {
+    //             $inputQuery->whereBetween('date', [$startDate, $endDate]);
+    //         }
+    //         $inputData = $inputQuery->get();
+    //         if($inputData->isNotEmpty()) {
+
+
+    //         $inputQuantities = [];
+    //         $wasteQuantities = [];
+
+    //         foreach ($inputData as $item) {
+    //             foreach ($item->input_quantities as $sizeId => $quantity) {
+    //                 $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $quantity;
+    //             }
+    //             foreach ($item->input_waste_quantities ?? [] as $sizeId => $quantity) {
+    //                 $wasteQuantities[$sizeId] = ($wasteQuantities[$sizeId] ?? 0) + $quantity;
+    //             }
+
+    //         }
+    //     }
+
+    //         // Populate the balance data
+    //         foreach ($allSizes as $size) {
+    //             $available = $sourceQuantities[$size->id] ?? 0;
+    //             $input = $inputQuantities[$size->id] ?? 0;
+    //             $waste = $wasteQuantities[$size->id] ?? 0;
+    //             $balance = $available - $input - $waste;
+
+    //             $balanceData[$poNumber]['sizes'][$size->id] = [
+    //                 'name' => $size->name,
+    //                 'available' => $available,
+    //                 'input' => $input,
+    //                 'waste' => $waste,
+    //                 'balance' => $balance
+    //             ];
+
+    //             $balanceData[$poNumber]['total_available'] += $available;
+    //             $balanceData[$poNumber]['total_input'] += $input;
+    //             $balanceData[$poNumber]['total_waste'] += $waste;
+    //             $balanceData[$poNumber]['total_balance'] += $balance;
+    //         }
+
+    //         // Remove PO if no data
+    //         if (
+    //             $balanceData[$poNumber]['total_available'] == 0 &&
+    //             $balanceData[$poNumber]['total_input'] == 0 &&
+    //             $balanceData[$poNumber]['total_waste'] == 0
+    //         ) {
+    //             unset($balanceData[$poNumber]);
+    //         }
+    //     }
+
+    //     // Get filter options
+    //     $distinctPoNumbers = array_unique(array_merge(
+    //         CuttingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //         PrintReceiveData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //         SublimationPrintReceive::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //         LineInputData::distinct()->pluck('po_number')->filter()->values()->toArray()
+    //     ));
+    //     sort($distinctPoNumbers);
+
+    //     return view('backend.library.line_input_data.reports.input_balance', [
+    //         'balanceData' => array_values($balanceData),
+    //         'allSizes' => $allSizes,
+    //         'distinctPoNumbers' => $distinctPoNumbers
+    //     ]);
     // }
 
 
@@ -991,9 +1032,14 @@ class LineInputDataController extends Controller
             }
             $cuttingData = $cuttingQuery->get();
 
-            foreach ($cuttingData as $item) {
-                foreach ($item->cut_quantities as $sizeId => $quantity) {
-                    $sourceQuantities[$sizeId] = ($sourceQuantities[$sizeId] ?? 0) + $quantity;
+            if ($cuttingData->isNotEmpty()) {
+                foreach ($cuttingData as $item) {
+                    // Check if cut_quantities exists and is not null
+                    if (!empty($item->cut_quantities)) {
+                        foreach ($item->cut_quantities as $sizeId => $quantity) {
+                            $sourceQuantities[$sizeId] = ($sourceQuantities[$sizeId] ?? 0) + $quantity;
+                        }
+                    }
                 }
             }
 
@@ -1004,9 +1050,14 @@ class LineInputDataController extends Controller
             }
             $printData = $printQuery->get();
 
-            foreach ($printData as $item) {
-                foreach ($item->receive_quantities as $sizeId => $quantity) {
-                    $sourceQuantities[$sizeId] = ($sourceQuantities[$sizeId] ?? 0) + $quantity;
+            if ($printData->isNotEmpty()) {
+                foreach ($printData as $item) {
+                    // Check if receive_quantities exists and is not null
+                    if (!empty($item->receive_quantities)) {
+                        foreach ($item->receive_quantities as $sizeId => $quantity) {
+                            $sourceQuantities[$sizeId] = ($sourceQuantities[$sizeId] ?? 0) + $quantity;
+                        }
+                    }
                 }
             }
 
@@ -1017,9 +1068,14 @@ class LineInputDataController extends Controller
             }
             $sublimationData = $sublimationQuery->get();
 
-            foreach ($sublimationData as $item) {
-                foreach ($item->receive_quantities as $sizeId => $quantity) {
-                    $sourceQuantities[$sizeId] = ($sourceQuantities[$sizeId] ?? 0) + $quantity;
+            if ($sublimationData->isNotEmpty()) {
+                foreach ($sublimationData as $item) {
+                    // Check if receive_quantities exists and is not null
+                    if (!empty($item->receive_quantities)) {
+                        foreach ($item->receive_quantities as $sizeId => $quantity) {
+                            $sourceQuantities[$sizeId] = ($sourceQuantities[$sizeId] ?? 0) + $quantity;
+                        }
+                    }
                 }
             }
 
@@ -1030,15 +1086,25 @@ class LineInputDataController extends Controller
             }
             $inputData = $inputQuery->get();
 
+            // Initialize arrays outside the condition
             $inputQuantities = [];
             $wasteQuantities = [];
 
-            foreach ($inputData as $item) {
-                foreach ($item->input_quantities as $sizeId => $quantity) {
-                    $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $quantity;
-                }
-                foreach ($item->input_waste_quantities ?? [] as $sizeId => $quantity) {
-                    $wasteQuantities[$sizeId] = ($wasteQuantities[$sizeId] ?? 0) + $quantity;
+            if ($inputData->isNotEmpty()) {
+                foreach ($inputData as $item) {
+                    // Check if input_quantities exists and is not null
+                    if (!empty($item->input_quantities)) {
+                        foreach ($item->input_quantities as $sizeId => $quantity) {
+                            $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $quantity;
+                        }
+                    }
+
+                    // Check if input_waste_quantities exists and is not null
+                    if (!empty($item->input_waste_quantities)) {
+                        foreach ($item->input_waste_quantities as $sizeId => $quantity) {
+                            $wasteQuantities[$sizeId] = ($wasteQuantities[$sizeId] ?? 0) + $quantity;
+                        }
+                    }
                 }
             }
 

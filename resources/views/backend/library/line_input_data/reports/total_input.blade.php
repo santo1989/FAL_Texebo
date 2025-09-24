@@ -111,15 +111,13 @@
                                         <th rowspan="2">Style</th>
                                         <th rowspan="2">Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th colspan="2">{{ strtoupper($size->name) }}</th>
+                                            <th colspan="1">{{ strtoupper($size->name) }}</th>
                                         @endforeach
                                         <th rowspan="2">Total Input</th>
-                                        <th rowspan="2">Total Waste</th>
                                     </tr>
                                     <tr>
                                         @foreach ($allSizes as $size)
                                             <th>Input</th>
-                                            <th>Waste</th>
                                         @endforeach
                                     </tr>
                                 </thead>
@@ -130,10 +128,8 @@
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
                                                 <td>{{ $data['sizes'][strtolower($size->name)] ?? 0 }}</td>
-                                                <td>{{ $data['waste_sizes'][strtolower($size->name)] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data['total'] }}</td>
-                                            <td>{{ $data['total_waste'] }}</td>
                                         </tr>
                                     @empty
                                         <tr>
@@ -149,11 +145,8 @@
                                             @foreach ($allSizes as $size)
                                                 <td><strong>{{ $totalInputBySize[strtolower($size->name)] ?? 0 }}</strong>
                                                 </td>
-                                                <td><strong>{{ $totalWasteBySize[strtolower($size->name)] ?? 0 }}</strong>
-                                                </td>
                                             @endforeach
                                             <td><strong>{{ $grandTotalInput }}</strong></td>
-                                            <td><strong>{{ $grandTotalWaste }}</strong></td>
                                         </tr>
                                     @endif
                                 </tbody>

@@ -19,12 +19,6 @@
            <span class="close" data-dismiss="alert">&times;</span>
            <strong>{{ session('message') }}</strong>
        </div>
-       
-   @else
-       <div class="alert alert-danger">
-           <span class="close" data-dismiss="alert">&times;</span>
-           <strong>{{ session('error') }}</strong>
-       </div>
    @endif
 
 
