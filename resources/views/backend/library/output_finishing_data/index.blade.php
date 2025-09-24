@@ -1,11 +1,11 @@
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Output Finishing Data
+        Sewing Output Data
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Output Finishing Data </x-slot>
+            <x-slot name="pageHeader"> Sewing Output Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
             <li class="breadcrumb-item active">Output Finishing</li>
         </x-backend.layouts.elements.breadcrumb>
@@ -201,12 +201,12 @@
 
 {{-- <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Output Finishing Data
+        Sewing Output Data
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Output Finishing Data </x-slot>
+            <x-slot name="pageHeader"> Sewing Output Data </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
             <li class="breadcrumb-item active">Output Finishing</li>
         </x-backend.layouts.elements.breadcrumb>

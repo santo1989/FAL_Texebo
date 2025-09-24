@@ -60,7 +60,7 @@
                             <option value="LineInputData" {{ old('Stage') == 'LineInputData' ? 'selected' : '' }}>
                                 Sewing Input Data</option>
                             <option value="OutputFinishingData"
-                                {{ old('Stage') == 'OutputFinishingData' ? 'selected' : '' }}>Output Finishing Data
+                                {{ old('Stage') == 'OutputFinishingData' ? 'selected' : '' }}>Sewing Output Data
                             </option>
                             <option value="FinishPackingData"
                                 {{ old('Stage') == 'FinishPackingData' ? 'selected' : '' }}>Finish Packing Data
@@ -149,7 +149,7 @@
                         .then(response => {
                             console.log('Response status:', response.status);
                             if (!response.ok) throw new Error('Network response was not ok: ' + response
-                            .statusText);
+                                .statusText);
                             return response.json();
                         })
                         .then(data => {
@@ -172,7 +172,7 @@
                                 data[poNumber].forEach(combination => {
                                     if (!combination.combination_id || !combination.style || !combination
                                         .color || !combination.available_quantities || !combination.size_ids
-                                        ) {
+                                    ) {
                                         console.error(`Incomplete combination data for PO ${poNumber}:`,
                                             combination);
                                         return;

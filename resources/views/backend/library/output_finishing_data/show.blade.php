@@ -1,11 +1,11 @@
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Output Finishing Data Details
+        Sewing Output Data Details
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Output Finishing Data Details </x-slot>
+            <x-slot name="pageHeader"> Sewing Output Data Details </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{{ route('output_finishing_data.index') }}">Output Finishing</a></li>
             <li class="breadcrumb-item active">Details</li>
@@ -21,7 +21,8 @@
                 <div class="card-body">
                     <dl class="row">
                         <dt class="col-sm-3">Date</dt>
-                        <dd class="col-sm-9">{{ \Carbon\Carbon::parse($outputFinishingDatum->date)->format('d-M-Y') }}</dd>
+                        <dd class="col-sm-9">{{ \Carbon\Carbon::parse($outputFinishingDatum->date)->format('d-M-Y') }}
+                        </dd>
 
                         <dt class="col-sm-3">PO Number</dt>
                         <dd class="col-sm-9">{{ $outputFinishingDatum->po_number }}</dd>
@@ -52,12 +53,14 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($allSizes as $size)
-                                        @if(isset($outputFinishingDatum->output_quantities[$size->id]) || isset($outputFinishingDatum->output_waste_quantities[$size->id]))
+                                    @foreach ($allSizes as $size)
+                                        @if (isset($outputFinishingDatum->output_quantities[$size->id]) ||
+                                                isset($outputFinishingDatum->output_waste_quantities[$size->id]))
                                             <tr>
                                                 <td>{{ $size->name }}</td>
                                                 <td>{{ $outputFinishingDatum->output_quantities[$size->id] ?? 0 }}</td>
-                                                <td>{{ $outputFinishingDatum->output_waste_quantities[$size->id] ?? 0 }}</td>
+                                                <td>{{ $outputFinishingDatum->output_waste_quantities[$size->id] ?? 0 }}
+                                                </td>
                                             </tr>
                                         @endif
                                     @endforeach
@@ -75,7 +78,8 @@
                 <div class="card-footer">
                     <a href="{{ route('output_finishing_data.index') }}" class="btn btn-secondary">Back to List</a>
                     @canany(['Admin', 'Output', 'Supervisor'])
-                    <a href="{{ route('output_finishing_data.edit', $outputFinishingDatum->id) }}" class="btn btn-warning">Edit</a>
+                        <a href="{{ route('output_finishing_data.edit', $outputFinishingDatum->id) }}"
+                            class="btn btn-warning">Edit</a>
                     @endcanany
                 </div>
             </div>
@@ -85,12 +89,12 @@
 
 {{-- <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Output Finishing Data Details
+        Sewing Output Data Details
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Output Finishing Data Details </x-slot>
+            <x-slot name="pageHeader"> Sewing Output Data Details </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{{ route('output_finishing_data.index') }}">Output Finishing</a></li>
             <li class="breadcrumb-item active">Details</li>
@@ -125,14 +129,14 @@
                             <table class="table table-bordered table-sm">
                                 <thead>
                                     <tr>
-                                        @foreach(array_keys($outputFinishingDatum->output_quantities) as $sizeName)
+                                        @foreach (array_keys($outputFinishingDatum->output_quantities) as $sizeName)
                                             <th>{{ ucfirst($sizeName) }}</th>
                                         @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        @foreach($outputFinishingDatum->output_quantities as $sizeName => $quantity)
+                                        @foreach ($outputFinishingDatum->output_quantities as $sizeName => $quantity)
                                             <td>{{ $quantity }}</td>
                                         @endforeach
                                     </tr>

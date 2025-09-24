@@ -11,6 +11,7 @@ use App\Models\Size;
 use App\Models\Style;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpParser\Node\Scalar\MagicConst\Line;
 
 class OutputFinishingDataController extends Controller
 {
@@ -186,52 +187,73 @@ class OutputFinishingDataController extends Controller
         $outputFinishingDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        // Only valid sizes
-        $validSizes = $allSizes->filter(function ($size) use ($outputFinishingDatum) {
-            return isset($outputFinishingDatum->output_quantities[$size->id]) ||
-                isset($outputFinishingDatum->output_waste_quantities[$size->id]);
-        });
+        // Since po_number is a string, not an array, we use where() instead of whereIn()
+        $poNumber = $outputFinishingDatum->po_number;
 
-        $allSizes = $validSizes->values();
-
-        // Get max available quantities for this product combination
-        $maxQuantities = $this->getMaxOutputQuantities($outputFinishingDatum->productCombination);
-
-        // Get order quantities from order_data table
-        $poNumbers = explode(',', $outputFinishingDatum->po_number);
-        $orderQuantities = [];
-
-        foreach ($poNumbers as $poNumber) {
-            $orderData = OrderData::where('product_combination_id', $outputFinishingDatum->product_combination_id)
-                ->where('po_number', $poNumber)
-                ->first();
-
-            if ($orderData && $orderData->order_quantities) {
-                foreach ($orderData->order_quantities as $sizeId => $qty) {
-                    $orderQuantities[$sizeId] = ($orderQuantities[$sizeId] ?? 0) + $qty;
+        // Get total input quantities from LineInputData for this product combination and PO number
+        $totalInputQuantities = [];
+        LineInputData::where('product_combination_id', $outputFinishingDatum->product_combination_id)
+            ->where('po_number', $poNumber) // Changed from whereIn() to where()
+            ->get()
+            ->each(function ($item) use (&$totalInputQuantities) {
+                foreach ($item->input_quantities ?? [] as $sizeId => $quantity) {
+                    $totalInputQuantities[$sizeId] = ($totalInputQuantities[$sizeId] ?? 0) + $quantity;
                 }
+            });
+
+        // Get total output quantities from other OutputFinishingData entries (excluding current one)
+        $totalOutputQuantities = [];
+        $totalOutputWasteQuantities = [];
+        OutputFinishingData::where('product_combination_id', $outputFinishingDatum->product_combination_id)
+            ->where('po_number', $poNumber) // Changed from whereIn() to where()
+            ->where('id', '!=', $outputFinishingDatum->id)
+            ->get()
+            ->each(function ($item) use (&$totalOutputQuantities, &$totalOutputWasteQuantities) {
+                foreach ($item->output_quantities ?? [] as $sizeId => $quantity) {
+                    $totalOutputQuantities[$sizeId] = ($totalOutputQuantities[$sizeId] ?? 0) + $quantity;
+                }
+                foreach ($item->output_waste_quantities ?? [] as $sizeId => $quantity) {
+                    $totalOutputWasteQuantities[$sizeId] = ($totalOutputWasteQuantities[$sizeId] ?? 0) + $quantity;
+                }
+            });
+
+        // Get order quantities
+        $orderQuantities = [];
+        $orderData = OrderData::where('product_combination_id', $outputFinishingDatum->product_combination_id)
+            ->where('po_number', $poNumber) // Changed from whereIn() to where()
+            ->first();
+
+        if ($orderData && $orderData->order_quantities) {
+            foreach ($orderData->order_quantities as $sizeId => $qty) {
+                $orderQuantities[$sizeId] = ($orderQuantities[$sizeId] ?? 0) + $qty;
             }
         }
 
-        // Prepare size data with max available quantities and order quantities
+        // Prepare size data
         $sizeData = [];
         foreach ($allSizes as $size) {
-            $outputQty = $outputFinishingDatum->output_quantities[$size->id] ?? 0;
-            $wasteQty = $outputFinishingDatum->output_waste_quantities[$size->id] ?? 0;
-            $maxAvailable = $maxQuantities[$size->id] ?? 0;
-            $orderQty = $orderQuantities[$size->id] ?? 0;
+            $currentOutputQty = $outputFinishingDatum->output_quantities[$size->id] ?? 0;
+            $currentWasteQty = $outputFinishingDatum->output_waste_quantities[$size->id] ?? 0;
 
-            // Calculate the maximum allowed (available + current output)
-            $maxAllowed = $maxAvailable + $outputQty;
+            $totalInputQty = $totalInputQuantities[$size->id] ?? 0;
+            $otherOutputQty = $totalOutputQuantities[$size->id] ?? 0;
+            $otherWasteQty = $totalOutputWasteQuantities[$size->id] ?? 0;
+
+            // Calculate available quantity: total input - (other outputs + other waste + current output + current waste)
+            $availableQty = $totalInputQty - ($otherOutputQty + $otherWasteQty + $currentOutputQty + $currentWasteQty);
+
+            // Max allowed is available quantity + current quantities (so user can reduce or keep same)
+            $maxAllowed = $availableQty + $currentOutputQty + $currentWasteQty;
 
             $sizeData[] = [
                 'id' => $size->id,
                 'name' => $size->name,
-                'output_quantity' => $outputQty,
-                'waste_quantity' => $wasteQty,
-                'max_available' => $maxAvailable,
+                'output_quantity' => $currentOutputQty,
+                'waste_quantity' => $currentWasteQty,
+                'total_input_quantity' => $totalInputQty,
+                'available_quantity' => $availableQty,
                 'max_allowed' => $maxAllowed,
-                'order_quantity' => $orderQty,
+                'order_quantity' => $orderQuantities[$size->id] ?? 0,
             ];
         }
 
@@ -387,7 +409,6 @@ class OutputFinishingDataController extends Controller
     // }
 
 
-
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
@@ -397,7 +418,8 @@ class OutputFinishingDataController extends Controller
         }
 
         $result = [];
-        $processedCombinations = [];
+        // Remove the global processed combinations array
+        // $processedCombinations = [];
 
         foreach ($poNumbers as $poNumber) {
             // Get product combinations with LineInputData for the PO
@@ -409,13 +431,21 @@ class OutputFinishingDataController extends Controller
                 }])
                 ->get();
 
+            // Create a processed combinations array PER PO NUMBER
+            $processedCombinationsForPo = [];
+
             foreach ($productCombinations as $pc) {
                 if (!$pc->style || !$pc->color) continue;
 
                 $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
-                if (in_array($combinationKey, $processedCombinations)) continue;
 
-                $processedCombinations[] = $combinationKey;
+                // Skip if we've already processed this combination FOR THIS PO
+                if (in_array($combinationKey, $processedCombinationsForPo)) {
+                    continue;
+                }
+
+                // Mark this combination as processed FOR THIS PO
+                $processedCombinationsForPo[] = $combinationKey;
 
                 // Calculate total input quantities from LineInputData
                 $inputQuantities = [];
@@ -425,7 +455,7 @@ class OutputFinishingDataController extends Controller
                     }
                 }
 
-                // Subtract already outputted quantities from OutputFinishingData
+                // Subtract already outputted quantities from OutputFinishingData with waste quantities included
                 $outputQuantities = [];
                 OutputFinishingData::where('product_combination_id', $pc->id)
                     ->where('po_number', 'like', '%' . $poNumber . '%')
@@ -434,11 +464,17 @@ class OutputFinishingDataController extends Controller
                         foreach ($item->output_quantities as $sizeId => $qty) {
                             $outputQuantities[$sizeId] = ($outputQuantities[$sizeId] ?? 0) + $qty;
                         }
+                        // Include waste quantities in the subtraction
+                        foreach ($item->output_waste_quantities as $sizeId => $wasteQty) {
+                            $outputQuantities[$sizeId] = ($outputQuantities[$sizeId] ?? 0) + $wasteQty;
+                        }
                     });
+
+                // Calculate available quantities
 
                 $availableQuantities = [];
                 foreach ($inputQuantities as $sizeId => $qty) {
-                    $availableQuantities[$sizeId] = $qty - ($outputQuantities[$sizeId] ?? 0);
+                    $availableQuantities[$sizeId] = max(0, $qty - ($outputQuantities[$sizeId] ?? 0));
                 }
 
                 $result[$poNumber][] = [
@@ -453,6 +489,74 @@ class OutputFinishingDataController extends Controller
 
         return response()->json($result);
     }
+
+
+
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     $result = [];
+    //     $processedCombinations = [];
+
+    //     foreach ($poNumbers as $poNumber) {
+    //         // Get product combinations with LineInputData for the PO
+    //         $productCombinations = ProductCombination::whereHas('lineInputData', function ($query) use ($poNumber) {
+    //             $query->where('po_number', 'like', '%' . $poNumber . '%');
+    //         })
+    //             ->with(['style', 'color', 'size', 'lineInputData' => function ($query) use ($poNumber) {
+    //                 $query->where('po_number', 'like', '%' . $poNumber . '%');
+    //             }])
+    //             ->get();
+
+    //         foreach ($productCombinations as $pc) {
+    //             if (!$pc->style || !$pc->color) continue;
+
+    //             $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+    //             if (in_array($combinationKey, $processedCombinations)) continue;
+
+    //             $processedCombinations[] = $combinationKey;
+
+    //             // Calculate total input quantities from LineInputData
+    //             $inputQuantities = [];
+    //             foreach ($pc->lineInputData as $input) {
+    //                 foreach ($input->input_quantities as $sizeId => $qty) {
+    //                     $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $qty;
+    //                 }
+    //             }
+
+    //             // Subtract already outputted quantities from OutputFinishingData
+    //             $outputQuantities = [];
+    //             OutputFinishingData::where('product_combination_id', $pc->id)
+    //                 ->where('po_number', 'like', '%' . $poNumber . '%')
+    //                 ->get()
+    //                 ->each(function ($item) use (&$outputQuantities) {
+    //                     foreach ($item->output_quantities as $sizeId => $qty) {
+    //                         $outputQuantities[$sizeId] = ($outputQuantities[$sizeId] ?? 0) + $qty;
+    //                     }
+    //                 });
+
+    //             $availableQuantities = [];
+    //             foreach ($inputQuantities as $sizeId => $qty) {
+    //                 $availableQuantities[$sizeId] = $qty - ($outputQuantities[$sizeId] ?? 0);
+    //             }
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $pc->id,
+    //                 'style' => $pc->style->name,
+    //                 'color' => $pc->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => array_keys($availableQuantities)
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
 
     private function getAvailablePoNumbers()
     {
@@ -593,7 +697,7 @@ class OutputFinishingDataController extends Controller
 
     public function sewingWipReport(Request $request)
     {
-        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'desc')->get();
         $wipData = [];
 
         // Get filter parameters
@@ -617,7 +721,7 @@ class OutputFinishingDataController extends Controller
             $productCombinationsQuery->whereIn('color_id', $colorIds);
         }
 
-        // Apply search filter
+        // Apply search filter for style/color names
         if ($search) {
             $productCombinationsQuery->where(function ($q) use ($search) {
                 $q->whereHas('style', function ($q2) use ($search) {
@@ -635,68 +739,93 @@ class OutputFinishingDataController extends Controller
             $color = $pc->color->name;
             $key = $style . '-' . $color;
 
-            // Initialize with size IDs as keys
-            $wipData[$key] = [
-                'style' => $style,
-                'color' => $color,
-                'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
-                'total' => 0
-            ];
+            // Initialize data structure with size details for input, output, balance
+            if (!isset($wipData[$key])) {
+                $wipData[$key] = [
+                    'style' => $style,
+                    'color' => $color,
+                    'sizes_detail' => [], // This will hold input, output, balance per size
+                    'total_input' => 0,
+                    'total_output' => 0,
+                    'total_balance' => 0,
+                ];
 
-            // Get input quantities with filters
+                foreach ($allSizes as $size) {
+                    $wipData[$key]['sizes_detail'][$size->id] = [
+                        'input' => 0,
+                        'output' => 0,
+                        'balance' => 0,
+                    ];
+                }
+            }
+
+
+            // Get input quantities for this product combination with filters
             $inputQuery = LineInputData::where('product_combination_id', $pc->id);
 
-            // Apply PO number filter
+            // Apply PO number filter for input data
             if (!empty($poNumbers)) {
                 $inputQuery->whereIn('po_number', $poNumbers);
             }
-
-            // Apply date filter
+            // Apply date filter for input data
             if ($startDate && $endDate) {
                 $inputQuery->whereBetween('date', [$startDate, $endDate]);
             }
-
+            // Aggregating input quantities
             $inputQuantities = $inputQuery->get()
-                ->flatMap(fn($item) => $item->input_quantities)
-                ->groupBy(fn($value, $key) => $key) // Use size ID as key
+                ->flatMap(fn($item) => $item->input_quantities ?? []) // Ensure null coalescing for input_quantities
+                ->groupBy(fn($value, $key) => $key)
                 ->map(fn($group) => $group->sum())
                 ->toArray();
 
-            // Get output quantities with filters
+
+            // Get output quantities for this product combination with filters
             $outputQuery = OutputFinishingData::where('product_combination_id', $pc->id);
 
-            // Apply PO number filter
+            // Apply PO number filter for output data
             if (!empty($poNumbers)) {
                 $outputQuery->whereIn('po_number', $poNumbers);
             }
-
-            // Apply date filter
+            // Apply date filter for output data
             if ($startDate && $endDate) {
                 $outputQuery->whereBetween('date', [$startDate, $endDate]);
             }
-
+            // Aggregating output quantities
             $outputQuantities = $outputQuery->get()
-                ->flatMap(fn($item) => $item->output_quantities)
-                ->groupBy(fn($value, $key) => $key) // Use size ID as key
+                ->flatMap(fn($item) => $item->output_quantities ?? []) // Ensure null coalescing for output_quantities
+                ->groupBy(fn($value, $key) => $key)
                 ->map(fn($group) => $group->sum())
                 ->toArray();
 
+            // Calculate WIP for each size
             foreach ($allSizes as $size) {
                 $input = $inputQuantities[$size->id] ?? 0;
                 $output = $outputQuantities[$size->id] ?? 0;
-                $wip = max(0, $input - $output);
+                $balance = $input - $output; // Sewing WIP is input - output
 
-                $wipData[$key]['sizes'][$size->id] = $wip;
-                $wipData[$key]['total'] += $wip;
+                // Ensure balance is not negative if output somehow exceeds input (e.g., data anomalies)
+                $balance = max(0, $balance);
+
+                $wipData[$key]['sizes_detail'][$size->id]['input'] = $input;
+                $wipData[$key]['sizes_detail'][$size->id]['output'] = $output;
+                $wipData[$key]['sizes_detail'][$size->id]['balance'] = $balance;
+
+                $wipData[$key]['total_input'] += $input;
+                $wipData[$key]['total_output'] += $output;
+                $wipData[$key]['total_balance'] += $balance;
             }
 
-            // Remove if no data matches the filters
-            if ($wipData[$key]['total'] == 0) {
+            // Remove if no data matches the filters (i.e., all totals are zero)
+            if (
+                $wipData[$key]['total_input'] == 0 &&
+                $wipData[$key]['total_output'] == 0 &&
+                $wipData[$key]['total_balance'] == 0
+            ) {
                 unset($wipData[$key]);
             }
         }
 
-        // Get filter options
+        // Get filter options (same as your existing totalBalanceReport)
         $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
         $allColors = Color::where('is_active', 1)->orderBy('name')->get();
         $distinctPoNumbers = array_unique(
@@ -708,7 +837,7 @@ class OutputFinishingDataController extends Controller
         sort($distinctPoNumbers);
 
         return view('backend.library.output_finishing_data.reports.sewing_wip', [
-            'wipData' => array_values($wipData),
+            'wipData' => array_values($wipData), // Reset array keys for the view
             'allSizes' => $allSizes,
             'allStyles' => $allStyles,
             'allColors' => $allColors,

@@ -325,6 +325,7 @@ class FinishPackingDataController extends Controller
                 }
             });
 
+
         // Get total packed quantities for this specific PO number
         $packedQuantities = [];
         FinishPackingData::where('product_combination_id', $pc->id)
@@ -333,6 +334,11 @@ class FinishPackingDataController extends Controller
             ->each(function ($item) use (&$packedQuantities) {
                 foreach ($item->packing_quantities as $sizeId => $quantity) {
                     $packedQuantities[$sizeId] = ($packedQuantities[$sizeId] ?? 0) + $quantity;
+                }
+
+                // Include waste quantities in the subtraction
+                foreach ($item->packing_waste_quantities as $sizeId => $wasteQty) {
+                    $packedQuantities[$sizeId] = ($packedQuantities[$sizeId] ?? 0) + $wasteQty;
                 }
             });
 
@@ -345,6 +351,57 @@ class FinishPackingDataController extends Controller
 
         return $availableQuantities;
     }
+
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     $result = [];
+    //     $processedCombinations = [];
+
+    //     foreach ($poNumbers as $poNumber) {
+    //         // Get data for the selected PO number from OutputFinishingData
+    //         $productCombinations = ProductCombination::whereHas('outputFinishingData', function ($query) use ($poNumber) {
+    //             $query->where('po_number', $poNumber); // Exact match instead of LIKE
+    //         })
+    //             ->with(['style', 'color', 'size', 'outputFinishingData' => function ($query) use ($poNumber) {
+    //                 $query->where('po_number', $poNumber);
+    //             }])
+    //             ->get();
+
+    //         foreach ($productCombinations as $pc) {
+    //             if (!$pc->style || !$pc->color) {
+    //                 continue;
+    //             }
+
+    //             $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+
+    //             if (in_array($combinationKey, $processedCombinations)) {
+    //                 continue;
+    //             }
+
+    //             $processedCombinations[] = $combinationKey;
+
+    //             // Get available quantities for this specific PO
+    //             $availableQuantities = $this->getAvailablePackingQuantities($pc, $poNumber);
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $pc->id,
+    //                 'style' => $pc->style->name,
+    //                 'color' => $pc->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => array_keys($availableQuantities) // Only include sizes with available quantities
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
 
     public function find(Request $request)
     {
@@ -360,7 +417,7 @@ class FinishPackingDataController extends Controller
         foreach ($poNumbers as $poNumber) {
             // Get data for the selected PO number from OutputFinishingData
             $productCombinations = ProductCombination::whereHas('outputFinishingData', function ($query) use ($poNumber) {
-                $query->where('po_number', $poNumber); // Exact match instead of LIKE
+                $query->where('po_number', $poNumber);
             })
                 ->with(['style', 'color', 'size', 'outputFinishingData' => function ($query) use ($poNumber) {
                     $query->where('po_number', $poNumber);
@@ -372,7 +429,8 @@ class FinishPackingDataController extends Controller
                     continue;
                 }
 
-                $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+                // Create unique key that includes PO number to handle same combination across different POs
+                $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name . '-' . $poNumber;
 
                 if (in_array($combinationKey, $processedCombinations)) {
                     continue;
@@ -383,19 +441,28 @@ class FinishPackingDataController extends Controller
                 // Get available quantities for this specific PO
                 $availableQuantities = $this->getAvailablePackingQuantities($pc, $poNumber);
 
-                $result[$poNumber][] = [
-                    'combination_id' => $pc->id,
-                    'style' => $pc->style->name,
-                    'color' => $pc->color->name,
-                    'available_quantities' => $availableQuantities,
-                    'size_ids' => array_keys($availableQuantities) // Only include sizes with available quantities
-                ];
+                // Only include combinations that have available quantities
+                $hasAvailableQuantities = array_sum($availableQuantities) > 0;
+
+                if ($hasAvailableQuantities) {
+                    $result[$poNumber][] = [
+                        'combination_id' => $pc->id,
+                        'style' => $pc->style->name,
+                        'color' => $pc->color->name,
+                        'available_quantities' => $availableQuantities,
+                        'size_ids' => array_keys(array_filter($availableQuantities)) // Only include sizes with available quantities > 0
+                    ];
+                }
+            }
+
+            // If no combinations found for this PO, add an empty array to indicate PO exists
+            if (!isset($result[$poNumber])) {
+                $result[$poNumber] = [];
             }
         }
 
         return response()->json($result);
     }
-
     public function getMaxPackingQuantities(ProductCombination $pc)
     {
         $maxQuantities = [];

@@ -91,7 +91,8 @@
             });
 
             function updateFinishPackingDataRows(poNumbers) {
-                const url = '{{ route('finish_packing_data.find') }}?po_numbers[]=' + poNumbers.join('&po_numbers[]=');
+                const url = '{{ route('finish_packing_data.find') }}?po_numbers[]=' + poNumbers.join(
+                    '&po_numbers[]=');
 
                 fetch(url, {
                         headers: {
@@ -116,11 +117,25 @@
                             return;
                         }
 
+                        let hasData = false;
+
                         for (const poNumber in data) {
                             if (!Array.isArray(data[poNumber])) continue;
 
+                            // Check if this PO has any combinations
+                            if (data[poNumber].length === 0) {
+                                // PO exists but has no available combinations
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                        <td colspan="100%" class="text-center text-muted">
+                            PO: ${poNumber} - No available quantities for packing
+                        </td>
+                    `;
+                                finishPackingDataBody.appendChild(row);
+                                continue;
+                            }
+
                             data[poNumber].forEach(combination => {
-                                // Add validation to ensure all required fields exist
                                 if (!combination.combination_id || !combination.style || !combination
                                     .color ||
                                     !combination.available_quantities || !combination.size_ids) {
@@ -129,25 +144,27 @@
                                 }
 
                                 const combinationKey =
-                                    `${combination.combination_id}-${combination.style}-${combination.color}`;
+                                    `${combination.combination_id}-${combination.style}-${combination.color}-${poNumber}`;
 
                                 if (processedCombinations.has(combinationKey)) {
                                     return;
                                 }
 
                                 processedCombinations.add(combinationKey);
+                                hasData = true;
 
                                 const row = document.createElement('tr');
                                 const key = `${poNumber}-${combination.combination_id}`;
                                 row.dataset.key = key;
                                 row.innerHTML = `
-                    <td class="text-center">
-                        <input type="hidden" name="rows[${rowIndex}][product_combination_id]" value="${combination.combination_id}">
-                        ${poNumber}
-                    </td>
-                    <td class="text-center">${combination.style}</td>
-                    <td class="text-center">${combination.color}</td>
-                `;
+                        <td class="text-center">
+                            <input type="hidden" name="rows[${rowIndex}][product_combination_id]" value="${combination.combination_id}">
+                            <input type="hidden" name="rows[${rowIndex}][po_number]" value="${poNumber}">
+                            ${poNumber}
+                        </td>
+                        <td class="text-center">${combination.style}</td>
+                        <td class="text-center">${combination.color}</td>
+                    `;
 
                                 const availableSizeIds = combination.size_ids.map(id => String(id));
 
@@ -155,47 +172,57 @@
                                     {
                                         const sizeId = "{{ $size->id }}";
                                         const sizeName = "{{ $size->name }}";
-                                        // Use size ID as key instead of size name
-                                        const availableQty = combination.available_quantities[sizeId] || 0;
-                                        const savedPacking = (savedPackings[key] && savedPackings[key].packing && savedPackings[key].packing[sizeId]) || 0;
-                                        const savedWaste = (savedPackings[key] && savedPackings[key].waste && savedPackings[key].waste[sizeId]) || 0;
-                                        const isSizeAvailable = availableSizeIds.includes(sizeId);
+                                        const availableQty = combination.available_quantities[sizeId] ||
+                                            0;
+                                        const savedPacking = (savedPackings[key] && savedPackings[key]
+                                            .packing && savedPackings[key].packing[sizeId]) || 0;
+                                        const savedWaste = (savedPackings[key] && savedPackings[key]
+                                            .waste && savedPackings[key].waste[sizeId]) || 0;
+                                        const isSizeAvailable = availableSizeIds.includes(sizeId) &&
+                                            availableQty > 0;
 
                                         const cell = document.createElement('td');
-                                        if (isSizeAvailable && availableQty > 0) {
-                                            cell.innerHTML = ` <label>Max = ${availableQty} Pcs </label> <br>
-                                                <div class="input-group input-group-sm">
-                                                    <input type="number" 
-                                                           name="rows[${rowIndex}][packing_quantities][${sizeId}]" 
-                                                           class="form-control packing-qty-input"
-                                                           min="0" 
-                                                           max="${availableQty}"
-                                                           value="${savedPacking}"
-                                                           placeholder="Av: ${availableQty}">
-                                                    <input type="number" 
-                                                           name="rows[${rowIndex}][packing_waste_quantities][${sizeId}]" 
-                                                           class="form-control waste-qty-input"
-                                                           min="0" 
-                                                           value="${savedWaste}"
-                                                           max="${availableQty}"
-                                                           placeholder="W: 0">
-                                                </div>
-                                            `;
+                                        if (isSizeAvailable) {
+                                            cell.innerHTML = ` 
+                                    <label>Max = ${availableQty} Pcs </label> <br>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" 
+                                               name="rows[${rowIndex}][packing_quantities][${sizeId}]" 
+                                               class="form-control packing-qty-input"
+                                               min="0" 
+                                               max="${availableQty}"
+                                               value="${savedPacking}"
+                                               placeholder="Av: ${availableQty}">
+                                        <input type="number" 
+                                               name="rows[${rowIndex}][packing_waste_quantities][${sizeId}]" 
+                                               class="form-control waste-qty-input"
+                                               min="0" 
+                                               value="${savedWaste}"
+                                               max="${availableQty}"
+                                               placeholder="W: 0">
+                                    </div>
+                                `;
                                         } else {
-                                            cell.innerHTML = `<span class="text-muted text-center">N/A</span>`;
+                                            cell.innerHTML =
+                                                `<span class="text-muted text-center">N/A</span>`;
                                         }
                                         row.appendChild(cell);
                                     }
                                 @endforeach
 
                                 row.innerHTML += `
-                    <td><span class="total-packing-qty-span">0</span></td>
-                    <td><span class="total-waste-qty-span">0</span></td>
-                `;
+                        <td><span class="total-packing-qty-span">0</span></td>
+                        <td><span class="total-waste-qty-span">0</span></td>
+                    `;
 
                                 finishPackingDataBody.appendChild(row);
                                 rowIndex++;
                             });
+                        }
+
+                        if (!hasData && finishPackingDataBody.children.length === 0) {
+                            finishPackingDataBody.innerHTML =
+                                '<tr><td colspan="100%">No available quantities found for the selected POs.</td></tr>';
                         }
 
                         finishPackingDataBody.querySelectorAll('.packing-qty-input, .waste-qty-input').forEach(
@@ -205,8 +232,8 @@
                     })
                     .catch(error => {
                         console.error('Error fetching data:', error);
-                        finishPackingDataBody.innerHTML =
-                            '<tr><td colspan="100%">Error loading data. Error: ' + error.message + '</td></tr>';
+                        finishPackingDataBody.innerHTML = '<tr><td colspan="100%">Error loading data. Error: ' +
+                            error.message + '</td></tr>';
                     });
             }
 
@@ -227,7 +254,8 @@
 
                 if (isPacking || isWaste) {
                     const name = target.name;
-                    const sizeId = name.match(/\[(packing_quantities|packing_waste_quantities)\]\[(\d+)\]/)[2];
+                    const sizeId = name.match(/\[(packing_quantities|packing_waste_quantities)\]\[(\d+)\]/)[
+                        2];
                     let value = parseInt(target.value) || 0;
 
                     if (isPacking) {
@@ -475,4 +503,3 @@
         }
     </style>
 </x-backend.layouts.master> --}}
-

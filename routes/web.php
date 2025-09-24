@@ -153,7 +153,7 @@ Route::middleware('auth')->group(function () {
     // Cutting Data Routes
     Route::get('cutting_requisition', [CuttingDataController::class, 'cutting_requisition'])->name('cutting_requisition');
     Route::get('cutting_data_report', [CuttingDataController::class, 'cutting_data_report'])->name('cutting_data_report');
-    
+
     Route::get('/cutting_requisition_find', [CuttingDataController::class, 'cutting_requisition_find'])->name('cutting_requisition_find');
     Route::get('/cutting-data/find', [CuttingDataController::class, 'find'])->name('cutting_data.find');
     Route::get('/get-order-and-cutting-quantities/{product_combination_id}', [CuttingDataController::class, 'getOrderAndCuttingQuantities'])->name('get.order.and.cutting.quantities');
@@ -166,7 +166,7 @@ Route::middleware('auth')->group(function () {
     //sublimation print send routes 
     Route::get('sublimation_print_send_data/find', [SublimationPrintSendController::class, 'find'])->name('sublimation_print_send_data_find');
     Route::resource('sublimation_print_send_data', SublimationPrintSendController::class);
-   
+
 
     // Sublimation Print Send Report Routes
     Route::get('/sublimation_print_send_data/reports/total', [SublimationPrintSendController::class, 'totalPrintEmbSendReport'])->name('sublimation_print_send_data.report.total');
@@ -199,7 +199,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/ready', [PrintSendDataController::class, 'readyToInputReport'])->name('print_send_data.report.ready');
     });
 
-    
+
     Route::get('/print_send_data/available_quantities/{product_combination_id}', [PrintSendDataController::class, 'getAvailableSendQuantities'])->name('print_send_data.available_quantities');
 
     //Print Receive Data
@@ -229,11 +229,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/input-balance', [LineInputDataController::class, 'inputBalanceReport'])->name('input_balance');
     });
 
-    // Output Finishing Data Routes
+    // Sewing Output Data Routes
 
-  
+
     Route::get('output_finishing_data/find', [OutputFinishingDataController::class, 'find'])->name('output_finishing_data.find');
-    
+
     Route::get('output_finishing_data/max_quantities/{id}', [OutputFinishingDataController::class, 'maxQuantities'])
         ->name('output_finishing_data.max_quantities');
     Route::get('output_finishing_data/report/total_balance', [OutputFinishingDataController::class, 'totalBalanceReport'])->name('output_finishing_data.report.total_balance');
