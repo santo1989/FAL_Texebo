@@ -33,10 +33,10 @@
                         class="btn btn-lg btn-outline-info">
                         <i class="fas fa-chart-bar"></i> Total Packing Report
                     </a>
-                    <a href="{{ route('finish_packing_data.report.sewing_wip') }}"
+                    {{-- <a href="{{ route('finish_packing_data.report.sewing_wip') }}"
                         class="btn btn-lg btn-outline-info ml-2">
                         <i class="fas fa-cogs"></i> Sewing WIP Report
-                    </a>
+                    </a> --}}
                     <a href="{{ route('finish_packing_data.report.balance') }}"
                         class="btn btn-lg btn-outline-info ml-2">
                         <i class="fas fa-balance-scale"></i> Balance Report

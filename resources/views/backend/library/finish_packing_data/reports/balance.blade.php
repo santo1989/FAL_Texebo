@@ -89,7 +89,6 @@
                                     placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
                                 <button class="btn btn-outline-success" type="submit">Search</button>
                                 @if (request('search') ||
-                                        request('date') ||
                                         request('style_id') ||
                                         request('color_id') ||
                                         request('po_number') ||
@@ -150,22 +149,22 @@
                                             <td>{{ $data['color'] }}</td>
                                             {{-- Cutting Quantities --}}
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['stage_balances']['cutting'][strtolower($size->name)] ?? 0 }}
+                                                <td>{{ $data['stage_balances']['cutting'][$size->id] ?? 0 }}
                                                 </td>
                                             @endforeach
                                             {{-- Print WIP Quantities --}}
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['stage_balances']['print_wip'][strtolower($size->name)] ?? 0 }}
+                                                <td>{{ $data['stage_balances']['print_wip'][$size->id] ?? 0 }}
                                                 </td>
                                             @endforeach
                                             {{-- Sewing WIP Quantities --}}
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['stage_balances']['sewing_wip'][strtolower($size->name)] ?? 0 }}
+                                                <td>{{ $data['stage_balances']['sewing_wip'][$size->id] ?? 0 }}
                                                 </td>
                                             @endforeach
                                             {{-- Packing WIP Quantities --}}
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['stage_balances']['packing_wip'][strtolower($size->name)] ?? 0 }}
+                                                <td>{{ $data['stage_balances']['packing_wip'][$size->id] ?? 0 }}
                                                 </td>
                                             @endforeach
                                         </tr>
@@ -182,7 +181,7 @@
                                                     foreach ($reportData as $data) {
                                                         $grandTotalCutting +=
                                                             $data['stage_balances']['cutting'][
-                                                                strtolower($size->name)
+                                                                $size->id
                                                             ] ?? 0;
                                                     }
                                                     echo $grandTotalCutting;
@@ -197,7 +196,7 @@
                                                     foreach ($reportData as $data) {
                                                         $grandTotalPrintWip +=
                                                             $data['stage_balances']['print_wip'][
-                                                                strtolower($size->name)
+                                                                $size->id
                                                             ] ?? 0;
                                                     }
                                                     echo $grandTotalPrintWip;
@@ -212,7 +211,7 @@
                                                     foreach ($reportData as $data) {
                                                         $grandTotalSewingWip +=
                                                             $data['stage_balances']['sewing_wip'][
-                                                                strtolower($size->name)
+                                                                $size->id
                                                             ] ?? 0;
                                                     }
                                                     echo $grandTotalSewingWip;
@@ -227,7 +226,7 @@
                                                     foreach ($reportData as $data) {
                                                         $grandTotalPackingWip +=
                                                             $data['stage_balances']['packing_wip'][
-                                                                strtolower($size->name)
+                                                                $size->id
                                                             ] ?? 0;
                                                     }
                                                     echo $grandTotalPackingWip;

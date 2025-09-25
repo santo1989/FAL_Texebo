@@ -43,15 +43,14 @@
                                     <h4 class="btn btn-lg text-center">Reports</h4>
 
                                     <button class="btn btn-lg btn-outline-primary"
-                                        onclick="location.href='{{ route('sublimation_print_send_data.report.total') }}'">Total
-                                        Print/Emb Send</button>
+                                        onclick="location.href='{{ route('sublimation_print_send_data.report.total') }}'">Total Sublimation Print/Emb Send</button>
                                     <button class="btn btn-lg btn-outline-primary"
-                                        onclick="location.href='{{ route('sublimation_print_send_data.report.wip') }}'">WIP
+                                        onclick="location.href='{{ route('sublimation_print_send_data.report.wip') }}'">Sublimation Print/Emb WIP
                                         (Waiting)</button>
-                                    <button class="btn btn-lg btn-outline-primary"
+                                    {{-- <button class="btn btn-lg btn-outline-primary"
                                         onclick="location.href='{{ route('sublimation_print_send_data.report.ready') }}'">Ready
                                         to
-                                        Input</button>
+                                        Input</button> --}}
 
                                 </div>
                             </div>

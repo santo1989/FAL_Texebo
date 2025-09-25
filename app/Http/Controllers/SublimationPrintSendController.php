@@ -410,7 +410,9 @@ class SublimationPrintSendController extends Controller
 
     public function totalPrintEmbSendReport(Request $request)
     {
-        $query = SublimationPrintSend::with('productCombination.style', 'productCombination.color');
+        $query = SublimationPrintSend::with('productCombination.style', 'productCombination.color')->whereHas('productCombination', function ($q) {
+            $q->where('sublimation_print', true);
+        });
 
         // Apply filters
         $styleIds = $request->input('style_id', []);
@@ -658,7 +660,7 @@ class SublimationPrintSendController extends Controller
 
         // Base query for product combinations with sublimation_print = true
         $combinationsQuery = ProductCombination::where('sublimation_print', true)
-            ->with('style', 'color');
+            ->with('style', 'color', 'sublimationPrintSends');
 
         // Apply style and color filters
         if (!empty($styleIds)) {
@@ -804,11 +806,11 @@ class SublimationPrintSendController extends Controller
 
         // Base query for non-sublimation combinations
         $nonSublimationCombinationsQuery = ProductCombination::where('sublimation_print', false)
-            ->with(['style', 'color']);
+            ->with(['style', 'color', 'sublimationPrintSends', 'sublimationPrintReceives' ,'cuttingData', 'printSends', 'printReceives']);
 
         // Base query for sublimation combinations
         $sublimationCombinationsQuery = ProductCombination::where('sublimation_print', true)
-            ->with(['style', 'color']);
+            ->with(['style', 'color',  'sublimationPrintSends', 'sublimationPrintReceives', 'cuttingData']);
 
         // Apply filters if provided
         if (!empty($styleIds)) {

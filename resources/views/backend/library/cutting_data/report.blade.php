@@ -88,19 +88,21 @@
                                         <th rowspan="2">Style</th>
                                         <th rowspan="2">Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th colspan="2" class="text-center">
+                                            <th colspan="3" class="text-center">
                                                 {{ strtoupper($size->name) }}
                                             </th>
                                         @endforeach
-                                        <th colspan="2">Total Quantities</th>
+                                        <th colspan="3">Total Quantities</th>
                                     </tr>
                                     <tr>
                                         @foreach ($allSizes as $size)
                                             <th>Order Qty</th>
+                                            <th>Cut Qty with 3%</th>
                                             <th class="bg-info">Cut Qty</th>
                                             {{-- <th>Waste Qty</th> --}}
                                         @endforeach
                                         <th>Order</th>
+                                        <th >Cut Qty with 3%</th>
                                         <th class="bg-info">Cut</th>
                                         {{-- <th>Waste</th> --}}
 
@@ -114,12 +116,12 @@
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
                                                 <td>{{ $data['order_sizes'][$size->id] ?? 0 }}</td>
+                                                <td >{{ $data['allowed_cut_sizes'][$size->id] ?? 0 }}</td>
                                                 <td class="bg-info">{{ $data['cut_sizes'][$size->id] ?? 0 }}</td>
-                                                {{-- <td>{{ $data['waste_sizes'][$size->id] ?? 0 }}</td> --}}
                                             @endforeach
                                             <td>{{ $data['total_order'] }}</td>
+                                            <td >{{ $data['total_allowed_cut'] }}</td>
                                             <td class="bg-info">{{ $data['total_cut'] }}</td>
-                                            {{-- <td>{{ $data['total_waste'] }}</td> --}}
 
                                         </tr>
                                     @empty

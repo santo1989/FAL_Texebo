@@ -111,14 +111,13 @@ class ShipmentDataController extends Controller
 
     public function store(Request $request)
     {
+        // dd($request->all());
         $request->validate([
             'date' => 'required|date',
-            'po_number' => 'required|array',
-            'po_number.*' => 'required|string',
             'rows' => 'required|array',
             'rows.*.product_combination_id' => 'required|exists:product_combinations,id',
+            'rows.*.po_number' => 'required|string', // Add this validation
             'rows.*.shipment_quantities.*' => 'nullable|integer|min:0',
-            'rows.*.shipment_waste_quantities.*' => 'nullable|integer|min:0',
         ]);
 
         try {
@@ -141,23 +140,12 @@ class ShipmentDataController extends Controller
                     }
                 }
 
-                // Process waste quantities
-                foreach ($row['shipment_waste_quantities'] as $sizeId => $quantity) {
-                    if ($quantity !== null && (int)$quantity > 0) {
-                        $size = Size::find($sizeId);
-                        if ($size) {
-                            $wasteQuantities[$size->id] = (int)$quantity;
-                            $totalWasteQuantity += (int)$quantity;
-                        }
-                    }
-                }
-
                 // Only create a record if there's at least one valid shipment or waste quantity
                 if (!empty($shipmentQuantities) || !empty($wasteQuantities)) {
                     ShipmentData::create([
                         'date' => $request->date,
                         'product_combination_id' => $row['product_combination_id'],
-                        'po_number' => $row['po_number'],
+                        'po_number' => $row['po_number'], // Use the specific PO number for this row
                         'shipment_quantities' => $shipmentQuantities,
                         'total_shipment_quantity' => $totalShipmentQuantity,
                         'shipment_waste_quantities' => $wasteQuantities,
@@ -441,6 +429,56 @@ class ShipmentDataController extends Controller
     //     return response()->json($result);
     // }
 
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     $result = [];
+    //     $processedCombinations = [];
+
+    //     foreach ($poNumbers as $poNumber) {
+    //         // Get data for the selected PO number from FinishPackingData
+    //         $productCombinations = ProductCombination::whereHas('finishPackingData', function ($query) use ($poNumber) {
+    //             $query->where('po_number', $poNumber); // Exact match instead of LIKE
+    //         })
+    //             ->with(['style', 'color', 'size', 'finishPackingData' => function ($query) use ($poNumber) {
+    //                 $query->where('po_number', $poNumber);
+    //             }])
+    //             ->get();
+
+    //         foreach ($productCombinations as $pc) {
+    //             if (!$pc->style || !$pc->color) {
+    //                 continue;
+    //             }
+
+    //             $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+
+    //             if (in_array($combinationKey, $processedCombinations)) {
+    //                 continue;
+    //             }
+
+    //             $processedCombinations[] = $combinationKey;
+
+    //             // Calculate available quantities specifically for this PO
+    //             $availableQuantities = $this->getAvailableShipmentQuantities($pc, $poNumber);
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $pc->id,
+    //                 'style' => $pc->style->name,
+    //                 'color' => $pc->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'size_ids' => array_keys($availableQuantities)
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
@@ -455,7 +493,7 @@ class ShipmentDataController extends Controller
         foreach ($poNumbers as $poNumber) {
             // Get data for the selected PO number from FinishPackingData
             $productCombinations = ProductCombination::whereHas('finishPackingData', function ($query) use ($poNumber) {
-                $query->where('po_number', $poNumber); // Exact match instead of LIKE
+                $query->where('po_number', $poNumber);
             })
                 ->with(['style', 'color', 'size', 'finishPackingData' => function ($query) use ($poNumber) {
                     $query->where('po_number', $poNumber);
@@ -467,7 +505,8 @@ class ShipmentDataController extends Controller
                     continue;
                 }
 
-                $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+                // Create unique key that includes PO number to handle same combination across different POs
+                $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name . '-' . $poNumber;
 
                 if (in_array($combinationKey, $processedCombinations)) {
                     continue;
@@ -478,13 +517,23 @@ class ShipmentDataController extends Controller
                 // Calculate available quantities specifically for this PO
                 $availableQuantities = $this->getAvailableShipmentQuantities($pc, $poNumber);
 
-                $result[$poNumber][] = [
-                    'combination_id' => $pc->id,
-                    'style' => $pc->style->name,
-                    'color' => $pc->color->name,
-                    'available_quantities' => $availableQuantities,
-                    'size_ids' => array_keys($availableQuantities)
-                ];
+                // Only include combinations that have available quantities
+                $hasAvailableQuantities = array_sum($availableQuantities) > 0;
+
+                if ($hasAvailableQuantities) {
+                    $result[$poNumber][] = [
+                        'combination_id' => $pc->id,
+                        'style' => $pc->style->name,
+                        'color' => $pc->color->name,
+                        'available_quantities' => $availableQuantities,
+                        'size_ids' => array_keys(array_filter($availableQuantities)) // Only include sizes with available quantities > 0
+                    ];
+                }
+            }
+
+            // If no combinations found for this PO, add an empty array to indicate PO exists
+            if (!isset($result[$poNumber])) {
+                $result[$poNumber] = [];
             }
         }
 
@@ -499,6 +548,8 @@ class ShipmentDataController extends Controller
             foreach ($item->packing_quantities as $sizeId => $quantity) {
                 $packedQuantities[$sizeId] = ($packedQuantities[$sizeId] ?? 0) + $quantity;
             }
+
+            
         });
 
         // Get total shipped quantities for this specific PO

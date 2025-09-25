@@ -1,13 +1,13 @@
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Sewing WIP Report
+        Sewing Output WIP Report
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Sewing WIP Report </x-slot>
+            <x-slot name="pageHeader"> Sewing Output WIP Report </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item active">Sewing WIP Report</li>
+            <li class="breadcrumb-item active">Sewing Output WIP Report</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
 

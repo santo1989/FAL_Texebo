@@ -2,7 +2,6 @@
     <x-slot name="pageTitle">
         Total Packing Report
     </x-slot>
-
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
             <x-slot name="pageHeader"> Total Packing Report </x-slot>
@@ -11,7 +10,6 @@
             <li class="breadcrumb-item active">Total Packing Report</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
-
     <section class="content">
         <div class="container-fluid">
             <div class="card">
@@ -37,7 +35,6 @@
                                     </select>
                                 </div>
                             </div>
-
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="color_id">Color</label>
@@ -52,7 +49,6 @@
                                     </select>
                                 </div>
                             </div>
-
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="po_number">PO Number</label>
@@ -67,7 +63,6 @@
                                     </select>
                                 </div>
                             </div>
-
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="start_date">Start Date</label>
@@ -75,7 +70,6 @@
                                         value="{{ request('start_date') }}">
                                 </div>
                             </div>
-
                             <div class="col-md-2">
                                 <div class="form-group">
                                     <label for="end_date">End Date</label>
@@ -83,7 +77,6 @@
                                         value="{{ request('end_date') }}">
                                 </div>
                             </div>
-
                             <div class="col-md-2 d-flex align-items-end gap-2">
                                 <input class="form-control me-2" type="search" name="search"
                                     placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
@@ -103,7 +96,6 @@
                     </form>
                 </div>
                 <div class="card-body">
-
                     @if (empty($reportData))
                         <div class="alert alert-info">
                             No total packing data available for the selected date range.
@@ -113,12 +105,19 @@
                             <table class="table table-bordered table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Style</th>
-                                        <th>Color</th>
+                                        <th rowspan="2">Style</th>
+                                        <th rowspan="2">Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ $size->name }}</th>
+                                            <th colspan="2">{{ $size->name }}</th>
                                         @endforeach
-                                        <th>Total Packed</th>
+                                        <th rowspan="2">Total Packed</th>
+                                        <th rowspan="2">Total Waste</th>
+                                    </tr>
+                                    <tr>
+                                        @foreach ($allSizes as $size)
+                                            <th>Packed</th>
+                                            <th>Waste</th>
+                                        @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -127,9 +126,11 @@
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['sizes'][$size->name] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id] ?? 0 }}</td>
+                                                <td>{{ $data['sizes_waste'][$size->id] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data['total'] }}</td>
+                                            <td>{{ $data['total_waste'] }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -141,10 +142,18 @@
                                                 @php
                                                     $totalSizePacked = 0;
                                                     foreach ($reportData as $data) {
-                                                        $totalSizePacked +=
-                                                            $data['sizes'][strtolower($size->name)] ?? 0;
+                                                        $totalSizePacked += $data['sizes'][$size->id] ?? 0;
                                                     }
                                                     echo $totalSizePacked;
+                                                @endphp
+                                            </th>
+                                            <th>
+                                                @php
+                                                    $totalSizeWaste = 0;
+                                                    foreach ($reportData as $data) {
+                                                        $totalSizeWaste += $data['sizes_waste'][$size->id] ?? 0;
+                                                    }
+                                                    echo $totalSizeWaste;
                                                 @endphp
                                             </th>
                                         @endforeach
@@ -155,6 +164,15 @@
                                                     $grandTotalPacked += $data['total'];
                                                 }
                                                 echo $grandTotalPacked;
+                                            @endphp
+                                        </th>
+                                        <th>
+                                            @php
+                                                $grandTotalWaste = 0;
+                                                foreach ($reportData as $data) {
+                                                    $grandTotalWaste += $data['total_waste'];
+                                                }
+                                                echo $grandTotalWaste;
                                             @endphp
                                         </th>
                                     </tr>

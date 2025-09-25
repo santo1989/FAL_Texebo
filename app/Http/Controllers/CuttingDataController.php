@@ -1196,6 +1196,16 @@ class CuttingDataController extends Controller
 
             $reportData = array_values($reportData);
 
+            // 3% extra allowance of order quantity can be cut in a new field in the report
+            foreach ($reportData as &$data) {
+                $data['allowed_cut_sizes'] = [];
+                foreach ($data['order_sizes'] as $sizeId => $orderQty) {
+                    $data['allowed_cut_sizes'][$sizeId] = ceil($orderQty * 1.03);
+                }
+                //total_allowed_cut field
+                $data['total_allowed_cut'] = array_sum($data['allowed_cut_sizes']);
+            }
+
             return view('backend.library.cutting_data.report', compact(
                 'reportData',
                 'allSizes',

@@ -140,7 +140,7 @@
                                             </tr>
                                         @endforeach
                                         <tr>
-                                            <td colspan="5" class="text-right"><strong>Total:</strong></td>
+                                            <td colspan="4" class="text-right"><strong>Total:</strong></td>
                                             <td><span id="total-current-output">{{ $outputFinishingDatum->total_output_quantity }}</span></td>
                                             <td><span id="total-current-waste">{{ $outputFinishingDatum->total_output_waste_quantity }}</span></td>
                                             <td><span id="total-new-output">0</span></td>

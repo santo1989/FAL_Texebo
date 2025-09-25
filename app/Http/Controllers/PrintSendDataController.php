@@ -419,11 +419,12 @@ class PrintSendDataController extends Controller
         // $processedCombinations = []; 
 
         foreach ($poNumbers as $poNumber) {
-            // Get cutting data for the selected PO number with print_embroidery = true
+            // Get cutting data for the selected PO number with print_embroidery = true 
             $cuttingData = CuttingData::where('po_number', 'like', '%' . $poNumber . '%')
                 ->with(['productCombination.style', 'productCombination.color', 'productCombination.size'])
                 ->whereHas('productCombination', function ($query) {
                     $query->where('print_embroidery', true);
+                    
                 })
                 ->get();
 

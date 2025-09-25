@@ -190,21 +190,37 @@ class FinishPackingDataController extends Controller
         $finishPackingDatum->load('productCombination.buyer', 'productCombination.style', 'productCombination.color');
         $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
-        // Only valid sizes
-        $validSizes = $allSizes->filter(function ($size) use ($finishPackingDatum) {
-            return isset($finishPackingDatum->packing_quantities[$size->id]) ||
-                isset($finishPackingDatum->packing_waste_quantities[$size->id]);
-        });
-
-        $allSizes = $validSizes->values();
-
         // Get the PO numbers from the record
         $poNumbers = explode(',', $finishPackingDatum->po_number);
 
-        // Get max available quantities for this product combination and specific PO numbers
-        $maxQuantities = $this->getMaxPackingQuantities($finishPackingDatum->productCombination, $poNumbers);
+        // Get total output quantities from OutputFinishingData for this product combination and PO numbers
+        $totalOutputQuantities = [];
+        OutputFinishingData::where('product_combination_id', $finishPackingDatum->product_combination_id)
+            ->whereIn('po_number', $poNumbers)
+            ->get()
+            ->each(function ($item) use (&$totalOutputQuantities) {
+                foreach ($item->output_quantities ?? [] as $sizeId => $quantity) {
+                    $totalOutputQuantities[$sizeId] = ($totalOutputQuantities[$sizeId] ?? 0) + $quantity;
+                }
+            });
 
-        // Get order quantities from order_data table
+        // Get total packing quantities from other FinishPackingData entries (excluding current one)
+        $totalPackingQuantities = [];
+        $totalPackingWasteQuantities = [];
+        FinishPackingData::where('product_combination_id', $finishPackingDatum->product_combination_id)
+            ->whereIn('po_number', $poNumbers)
+            ->where('id', '!=', $finishPackingDatum->id)
+            ->get()
+            ->each(function ($item) use (&$totalPackingQuantities, &$totalPackingWasteQuantities) {
+                foreach ($item->packing_quantities ?? [] as $sizeId => $quantity) {
+                    $totalPackingQuantities[$sizeId] = ($totalPackingQuantities[$sizeId] ?? 0) + $quantity;
+                }
+                foreach ($item->packing_waste_quantities ?? [] as $sizeId => $quantity) {
+                    $totalPackingWasteQuantities[$sizeId] = ($totalPackingWasteQuantities[$sizeId] ?? 0) + $quantity;
+                }
+            });
+
+        // Get order quantities
         $orderQuantities = [];
         foreach ($poNumbers as $poNumber) {
             $orderData = OrderData::where('product_combination_id', $finishPackingDatum->product_combination_id)
@@ -218,25 +234,27 @@ class FinishPackingDataController extends Controller
             }
         }
 
-        // Prepare size data with max available quantities and order quantities
+        // Prepare size data
         $sizeData = [];
         foreach ($allSizes as $size) {
-            $packingQty = $finishPackingDatum->packing_quantities[$size->id] ?? 0;
-            $wasteQty = $finishPackingDatum->packing_waste_quantities[$size->id] ?? 0;
-            $maxAvailable = $maxQuantities[$size->id] ?? 0;
-            $orderQty = $orderQuantities[$size->id] ?? 0;
+            $currentPackingQty = $finishPackingDatum->packing_quantities[$size->id] ?? 0;
+            $currentWasteQty = $finishPackingDatum->packing_waste_quantities[$size->id] ?? 0;
 
-            // Calculate the maximum allowed (available + current packing)
-            $maxAllowed = $maxAvailable + $packingQty;
+            $totalOutputQty = $totalOutputQuantities[$size->id] ?? 0;
+            $otherPackingQty = $totalPackingQuantities[$size->id] ?? 0;
+            $otherWasteQty = $totalPackingWasteQuantities[$size->id] ?? 0;
+
+            // Calculate available quantity: total output - (other packing + other waste + current packing + current waste)
+            $availableQty = $totalOutputQty - ($otherPackingQty + $otherWasteQty + $currentPackingQty + $currentWasteQty);
 
             $sizeData[] = [
                 'id' => $size->id,
                 'name' => $size->name,
-                'packing_quantity' => $packingQty,
-                'waste_quantity' => $wasteQty,
-                'max_available' => $maxAvailable,
-                'max_allowed' => $maxAllowed,
-                'order_quantity' => $orderQty,
+                'packing_quantity' => $currentPackingQty,
+                'waste_quantity' => $currentWasteQty,
+                'total_output_quantity' => $totalOutputQty,
+                'available_quantity' => $availableQty,
+                'order_quantity' => $orderQuantities[$size->id] ?? 0,
             ];
         }
 
@@ -505,94 +523,94 @@ class FinishPackingDataController extends Controller
         return $maxQuantities;
     }
 
-    public function totalPackingReport(Request $request)
-    {
-        $query = FinishPackingData::with('productCombination.style', 'productCombination.color');
+    // public function totalPackingReport(Request $request)
+    // {
+    //     $query = FinishPackingData::with('productCombination.style', 'productCombination.color');
 
-        // Get filter parameters
-        $styleIds = $request->input('style_id', []);
-        $colorIds = $request->input('color_id', []);
-        $poNumbers = $request->input('po_number', []);
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-        $search = $request->input('search');
+    //     // Get filter parameters
+    //     $styleIds = $request->input('style_id', []);
+    //     $colorIds = $request->input('color_id', []);
+    //     $poNumbers = $request->input('po_number', []);
+    //     $startDate = $request->input('start_date');
+    //     $endDate = $request->input('end_date');
+    //     $search = $request->input('search');
 
-        // Style filter
-        if (!empty($styleIds)) {
-            $query->whereHas('productCombination', function ($q) use ($styleIds) {
-                $q->whereIn('style_id', $styleIds);
-            });
-        }
+    //     // Style filter
+    //     if (!empty($styleIds)) {
+    //         $query->whereHas('productCombination', function ($q) use ($styleIds) {
+    //             $q->whereIn('style_id', $styleIds);
+    //         });
+    //     }
 
-        // Color filter
-        if (!empty($colorIds)) {
-            $query->whereHas('productCombination', function ($q) use ($colorIds) {
-                $q->whereIn('color_id', $colorIds);
-            });
-        }
+    //     // Color filter
+    //     if (!empty($colorIds)) {
+    //         $query->whereHas('productCombination', function ($q) use ($colorIds) {
+    //             $q->whereIn('color_id', $colorIds);
+    //         });
+    //     }
 
-        // PO Number filter
-        if (!empty($poNumbers)) {
-            $query->whereIn('po_number', $poNumbers);
-        }
+    //     // PO Number filter
+    //     if (!empty($poNumbers)) {
+    //         $query->whereIn('po_number', $poNumbers);
+    //     }
 
-        // Date filter
-        if ($startDate && $endDate) {
-            $query->whereBetween('date', [$startDate, $endDate]);
-        }
+    //     // Date filter
+    //     if ($startDate && $endDate) {
+    //         $query->whereBetween('date', [$startDate, $endDate]);
+    //     }
 
-        // Search filter
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('po_number', 'like', '%' . $search . '%')
-                    ->orWhereHas('productCombination.style', function ($q2) use ($search) {
-                        $q2->where('name', 'like', '%' . $search . '%');
-                    })
-                    ->orWhereHas('productCombination.color', function ($q2) use ($search) {
-                        $q2->where('name', 'like', '%' . $search . '%');
-                    });
-            });
-        }
+    //     // Search filter
+    //     if ($search) {
+    //         $query->where(function ($q) use ($search) {
+    //             $q->where('po_number', 'like', '%' . $search . '%')
+    //                 ->orWhereHas('productCombination.style', function ($q2) use ($search) {
+    //                     $q2->where('name', 'like', '%' . $search . '%');
+    //                 })
+    //                 ->orWhereHas('productCombination.color', function ($q2) use ($search) {
+    //                     $q2->where('name', 'like', '%' . $search . '%');
+    //                 });
+    //         });
+    //     }
 
-        $finishPackingData = $query->get();
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
-        $reportData = [];
+    //     $finishPackingData = $query->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $reportData = [];
 
-        foreach ($finishPackingData as $data) {
-            $style = $data->productCombination->style->name;
-            $color = $data->productCombination->color->name;
-            $key = $style . '-' . $color;
+    //     foreach ($finishPackingData as $data) {
+    //         $style = $data->productCombination->style->name;
+    //         $color = $data->productCombination->color->name;
+    //         $key = $style . '-' . $color;
 
-            if (!isset($reportData[$key])) {
-                $reportData[$key] = [
-                    'style' => $style,
-                    'color' => $color,
-                    'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
-                    'total' => 0
-                ];
-            }
+    //         if (!isset($reportData[$key])) {
+    //             $reportData[$key] = [
+    //                 'style' => $style,
+    //                 'color' => $color,
+    //                 'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+    //                 'total' => 0
+    //             ];
+    //         }
 
-            foreach ($data->packing_quantities as $sizeId => $qty) {
-                if (isset($reportData[$key]['sizes'][$sizeId])) {
-                    $reportData[$key]['sizes'][$sizeId] += $qty;
-                }
-            }
-            $reportData[$key]['total'] += $data->total_packing_quantity;
-        }
+    //         foreach ($data->packing_quantities as $sizeId => $qty) {
+    //             if (isset($reportData[$key]['sizes'][$sizeId])) {
+    //                 $reportData[$key]['sizes'][$sizeId] += $qty;
+    //             }
+    //         }
+    //         $reportData[$key]['total'] += $data->total_packing_quantity;
+    //     }
 
-        // Get filter options
-        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
-        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
-        $distinctPoNumbers = FinishPackingData::distinct()->pluck('po_number')->filter()->values();
+    //     // Get filter options
+    //     $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+    //     $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+    //     $distinctPoNumbers = FinishPackingData::distinct()->pluck('po_number')->filter()->values();
 
-        return view('backend.library.finish_packing_data.reports.total_packing', [
-            'reportData' => array_values($reportData),
-            'allSizes' => $allSizes,
-            'allStyles' => $allStyles,
-            'allColors' => $allColors,
-            'distinctPoNumbers' => $distinctPoNumbers
-        ]);
-    }
+    //     return view('backend.library.finish_packing_data.reports.total_packing', [
+    //         'reportData' => array_values($reportData),
+    //         'allSizes' => $allSizes,
+    //         'allStyles' => $allStyles,
+    //         'allColors' => $allColors,
+    //         'distinctPoNumbers' => $distinctPoNumbers
+    //     ]);
+    // }
 
     public function sewingWipReport(Request $request)
     {
@@ -719,178 +737,178 @@ class FinishPackingDataController extends Controller
         ]);
     }
 
-    public function balanceReport(Request $request)
-    {
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
-        $reportData = [];
+    // public function balanceReport(Request $request)
+    // {
+    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $reportData = [];
 
-        // Get filter parameters
-        $styleIds = $request->input('style_id', []);
-        $colorIds = $request->input('color_id', []);
-        $poNumbers = $request->input('po_number', []);
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-        $search = $request->input('search');
+    //     // Get filter parameters
+    //     $styleIds = $request->input('style_id', []);
+    //     $colorIds = $request->input('color_id', []);
+    //     $poNumbers = $request->input('po_number', []);
+    //     $startDate = $request->input('start_date');
+    //     $endDate = $request->input('end_date');
+    //     $search = $request->input('search');
 
-        // Base query for product combinations
-        $productCombinationsQuery = ProductCombination::whereHas('lineInputData')
-            ->with('style', 'color');
+    //     // Base query for product combinations
+    //     $productCombinationsQuery = ProductCombination::whereHas('lineInputData')
+    //         ->with('style', 'color');
 
-        // Apply style and color filters
-        if (!empty($styleIds)) {
-            $productCombinationsQuery->whereIn('style_id', $styleIds);
-        }
+    //     // Apply style and color filters
+    //     if (!empty($styleIds)) {
+    //         $productCombinationsQuery->whereIn('style_id', $styleIds);
+    //     }
 
-        if (!empty($colorIds)) {
-            $productCombinationsQuery->whereIn('color_id', $colorIds);
-        }
+    //     if (!empty($colorIds)) {
+    //         $productCombinationsQuery->whereIn('color_id', $colorIds);
+    //     }
 
-        // Apply search filter
-        if ($search) {
-            $productCombinationsQuery->where(function ($q) use ($search) {
-                $q->whereHas('style', function ($q2) use ($search) {
-                    $q2->where('name', 'like', '%' . $search . '%');
-                })->orWhereHas('color', function ($q2) use ($search) {
-                    $q2->where('name', 'like', '%' . $search . '%');
-                });
-            });
-        }
+    //     // Apply search filter
+    //     if ($search) {
+    //         $productCombinationsQuery->where(function ($q) use ($search) {
+    //             $q->whereHas('style', function ($q2) use ($search) {
+    //                 $q2->where('name', 'like', '%' . $search . '%');
+    //             })->orWhereHas('color', function ($q2) use ($search) {
+    //                 $q2->where('name', 'like', '%' . $search . '%');
+    //             });
+    //         });
+    //     }
 
-        $productCombinations = $productCombinationsQuery->get();
+    //     $productCombinations = $productCombinationsQuery->get();
 
-        foreach ($productCombinations as $pc) {
-            $style = $pc->style->name;
-            $color = $pc->color->name;
-            $key = $pc->id; // Use product combination ID as key for uniqueness
+    //     foreach ($productCombinations as $pc) {
+    //         $style = $pc->style->name;
+    //         $color = $pc->color->name;
+    //         $key = $pc->id; // Use product combination ID as key for uniqueness
 
-            // Initialize data structure for this product combination
-            $reportData[$key] = [
-                'style' => $style,
-                'color' => $color,
-                'stage_balances' => [
-                    'cutting' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
-                    'print_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
-                    'sewing_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
-                    'packing_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
-                ],
-                'total_per_stage' => [
-                    'cutting' => 0,
-                    'print_wip' => 0,
-                    'sewing_wip' => 0,
-                    'packing_wip' => 0,
-                ]
-            ];
+    //         // Initialize data structure for this product combination
+    //         $reportData[$key] = [
+    //             'style' => $style,
+    //             'color' => $color,
+    //             'stage_balances' => [
+    //                 'cutting' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //                 'print_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //                 'sewing_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //                 'packing_wip' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), 0),
+    //             ],
+    //             'total_per_stage' => [
+    //                 'cutting' => 0,
+    //                 'print_wip' => 0,
+    //                 'sewing_wip' => 0,
+    //                 'packing_wip' => 0,
+    //             ]
+    //         ];
 
-            // Fetch all relevant quantities for this product combination with filters
-            $cutQuery = CuttingData::where('product_combination_id', $pc->id);
-            $printSendQuery = PrintSendData::where('product_combination_id', $pc->id);
-            $printReceiveQuery = PrintReceiveData::where('product_combination_id', $pc->id);
-            $lineInputQuery = OutputFinishingData::where('product_combination_id', $pc->id);
-            $finishPackingQuery = FinishPackingData::where('product_combination_id', $pc->id);
+    //         // Fetch all relevant quantities for this product combination with filters
+    //         $cutQuery = CuttingData::where('product_combination_id', $pc->id);
+    //         $printSendQuery = PrintSendData::where('product_combination_id', $pc->id);
+    //         $printReceiveQuery = PrintReceiveData::where('product_combination_id', $pc->id);
+    //         $lineInputQuery = OutputFinishingData::where('product_combination_id', $pc->id);
+    //         $finishPackingQuery = FinishPackingData::where('product_combination_id', $pc->id);
 
-            // Apply PO number filter
-            if (!empty($poNumbers)) {
-                $cutQuery->whereIn('po_number', $poNumbers);
-                $printSendQuery->whereIn('po_number', $poNumbers);
-                $printReceiveQuery->whereIn('po_number', $poNumbers);
-                $lineInputQuery->whereIn('po_number', $poNumbers);
-                $finishPackingQuery->whereIn('po_number', $poNumbers);
-            }
+    //         // Apply PO number filter
+    //         if (!empty($poNumbers)) {
+    //             $cutQuery->whereIn('po_number', $poNumbers);
+    //             $printSendQuery->whereIn('po_number', $poNumbers);
+    //             $printReceiveQuery->whereIn('po_number', $poNumbers);
+    //             $lineInputQuery->whereIn('po_number', $poNumbers);
+    //             $finishPackingQuery->whereIn('po_number', $poNumbers);
+    //         }
 
-            // Apply date filter
-            if ($startDate && $endDate) {
-                $cutQuery->whereBetween('created_at', [$startDate, $endDate]);
-                $printSendQuery->whereBetween('date', [$startDate, $endDate]);
-                $printReceiveQuery->whereBetween('date', [$startDate, $endDate]);
-                $lineInputQuery->whereBetween('date', [$startDate, $endDate]);
-                $finishPackingQuery->whereBetween('date', [$startDate, $endDate]);
-            }
+    //         // Apply date filter
+    //         if ($startDate && $endDate) {
+    //             $cutQuery->whereBetween('created_at', [$startDate, $endDate]);
+    //             $printSendQuery->whereBetween('date', [$startDate, $endDate]);
+    //             $printReceiveQuery->whereBetween('date', [$startDate, $endDate]);
+    //             $lineInputQuery->whereBetween('date', [$startDate, $endDate]);
+    //             $finishPackingQuery->whereBetween('date', [$startDate, $endDate]);
+    //         }
 
-            $cutQuantities = $cutQuery->get()
-                ->flatMap(fn($item) => $item->cut_quantities)
-                ->groupBy(fn($value, $key) => strtolower($key))
-                ->map(fn($group) => $group->sum())
-                ->toArray();
+    //         $cutQuantities = $cutQuery->get()
+    //             ->flatMap(fn($item) => $item->cut_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
 
-            $printSendQuantities = $printSendQuery->get()
-                ->flatMap(fn($item) => $item->send_quantities)
-                ->groupBy(fn($value, $key) => strtolower($key))
-                ->map(fn($group) => $group->sum())
-                ->toArray();
+    //         $printSendQuantities = $printSendQuery->get()
+    //             ->flatMap(fn($item) => $item->send_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
 
-            $printReceiveQuantities = $printReceiveQuery->get()
-                ->flatMap(fn($item) => $item->receive_quantities)
-                ->groupBy(fn($value, $key) => strtolower($key))
-                ->map(fn($group) => $group->sum())
-                ->toArray();
+    //         $printReceiveQuantities = $printReceiveQuery->get()
+    //             ->flatMap(fn($item) => $item->receive_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
 
-            $lineInputQuantities = $lineInputQuery->get()
-                ->flatMap(fn($item) => $item->output_quantities)
-                ->groupBy(fn($value, $key) => strtolower($key))
-                ->map(fn($group) => $group->sum())
-                ->toArray();
+    //         $lineInputQuantities = $lineInputQuery->get()
+    //             ->flatMap(fn($item) => $item->output_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
 
-            $finishPackingQuantities = $finishPackingQuery->get()
-                ->flatMap(fn($item) => $item->packing_quantities)
-                ->groupBy(fn($value, $key) => strtolower($key))
-                ->map(fn($group) => $group->sum())
-                ->toArray();
+    //         $finishPackingQuantities = $finishPackingQuery->get()
+    //             ->flatMap(fn($item) => $item->packing_quantities)
+    //             ->groupBy(fn($value, $key) => strtolower($key))
+    //             ->map(fn($group) => $group->sum())
+    //             ->toArray();
 
-            foreach ($allSizes as $size) {
-                $sizeName = strtolower($size->name);
+    //         foreach ($allSizes as $size) {
+    //             $sizeName = strtolower($size->name);
 
-                $cut = $cutQuantities[$sizeName] ?? 0;
-                $printSent = $printSendQuantities[$sizeName] ?? 0;
-                $printReceived = $printReceiveQuantities[$sizeName] ?? 0;
-                $lineInput = $lineInputQuantities[$sizeName] ?? 0;
-                $packed = $finishPackingQuantities[$sizeName] ?? 0;
+    //             $cut = $cutQuantities[$sizeName] ?? 0;
+    //             $printSent = $printSendQuantities[$sizeName] ?? 0;
+    //             $printReceived = $printReceiveQuantities[$sizeName] ?? 0;
+    //             $lineInput = $lineInputQuantities[$sizeName] ?? 0;
+    //             $packed = $finishPackingQuantities[$sizeName] ?? 0;
 
-                // Calculate stage balances for this size
-                $reportData[$key]['stage_balances']['cutting'][$sizeName] = $cut;
-                $reportData[$key]['stage_balances']['print_wip'][$sizeName] = max(0, $printSent - $printReceived);
-                $reportData[$key]['stage_balances']['sewing_wip'][$sizeName] = max(0, $printReceived - $lineInput);
-                $reportData[$key]['stage_balances']['packing_wip'][$sizeName] = max(0, $lineInput - $packed);
+    //             // Calculate stage balances for this size
+    //             $reportData[$key]['stage_balances']['cutting'][$sizeName] = $cut;
+    //             $reportData[$key]['stage_balances']['print_wip'][$sizeName] = max(0, $printSent - $printReceived);
+    //             $reportData[$key]['stage_balances']['sewing_wip'][$sizeName] = max(0, $printReceived - $lineInput);
+    //             $reportData[$key]['stage_balances']['packing_wip'][$sizeName] = max(0, $lineInput - $packed);
 
-                // Accumulate totals for the current product combination
-                $reportData[$key]['total_per_stage']['cutting'] += $reportData[$key]['stage_balances']['cutting'][$sizeName];
-                $reportData[$key]['total_per_stage']['print_wip'] += $reportData[$key]['stage_balances']['print_wip'][$sizeName];
-                $reportData[$key]['total_per_stage']['sewing_wip'] += $reportData[$key]['stage_balances']['sewing_wip'][$sizeName];
-                $reportData[$key]['total_per_stage']['packing_wip'] += $reportData[$key]['stage_balances']['packing_wip'][$sizeName];
-            }
+    //             // Accumulate totals for the current product combination
+    //             $reportData[$key]['total_per_stage']['cutting'] += $reportData[$key]['stage_balances']['cutting'][$sizeName];
+    //             $reportData[$key]['total_per_stage']['print_wip'] += $reportData[$key]['stage_balances']['print_wip'][$sizeName];
+    //             $reportData[$key]['total_per_stage']['sewing_wip'] += $reportData[$key]['stage_balances']['sewing_wip'][$sizeName];
+    //             $reportData[$key]['total_per_stage']['packing_wip'] += $reportData[$key]['stage_balances']['packing_wip'][$sizeName];
+    //         }
 
-            // Remove if no data matches the filters
-            if (
-                $reportData[$key]['total_per_stage']['cutting'] == 0 &&
-                $reportData[$key]['total_per_stage']['print_wip'] == 0 &&
-                $reportData[$key]['total_per_stage']['sewing_wip'] == 0 &&
-                $reportData[$key]['total_per_stage']['packing_wip'] == 0
-            ) {
-                unset($reportData[$key]);
-            }
-        }
+    //         // Remove if no data matches the filters
+    //         if (
+    //             $reportData[$key]['total_per_stage']['cutting'] == 0 &&
+    //             $reportData[$key]['total_per_stage']['print_wip'] == 0 &&
+    //             $reportData[$key]['total_per_stage']['sewing_wip'] == 0 &&
+    //             $reportData[$key]['total_per_stage']['packing_wip'] == 0
+    //         ) {
+    //             unset($reportData[$key]);
+    //         }
+    //     }
 
-        // Get filter options
-        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
-        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
-        $distinctPoNumbers = array_unique(
-            array_merge(
-                CuttingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
-                PrintSendData::distinct()->pluck('po_number')->filter()->values()->toArray(),
-                PrintReceiveData::distinct()->pluck('po_number')->filter()->values()->toArray(),
-                OutputFinishingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
-                FinishPackingData::distinct()->pluck('po_number')->filter()->values()->toArray()
-            )
-        );
-        sort($distinctPoNumbers);
+    //     // Get filter options
+    //     $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+    //     $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+    //     $distinctPoNumbers = array_unique(
+    //         array_merge(
+    //             CuttingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //             PrintSendData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //             PrintReceiveData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //             OutputFinishingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+    //             FinishPackingData::distinct()->pluck('po_number')->filter()->values()->toArray()
+    //         )
+    //     );
+    //     sort($distinctPoNumbers);
 
-        return view('backend.library.finish_packing_data.reports.balance', [
-            'reportData' => array_values($reportData),
-            'allSizes' => $allSizes,
-            'allStyles' => $allStyles,
-            'allColors' => $allColors,
-            'distinctPoNumbers' => $distinctPoNumbers
-        ]);
-    }
+    //     return view('backend.library.finish_packing_data.reports.balance', [
+    //         'reportData' => array_values($reportData),
+    //         'allSizes' => $allSizes,
+    //         'allStyles' => $allStyles,
+    //         'allColors' => $allColors,
+    //         'distinctPoNumbers' => $distinctPoNumbers
+    //     ]);
+    // }
 
 
 
@@ -1639,4 +1657,280 @@ class FinishPackingDataController extends Controller
     //         'sizes' => $sizes
     //     ]);
     // }
+
+    public function totalPackingReport(Request $request)
+    {
+        $query = FinishPackingData::with('productCombination.style', 'productCombination.color');
+        // Get filter parameters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
+        // Style filter
+        if (!empty($styleIds)) {
+            $query->whereHas('productCombination', function ($q) use ($styleIds) {
+                $q->whereIn('style_id', $styleIds);
+            });
+        }
+        // Color filter
+        if (!empty($colorIds)) {
+            $query->whereHas('productCombination', function ($q) use ($colorIds) {
+                $q->whereIn('color_id', $colorIds);
+            });
+        }
+        // PO Number filter
+        if (!empty($poNumbers)) {
+            $query->whereIn('po_number', $poNumbers);
+        }
+        // Date filter
+        if ($startDate && $endDate) {
+            $query->whereBetween('date', [$startDate, $endDate]);
+        }
+        // Search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', '%' . $search . '%')
+                    ->orWhereHas('productCombination.style', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('productCombination.color', function ($q2) use ($search) {
+                        $q2->where('name', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+        $finishPackingData = $query->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $reportData = [];
+        foreach ($finishPackingData as $data) {
+            $style = $data->productCombination->style->name;
+            $color = $data->productCombination->color->name;
+            $key = $style . '-' . $color;
+            if (!isset($reportData[$key])) {
+                $reportData[$key] = [
+                    'style' => $style,
+                    'color' => $color,
+                    'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                    'sizes_waste' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                    'total' => 0,
+                    'total_waste' => 0
+                ];
+            }
+            foreach ($data->packing_quantities as $sizeId => $qty) {
+                if (isset($reportData[$key]['sizes'][$sizeId])) {
+                    $reportData[$key]['sizes'][$sizeId] += $qty;
+                }
+            }
+            $reportData[$key]['total'] += $data->total_packing_quantity;
+            foreach ($data->packing_waste_quantities as $sizeId => $qty) {
+                if (isset($reportData[$key]['sizes_waste'][$sizeId])) {
+                    $reportData[$key]['sizes_waste'][$sizeId] += $qty;
+                }
+            }
+            $reportData[$key]['total_waste'] += $data->total_packing_waste_quantity;
+        }
+        // Get filter options
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = FinishPackingData::distinct()->pluck('po_number')->filter()->values();
+        return view('backend.library.finish_packing_data.reports.total_packing', [
+            'reportData' => array_values($reportData),
+            'allSizes' => $allSizes,
+            'allStyles' => $allStyles,
+            'allColors' => $allColors,
+            'distinctPoNumbers' => $distinctPoNumbers
+        ]);
+    }
+
+    public function balanceReport(Request $request)
+    {
+        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $reportData = [];
+
+        // Get filter parameters
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $search = $request->input('search');
+
+        // Base query for product combinations
+        $productCombinationsQuery = ProductCombination::whereHas('lineInputData')
+            ->with('style', 'color');
+
+        // Apply style and color filters
+        if (!empty($styleIds)) {
+            $productCombinationsQuery->whereIn('style_id', $styleIds);
+        }
+
+        if (!empty($colorIds)) {
+            $productCombinationsQuery->whereIn('color_id', $colorIds);
+        }
+
+        // Apply search filter
+        if ($search) {
+            $productCombinationsQuery->where(function ($q) use ($search) {
+                $q->whereHas('style', function ($q2) use ($search) {
+                    $q2->where('name', 'like', '%' . $search . '%');
+                })->orWhereHas('color', function ($q2) use ($search) {
+                    $q2->where('name', 'like', '%' . $search . '%');
+                })->orWhere(function ($q) use ($search) {
+                    $q->whereHas('cuttingData', function ($q2) use ($search) {
+                        $q2->where('po_number', 'like', '%' . $search . '%');
+                    })->orWhereHas('printSendData', function ($q2) use ($search) {
+                        $q2->where('po_number', 'like', '%' . $search . '%');
+                    })->orWhereHas('printReceiveData', function ($q2) use ($search) {
+                        $q2->where('po_number', 'like', '%' . $search . '%');
+                    })->orWhereHas('lineInputData', function ($q2) use ($search) {
+                        $q2->where('po_number', 'like', '%' . $search . '%');
+                    })->orWhereHas('finishPackingData', function ($q2) use ($search) {
+                        $q2->where('po_number', 'like', '%' . $search . '%');
+                    });
+                });
+            });
+        }
+
+        $productCombinations = $productCombinationsQuery->get();
+
+        foreach ($productCombinations as $pc) {
+            $style = $pc->style->name;
+            $color = $pc->color->name;
+            $key = $pc->id; // Use product combination ID as key for uniqueness
+
+            // Initialize data structure for this product combination
+            $reportData[$key] = [
+                'style' => $style,
+                'color' => $color,
+                'stage_balances' => [
+                    'cutting' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                    'print_wip' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                    'sewing_wip' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                    'packing_wip' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                ],
+                'total_per_stage' => [
+                    'cutting' => 0,
+                    'print_wip' => 0,
+                    'sewing_wip' => 0,
+                    'packing_wip' => 0,
+                ]
+            ];
+
+            // Fetch all relevant quantities for this product combination with filters
+            $cutQuery = CuttingData::where('product_combination_id', $pc->id);
+            $printSendQuery = PrintSendData::where('product_combination_id', $pc->id);
+            $printReceiveQuery = PrintReceiveData::where('product_combination_id', $pc->id);
+            $lineInputQuery = OutputFinishingData::where('product_combination_id', $pc->id);
+            $finishPackingQuery = FinishPackingData::where('product_combination_id', $pc->id);
+
+            // Apply PO number filter
+            if (!empty($poNumbers)) {
+                $cutQuery->whereIn('po_number', $poNumbers);
+                $printSendQuery->whereIn('po_number', $poNumbers);
+                $printReceiveQuery->whereIn('po_number', $poNumbers);
+                $lineInputQuery->whereIn('po_number', $poNumbers);
+                $finishPackingQuery->whereIn('po_number', $poNumbers);
+            }
+
+            // Apply date filter
+            if ($startDate && $endDate) {
+                $cutQuery->whereBetween('date', [$startDate, $endDate]);
+                $printSendQuery->whereBetween('date', [$startDate, $endDate]);
+                $printReceiveQuery->whereBetween('date', [$startDate, $endDate]);
+                $lineInputQuery->whereBetween('date', [$startDate, $endDate]);
+                $finishPackingQuery->whereBetween('date', [$startDate, $endDate]);
+            }
+
+            $cutQuantities = $cutQuery->get()
+                ->flatMap(fn($item) => $item->cut_quantities)
+                ->groupBy(fn($value, $key) => $key)
+                ->map(fn($group) => $group->sum())
+                ->toArray();
+
+            $printSendQuantities = $printSendQuery->get()
+                ->flatMap(fn($item) => $item->send_quantities)
+                ->groupBy(fn($value, $key) => $key)
+                ->map(fn($group) => $group->sum())
+                ->toArray();
+
+            $printReceiveQuantities = $printReceiveQuery->get()
+                ->flatMap(fn($item) => $item->receive_quantities)
+                ->groupBy(fn($value, $key) => $key)
+                ->map(fn($group) => $group->sum())
+                ->toArray();
+
+            $lineInputQuantities = $lineInputQuery->get()
+                ->flatMap(fn($item) => $item->output_quantities)
+                ->groupBy(fn($value, $key) => $key)
+                ->map(fn($group) => $group->sum())
+                ->toArray();
+
+            $finishPackingQuantities = $finishPackingQuery->get()
+                ->flatMap(fn($item) => $item->packing_quantities)
+                ->groupBy(fn($value, $key) => $key)
+                ->map(fn($group) => $group->sum())
+                ->toArray();
+
+            $packingWasteQuantities = $finishPackingQuery->get()
+                ->flatMap(fn($item) => $item->packing_waste_quantities)
+                ->groupBy(fn($value, $key) => $key)
+                ->map(fn($group) => $group->sum())
+                ->toArray();
+
+            foreach ($allSizes as $size) {
+                $sizeId = $size->id;
+
+                $cut = $cutQuantities[$sizeId] ?? 0;
+                $printSent = $printSendQuantities[$sizeId] ?? 0;
+                $printReceived = $printReceiveQuantities[$sizeId] ?? 0;
+                $lineInput = $lineInputQuantities[$sizeId] ?? 0;
+                $packed = ($finishPackingQuantities[$sizeId] ?? 0) + ($packingWasteQuantities[$sizeId] ?? 0);
+
+                // Calculate stage balances for this size
+                $reportData[$key]['stage_balances']['cutting'][$sizeId] = $cut;
+                $reportData[$key]['stage_balances']['print_wip'][$sizeId] = max(0, $printSent - $printReceived);
+                $reportData[$key]['stage_balances']['sewing_wip'][$sizeId] = max(0, $printReceived - $lineInput);
+                $reportData[$key]['stage_balances']['packing_wip'][$sizeId] = max(0, $lineInput - $packed);
+
+                // Accumulate totals for the current product combination
+                $reportData[$key]['total_per_stage']['cutting'] += $reportData[$key]['stage_balances']['cutting'][$sizeId];
+                $reportData[$key]['total_per_stage']['print_wip'] += $reportData[$key]['stage_balances']['print_wip'][$sizeId];
+                $reportData[$key]['total_per_stage']['sewing_wip'] += $reportData[$key]['stage_balances']['sewing_wip'][$sizeId];
+                $reportData[$key]['total_per_stage']['packing_wip'] += $reportData[$key]['stage_balances']['packing_wip'][$sizeId];
+            }
+
+            // Remove if no data matches the filters
+            if (
+                $reportData[$key]['total_per_stage']['cutting'] == 0 &&
+                $reportData[$key]['total_per_stage']['print_wip'] == 0 &&
+                $reportData[$key]['total_per_stage']['sewing_wip'] == 0 &&
+                $reportData[$key]['total_per_stage']['packing_wip'] == 0
+            ) {
+                unset($reportData[$key]);
+            }
+        }
+
+        // Get filter options
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = array_unique(
+            array_merge(
+                CuttingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                PrintSendData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                PrintReceiveData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                OutputFinishingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                FinishPackingData::distinct()->pluck('po_number')->filter()->values()->toArray()
+            )
+        );
+        sort($distinctPoNumbers);
+
+        return view('backend.library.finish_packing_data.reports.balance', [
+            'reportData' => array_values($reportData),
+            'allSizes' => $allSizes,
+            'allStyles' => $allStyles,
+            'allColors' => $allColors,
+            'distinctPoNumbers' => $distinctPoNumbers
+        ]);
+    }
 }

@@ -614,17 +614,15 @@ class SublimationPrintReceiveController extends Controller
         $endDate = $request->input('end_date');
         $search = $request->input('search');
 
-        // Create a mapping of size IDs to size names
-        $sizeIdToName = [];
-        foreach ($allSizes as $size) {
-            $sizeIdToName[$size->id] = $size->name;
-        }
-
         // Base query for product combinations
         $productCombinationsQuery = ProductCombination::where(function ($q) {
-            $q->whereHas('printSends')
-                ->orWhereHas('printReceives');
+            $q->whereHas('sublimationPrintSends')
+                ->orWhereHas('sublimationPrintReceives');
         })->with('style', 'color');
+
+        $productCombinationsQuery->where('sublimation_print', 1);
+
+        // dd($productCombinationsQuery->get());
 
         // Apply style and color filters
         if (!empty($styleIds)) {
@@ -642,6 +640,10 @@ class SublimationPrintReceiveController extends Controller
                     $q2->where('name', 'like', '%' . $search . '%');
                 })->orWhereHas('color', function ($q2) use ($search) {
                     $q2->where('name', 'like', '%' . $search . '%');
+                })->orWhereHas('sublimationPrintSends', function ($q2) use ($search) {
+                    $q2->where('po_number', 'like', '%' . $search . '%');
+                })->orWhereHas('sublimationPrintReceives', function ($q2) use ($search) {
+                    $q2->where('po_number', 'like', '%' . $search . '%');
                 });
             });
         }
@@ -653,11 +655,11 @@ class SublimationPrintReceiveController extends Controller
             $color = $pc->color->name;
             $key = $style . '-' . $color;
 
-            // Initialize with default values
+            // Initialize with size IDs as keys
             $balanceData[$key] = [
                 'style' => $style,
                 'color' => $color,
-                'sizes' => array_fill_keys($allSizes->pluck('name')->map(fn($n) => strtolower($n))->toArray(), ['sent' => 0, 'received' => 0, 'balance' => 0]),
+                'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), ['sent' => 0, 'received' => 0, 'balance' => 0]),
                 'total_sent' => 0,
                 'total_received' => 0,
                 'total_balance' => 0,
@@ -680,12 +682,8 @@ class SublimationPrintReceiveController extends Controller
 
             foreach ($sentData as $data) {
                 foreach ($data->sublimation_print_send_quantities as $sizeId => $qty) {
-                    $sizeName = $sizeIdToName[$sizeId] ?? null;
-                    if ($sizeName) {
-                        $normalized = strtolower($sizeName);
-                        if (isset($balanceData[$key]['sizes'][$normalized])) {
-                            $balanceData[$key]['sizes'][$normalized]['sent'] += $qty;
-                        }
+                    if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                        $balanceData[$key]['sizes'][$sizeId]['sent'] += $qty;
                     }
                 }
                 $balanceData[$key]['total_sent'] += $data->total_sublimation_print_send_quantity;
@@ -708,27 +706,23 @@ class SublimationPrintReceiveController extends Controller
 
             foreach ($receiveData as $data) {
                 foreach ($data->sublimation_print_receive_quantities as $sizeId => $qty) {
-                    $sizeName = $sizeIdToName[$sizeId] ?? null;
-                    if ($sizeName) {
-                        $normalized = strtolower($sizeName);
-                        if (isset($balanceData[$key]['sizes'][$normalized])) {
-                            $balanceData[$key]['sizes'][$normalized]['received'] += $qty;
-                        }
+                    if (isset($balanceData[$key]['sizes'][$sizeId])) {
+                        $balanceData[$key]['sizes'][$sizeId]['received'] += $qty;
                     }
                 }
                 $balanceData[$key]['total_received'] += $data->total_sublimation_print_receive_quantity;
             }
 
             // Calculate balance per size and total balance
-            foreach ($balanceData[$key]['sizes'] as $sizeName => &$sizeData) {
-                $sizeData['balance'] = $sizeData['sent'] - $sizeData['received'];
+            foreach ($balanceData[$key]['sizes'] as $sizeId => &$sizeData) {
+                $sizeData['balance'] = max(0, $sizeData['sent'] - $sizeData['received']);
             }
             unset($sizeData); // Unset the reference to avoid unexpected behavior
 
-            $balanceData[$key]['total_balance'] = $balanceData[$key]['total_sent'] - $balanceData[$key]['total_received'];
+            $balanceData[$key]['total_balance'] = max(0, $balanceData[$key]['total_sent'] - $balanceData[$key]['total_received']);
 
-            // Remove if total balance is 0 or less (meaning everything sent has been received) unless filtered by date
-            if ($balanceData[$key]['total_balance'] <= 0 && (!$startDate && !$endDate && empty($poNumbers) && empty($styleIds) && empty($colorIds) && !$search)) {
+            // Remove if total balance is 0 and no filters are applied
+            if ($balanceData[$key]['total_balance'] == 0 && (!$startDate && !$endDate && empty($poNumbers) && empty($styleIds) && empty($colorIds) && !$search)) {
                 unset($balanceData[$key]);
             }
         }
@@ -816,8 +810,8 @@ class SublimationPrintReceiveController extends Controller
     //     }
 
     //     // Get all product combinations that have either been sent or received for print/emb
-    //     $productCombinations = ProductCombination::whereHas('printSends')
-    //         ->orWhereHas('printReceives')
+    //     $productCombinations = ProductCombination::whereHas('sublimationPrintSends')
+    //         ->orWhereHas('sublimationPrintReceives')
     //         ->with('style', 'color')
     //         ->get();
 

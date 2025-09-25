@@ -1,14 +1,14 @@
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Total Balance Report
+        Total Sewing Output Balance Report
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Total Balance Report </x-slot>
+            <x-slot name="pageHeader"> Total Sewing Output Balance Report </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{{ route('output_finishing_data.index') }}">Output Finishing</a></li>
-            <li class="breadcrumb-item active">Total Balance Report</li>
+            <li class="breadcrumb-item active">Total Sewing Output Balance Report</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
 

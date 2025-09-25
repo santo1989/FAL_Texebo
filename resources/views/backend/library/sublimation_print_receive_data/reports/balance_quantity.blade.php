@@ -95,7 +95,6 @@
                                             placeholder="Search by PO/Style/Color" value="{{ request('search') }}">
                                         <button class="btn btn-outline-success" type="submit">Search</button>
                                         @if (request('search') ||
-                                                request('date') ||
                                                 request('style_id') ||
                                                 request('color_id') ||
                                                 request('po_number') ||
@@ -109,18 +108,26 @@
                             </form>
                         </div>
                         <div class="card-body">
-                            <table class="table table-bordered table-hover">
+                            <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
-                                        <th>Sl#</th>
-                                        <th>Style</th>
-                                        <th>Color</th>
+                                        <th rowspan="2">Sl#</th>
+                                        <th rowspan="2">Style</th>
+                                        <th rowspan="2">Color</th>
                                         @foreach ($allSizes as $size)
-                                            <th>{{ strtoupper($size->name) }} (Bal)</th>
+                                            <th colspan="3">{{ strtoupper($size->name) }}</th>
                                         @endforeach
-                                        <th>Total Sent</th>
-                                        <th>Total Received</th>
-                                        <th>Total Balance</th>
+                                        <th colspan="3">Totals</th>
+                                    </tr>
+                                    <tr>
+                                        @foreach ($allSizes as $size)
+                                            <th>Sent </th>
+                                            <th>Received</th>
+                                            <th>Balance</th>
+                                        @endforeach
+                                        <th>Sent</th>
+                                        <th>Received</th>
+                                        <th>Balance</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -130,7 +137,9 @@
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
                                             @foreach ($allSizes as $size)
-                                                <td>{{ $data['sizes'][strtolower($size->name)]['balance'] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id]['sent'] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id]['received'] ?? 0 }}</td>
+                                                <td>{{ $data['sizes'][$size->id]['balance'] ?? 0 }}</td>
                                             @endforeach
                                             <td>{{ $data['total_sent'] }}</td>
                                             <td>{{ $data['total_received'] }}</td>
@@ -138,11 +147,72 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 6 + count($allSizes) }}" class="text-center">No balance
+                                            <td colspan="{{ 3 + (count($allSizes) * 3) + 3 }}" class="text-center">No balance
                                                 data found for the selected criteria.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="3">Grand Totals</th>
+                                        @foreach ($allSizes as $size)
+                                            <th>
+                                                @php
+                                                    $grandSent = 0;
+                                                    foreach ($reportData as $d) {
+                                                        $grandSent += $d['sizes'][$size->id]['sent'] ?? 0;
+                                                    }
+                                                    echo $grandSent;
+                                                @endphp
+                                            </th>
+                                            <th>
+                                                @php
+                                                    $grandReceived = 0;
+                                                    foreach ($reportData as $d) {
+                                                        $grandReceived += $d['sizes'][$size->id]['received'] ?? 0;
+                                                    }
+                                                    echo $grandReceived;
+                                                @endphp
+                                            </th>
+                                            <th>
+                                                @php
+                                                    $grandBalance = 0;
+                                                    foreach ($reportData as $d) {
+                                                        $grandBalance += $d['sizes'][$size->id]['balance'] ?? 0;
+                                                    }
+                                                    echo $grandBalance;
+                                                @endphp
+                                            </th>
+                                        @endforeach
+                                        <th>
+                                            @php
+                                                $grandTotalSent = 0;
+                                                foreach ($reportData as $d) {
+                                                    $grandTotalSent += $d['total_sent'];
+                                                }
+                                                echo $grandTotalSent;
+                                            @endphp
+                                        </th>
+                                        <th>
+                                            @php
+                                                $grandTotalReceived = 0;
+                                                foreach ($reportData as $d) {
+                                                    $grandTotalReceived += $d['total_received'];
+                                                }
+                                                echo $grandTotalReceived;
+                                            @endphp
+                                        </th>
+                                        <th>
+                                            @php
+                                                $grandTotalBalance = 0;
+                                                foreach ($reportData as $d) {
+                                                    $grandTotalBalance += $d['total_balance'];
+                                                }
+                                                echo $grandTotalBalance;
+                                            @endphp
+                                        </th>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
                     </div>
