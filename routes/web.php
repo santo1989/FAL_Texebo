@@ -57,9 +57,13 @@ Route::middleware('auth')->group(function () {
     //     return "Hello world";
     // });
 
-    Route::get('/home', function () {
-        return view('backend.home');
-    })->name('home');
+    // Route::get('/home', function () {
+    //     return view('backend.home');
+    // })->name('home');
+
+    Route::get('/home-report', function () {
+        return view('layouts.admin');
+    })->name('admin.home');
 
 
     Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
@@ -314,6 +318,12 @@ Route::get('old_data_create', [ShipmentDataController::class, 'old_data_create']
 Route::post('old_data_store', [ShipmentDataController::class, 'old_data_store'])->name('old_data_store');
 
 Route::get('old_data_index', [ShipmentDataController::class, 'old_data_index'])->name('old_data_index');
+
+Route::get('/dashboard', [ShipmentDataController::class, 'DashboardData'])->name('dashboard');
+Route::get('/dashboard/data', [ShipmentDataController::class, 'DashboardDataJson'])->name('dashboard.data');
+Route::get('/home', [ShipmentDataController::class, 'homeDashboardData'])->name('home');
+
+
 
 
 

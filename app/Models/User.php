@@ -68,21 +68,6 @@ class User extends Authenticatable
         return $this->belongsTo(Designation::class);
     }
 
-    public function kra_assigns()
-    {
-        return $this->hasMany(KraAssign::class);
-    }
-
-    public function kpi_entries()
-    {
-        return $this->hasMany(KpiEntry::class);
-    }
-
-    public function supervisor_assigns()
-    {
-        return $this->hasMany(SupervisorAssign::class);
-    }
-
     public function division()
     {
         return $this->belongsTo(Division::class);

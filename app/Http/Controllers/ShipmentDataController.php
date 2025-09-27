@@ -548,8 +548,6 @@ class ShipmentDataController extends Controller
             foreach ($item->packing_quantities as $sizeId => $quantity) {
                 $packedQuantities[$sizeId] = ($packedQuantities[$sizeId] ?? 0) + $quantity;
             }
-
-            
         });
 
         // Get total shipped quantities for this specific PO
@@ -2297,5 +2295,1144 @@ class ShipmentDataController extends Controller
         $distinctPoNumbers = CuttingData::where('old_order', 'yes')->distinct()->pluck('po_number')->filter()->values();
 
         return view('backend.library.old_data.index', compact('paginatedOldData', 'allSizes', 'allStyles', 'allColors', 'distinctPoNumbers', 'perPage'));
+    }
+
+    // DashboardData
+    // public function DashboardData()
+    // {
+    //     $currentMonth = Carbon::now()->format('Y-m');
+    //     $currentYear = Carbon::now()->year;
+
+    //     // Get unique po_status values
+    //     $statuses = DB::table('order_data')->select('po_status')->distinct()->pluck('po_status')->toArray();
+    //     $statusSums = array_map(function ($status) {
+    //         return DB::raw("SUM(CASE WHEN po_status = '$status' THEN total_order_quantity ELSE 0 END) as {$status}_orders");
+    //     }, $statuses);
+
+    //     $selectStatements = array_merge([
+    //         DB::raw('SUM(total_order_quantity) as total_orders'),
+    //         DB::raw('COUNT(*) as order_count'),
+    //     ], $statusSums);
+
+    //     $ordersData = DB::table('order_data')
+    //         ->select($selectStatements)
+    //         ->first();
+
+    //     $cuttingData = DB::table('cutting_data')
+    //         ->select(
+    //             DB::raw('SUM(total_cut_quantity) as total_cut'),
+    //             DB::raw('AVG(total_cut_quantity) as avg_cut'),
+    //             DB::raw('SUM(COALESCE(total_cut_waste_quantity, 0)) as total_cut_waste')
+    //         )
+    //         ->first();
+
+    //     $printingData = DB::table('sublimation_print_sends as sps')
+    //         ->leftJoin('sublimation_print_receives as spr', function ($join) {
+    //             $join->on('sps.po_number', '=', 'spr.po_number')
+    //                 ->on('sps.product_combination_id', '=', 'spr.product_combination_id');
+    //         })
+    //         ->select(
+    //             DB::raw('SUM(sps.total_sublimation_print_send_quantity) as total_sublimation_sent'),
+    //             DB::raw('SUM(COALESCE(spr.total_sublimation_print_receive_quantity, 0)) as total_sublimation_received'),
+    //             DB::raw('SUM(COALESCE(spr.total_sublimation_print_receive_waste_quantity, 0)) as sublimation_waste')
+    //         )
+    //         ->first();
+
+    //     $printData = DB::table('print_send_data as psd')
+    //         ->leftJoin('print_receive_data as prd', function ($join) {
+    //             $join->on('psd.po_number', '=', 'prd.po_number')
+    //                 ->on('psd.product_combination_id', '=', 'prd.product_combination_id');
+    //         })
+    //         ->select(
+    //             DB::raw('SUM(psd.total_send_quantity) as total_print_sent'),
+    //             DB::raw('SUM(COALESCE(prd.total_receive_quantity, 0)) as total_print_received'),
+    //             DB::raw('SUM(COALESCE(prd.total_receive_waste_quantity, 0)) as print_waste')
+    //         )
+    //         ->first();
+
+    //     $sewingData = DB::table('line_input_data as lid')
+    //         ->leftJoin('output_finishing_data as ofd', function ($join) {
+    //             $join->on('lid.po_number', '=', 'ofd.po_number')
+    //                 ->on('lid.product_combination_id', '=', 'ofd.product_combination_id');
+    //         })
+    //         ->select(
+    //             DB::raw('SUM(lid.total_input_quantity) as total_input'),
+    //             DB::raw('SUM(COALESCE(ofd.total_output_quantity, 0)) as total_output'),
+    //             DB::raw('SUM(COALESCE(lid.total_input_waste_quantity, 0)) as input_waste'),
+    //             DB::raw('SUM(COALESCE(ofd.total_output_waste_quantity, 0)) as output_waste')
+    //         )
+    //         ->first();
+
+    //     $packingData = DB::table('finish_packing_data as fpd')
+    //         ->leftJoin('shipment_data as sd', function ($join) {
+    //             $join->on('fpd.po_number', '=', 'sd.po_number')
+    //                 ->on('fpd.product_combination_id', '=', 'sd.product_combination_id');
+    //         })
+    //         ->select(
+    //             DB::raw('SUM(fpd.total_packing_quantity) as total_packed'),
+    //             DB::raw('SUM(COALESCE(sd.total_shipment_quantity, 0)) as total_shipped'),
+    //             DB::raw('SUM(COALESCE(fpd.total_packing_waste_quantity, 0)) as packing_waste'),
+    //             DB::raw('SUM(COALESCE(sd.total_shipment_waste_quantity, 0)) as shipment_waste')
+    //         )
+    //         ->first();
+
+    //     $wasteData = [
+    //         'cutting' => $cuttingData->total_cut_waste ?? 0,
+    //         'printing' => ($printingData->sublimation_waste ?? 0) + ($printData->print_waste ?? 0),
+    //         'sewing' => ($sewingData->input_waste ?? 0) + ($sewingData->output_waste ?? 0),
+    //         'packing' => ($packingData->packing_waste ?? 0) + ($packingData->shipment_waste ?? 0)
+    //     ];
+
+    //     $recentActivities = $this->getRecentActivities();
+    //     $monthlyTrends = $this->getMonthlyTrends();
+    //     $efficiencies = $this->calculateEfficiencies($ordersData, $cuttingData, $sewingData, $packingData);
+
+    //     // Get monthly data for each metric
+    //     $monthlyData = $this->getMonthlyData($currentYear);
+
+    //     $readyGoodsReportDashboard = app(ShipmentDataController::class)->readyGoodsReportDashboard();
+
+
+    //     return view('backend.DashboardData', compact(
+    //         'ordersData',
+    //         'cuttingData',
+    //         'printingData',
+    //         'printData',
+    //         'sewingData',
+    //         'packingData',
+    //         'wasteData',
+    //         'recentActivities',
+    //         'monthlyTrends',
+    //         'efficiencies',
+    //         'statuses',
+    //         'monthlyData'
+    //     ));
+    // }
+
+    public function DashboardDataJson()
+    {
+        $currentMonth = Carbon::now()->format('Y-m');
+        $currentYear = Carbon::now()->year;
+
+        $statuses = DB::table('order_data')->select('po_status')->distinct()->pluck('po_status')->toArray();
+        $statusSums = array_map(function ($status) {
+            return DB::raw("SUM(CASE WHEN po_status = '$status' THEN total_order_quantity ELSE 0 END) as {$status}_orders");
+        }, $statuses);
+        $selectStatements = array_merge([
+            DB::raw('SUM(total_order_quantity) as total_orders'),
+            DB::raw('COUNT(*) as order_count'),
+        ], $statusSums);
+
+        $ordersData = DB::table('order_data')
+            ->select($selectStatements)
+            ->first();
+
+        $cuttingData = DB::table('cutting_data')
+            ->select(
+                DB::raw('SUM(total_cut_quantity) as total_cut'),
+                DB::raw('AVG(total_cut_quantity) as avg_cut'),
+                DB::raw('SUM(COALESCE(total_cut_waste_quantity, 0)) as total_cut_waste')
+            )
+            ->first();
+
+        $printingData = DB::table('sublimation_print_sends as sps')
+            ->leftJoin('sublimation_print_receives as spr', function ($join) {
+                $join->on('sps.po_number', '=', 'spr.po_number')
+                    ->on('sps.product_combination_id', '=', 'spr.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(sps.total_sublimation_print_send_quantity) as total_sublimation_sent'),
+                DB::raw('SUM(COALESCE(spr.total_sublimation_print_receive_quantity, 0)) as total_sublimation_received'),
+                DB::raw('SUM(COALESCE(spr.total_sublimation_print_receive_waste_quantity, 0)) as sublimation_waste')
+            )
+            ->first();
+
+        $printData = DB::table('print_send_data as psd')
+            ->leftJoin('print_receive_data as prd', function ($join) {
+                $join->on('psd.po_number', '=', 'prd.po_number')
+                    ->on('psd.product_combination_id', '=', 'prd.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(psd.total_send_quantity) as total_print_sent'),
+                DB::raw('SUM(COALESCE(prd.total_receive_quantity, 0)) as total_print_received'),
+                DB::raw('SUM(COALESCE(prd.total_receive_waste_quantity, 0)) as print_waste')
+            )
+            ->first();
+
+        $sewingData = DB::table('line_input_data as lid')
+            ->leftJoin('output_finishing_data as ofd', function ($join) {
+                $join->on('lid.po_number', '=', 'ofd.po_number')
+                    ->on('lid.product_combination_id', '=', 'ofd.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(lid.total_input_quantity) as total_input'),
+                DB::raw('SUM(COALESCE(ofd.total_output_quantity, 0)) as total_output'),
+                DB::raw('SUM(COALESCE(lid.total_input_waste_quantity, 0)) as input_waste'),
+                DB::raw('SUM(COALESCE(ofd.total_output_waste_quantity, 0)) as output_waste')
+            )
+            ->first();
+
+        $packingData = DB::table('finish_packing_data as fpd')
+            ->leftJoin('shipment_data as sd', function ($join) {
+                $join->on('fpd.po_number', '=', 'sd.po_number')
+                    ->on('fpd.product_combination_id', '=', 'sd.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(fpd.total_packing_quantity) as total_packed'),
+                DB::raw('SUM(COALESCE(sd.total_shipment_quantity, 0)) as total_shipped'),
+                DB::raw('SUM(COALESCE(fpd.total_packing_waste_quantity, 0)) as packing_waste'),
+                DB::raw('SUM(COALESCE(sd.total_shipment_waste_quantity, 0)) as shipment_waste')
+            )
+            ->first();
+
+        $wasteData = [
+            'cutting' => $cuttingData->total_cut_waste ?? 0,
+            'printing' => ($printingData->sublimation_waste ?? 0) + ($printData->print_waste ?? 0),
+            'sewing' => ($sewingData->input_waste ?? 0) + ($sewingData->output_waste ?? 0),
+            'packing' => ($packingData->packing_waste ?? 0) + ($packingData->shipment_waste ?? 0)
+        ];
+
+        $monthlyTrends = $this->getMonthlyTrends();
+        $monthlyData = $this->getMonthlyData($currentYear);
+
+        return response()->json([
+            'total_orders' => $ordersData->total_orders ?? 0,
+            'order_count' => $ordersData->order_count ?? 0,
+            'statuses' => array_map(function ($status) use ($ordersData) {
+                return [
+                    'status' => $status,
+                    'quantity' => $ordersData->{$status . '_orders'} ?? 0
+                ];
+            }, $statuses),
+            'cutting' => [
+                'total_cut' => $cuttingData->total_cut ?? 0,
+                'avg_cut' => $cuttingData->avg_cut ?? 0,
+                'total_cut_waste' => $cuttingData->total_cut_waste ?? 0
+            ],
+            'printing' => [
+                'total_sublimation_sent' => $printingData->total_sublimation_sent ?? 0,
+                'total_sublimation_received' => $printingData->total_sublimation_received ?? 0,
+                'sublimation_waste' => $printingData->sublimation_waste ?? 0,
+                'total_print_sent' => $printData->total_print_sent ?? 0,
+                'total_print_received' => $printData->total_print_received ?? 0,
+                'print_waste' => $printData->print_waste ?? 0
+            ],
+            'sewing' => [
+                'total_input' => $sewingData->total_input ?? 0,
+                'total_output' => $sewingData->total_output ?? 0,
+                'input_waste' => $sewingData->input_waste ?? 0,
+                'output_waste' => $sewingData->output_waste ?? 0
+            ],
+            'packing' => [
+                'total_packed' => $packingData->total_packed ?? 0,
+                'total_shipped' => $packingData->total_shipped ?? 0,
+                'packing_waste' => $packingData->packing_waste ?? 0,
+                'shipment_waste' => $packingData->shipment_waste ?? 0
+            ],
+            'waste_distribution' => array_values($wasteData),
+            'monthly_orders' => array_column($monthlyTrends, 'orders'),
+            'monthly_shipments' => array_column($monthlyTrends, 'shipments'),
+            'monthly_data' => $monthlyData
+        ]);
+    }
+
+    private function getMonthlyTrends()
+    {
+        $currentYear = Carbon::now()->year;
+
+        $monthlyData = DB::table('order_data')
+            ->select(
+                DB::raw('MONTH(date) as month'),
+                DB::raw('SUM(total_order_quantity) as orders'),
+                DB::raw('(SELECT SUM(total_shipment_quantity) FROM shipment_data sd WHERE MONTH(sd.date) = MONTH(order_data.date) AND YEAR(sd.date) = ' . $currentYear . ') as shipments')
+            )
+            ->whereYear('date', $currentYear)
+            ->groupBy(DB::raw('MONTH(date)'))
+            ->orderBy(DB::raw('MONTH(date)'))
+            ->get();
+
+        $trends = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $monthData = $monthlyData->firstWhere('month', $i);
+            $trends[] = [
+                'month' => Carbon::create()->month($i)->format('M'),
+                'orders' => $monthData->orders ?? 0,
+                'shipments' => $monthData->shipments ?? 0
+            ];
+        }
+
+        return $trends;
+    }
+
+    private function getMonthlyData($currentYear)
+    {
+        $months = array_map(function ($i) {
+            return Carbon::create()->month($i)->format('M');
+        }, range(1, 12));
+
+        // Monthly Orders Data
+        $monthlyOrders = DB::table('order_data')
+            ->select(
+                DB::raw('MONTH(order_data.date) as month'),
+                DB::raw('SUM(total_order_quantity) as total_orders')
+            )
+            ->whereYear('order_data.date', $currentYear)
+            ->groupBy(DB::raw('MONTH(order_data.date)'))
+            ->get();
+
+        // Monthly Cutting Data
+        $monthlyCutting = DB::table('cutting_data')
+            ->select(
+                DB::raw('MONTH(cutting_data.date) as month'),
+                DB::raw('SUM(total_cut_quantity) as total_cut'),
+                DB::raw('SUM(COALESCE(total_cut_waste_quantity, 0)) as total_cut_waste')
+            )
+            ->whereYear('cutting_data.date', $currentYear)
+            ->groupBy(DB::raw('MONTH(cutting_data.date)'))
+            ->get();
+
+        // Monthly Sewing Data
+        $monthlySewing = DB::table('line_input_data')
+            ->select(
+                DB::raw('MONTH(line_input_data.date) as month'),
+                DB::raw('SUM(total_input_quantity) as total_input'),
+                DB::raw('SUM(COALESCE(total_input_waste_quantity, 0)) as input_waste')
+            )
+            ->whereYear('line_input_data.date', $currentYear)
+            ->groupBy(DB::raw('MONTH(line_input_data.date)'))
+            ->leftJoin('output_finishing_data as ofd', function ($join) {
+                $join->on('line_input_data.po_number', '=', 'ofd.po_number')
+                    ->on('line_input_data.product_combination_id', '=', 'ofd.product_combination_id');
+            })
+            ->selectRaw('SUM(COALESCE(ofd.total_output_quantity, 0)) as total_output')
+            ->selectRaw('SUM(COALESCE(ofd.total_output_waste_quantity, 0)) as output_waste')
+            ->get();
+
+        // Monthly Packing Data
+        $monthlyPacking = DB::table('finish_packing_data')
+            ->select(
+                DB::raw('MONTH(finish_packing_data.date) as month'),
+                DB::raw('SUM(total_packing_quantity) as total_packed'),
+                DB::raw('SUM(COALESCE(total_packing_waste_quantity, 0)) as packing_waste')
+            )
+            ->whereYear('finish_packing_data.date', $currentYear)
+            ->groupBy(DB::raw('MONTH(finish_packing_data.date)'))
+            ->leftJoin('shipment_data as sd', function ($join) {
+                $join->on('finish_packing_data.po_number', '=', 'sd.po_number')
+                    ->on('finish_packing_data.product_combination_id', '=', 'sd.product_combination_id');
+            })
+            ->selectRaw('SUM(COALESCE(sd.total_shipment_quantity, 0)) as total_shipped')
+            ->selectRaw('SUM(COALESCE(sd.total_shipment_waste_quantity, 0)) as shipment_waste')
+            ->get();
+
+        // Monthly Waste Data
+        $monthlyWaste = DB::table('cutting_data')
+            ->select(DB::raw('MONTH(cutting_data.date) as month'))
+            ->whereYear('cutting_data.date', $currentYear)
+            ->groupBy(DB::raw('MONTH(cutting_data.date)'))
+            ->selectRaw('SUM(COALESCE(total_cut_waste_quantity, 0)) as cutting_waste')
+            ->leftJoin('sublimation_print_sends as sps', function ($join) use ($currentYear) {
+                $join->on('cutting_data.po_number', '=', 'sps.po_number')
+                    ->on('cutting_data.product_combination_id', '=', 'sps.product_combination_id')
+                    ->whereRaw('MONTH(sps.date) = MONTH(cutting_data.date)')
+                    ->whereRaw('YEAR(sps.date) = ?', [$currentYear]);
+            })
+            ->leftJoin('sublimation_print_receives as spr', function ($join) {
+                $join->on('sps.po_number', '=', 'spr.po_number')
+                    ->on('sps.product_combination_id', '=', 'spr.product_combination_id');
+            })
+            ->leftJoin('print_send_data as psd', function ($join) use ($currentYear) {
+                $join->on('cutting_data.po_number', '=', 'psd.po_number')
+                    ->on('cutting_data.product_combination_id', '=', 'psd.product_combination_id')
+                    ->whereRaw('MONTH(psd.date) = MONTH(cutting_data.date)')
+                    ->whereRaw('YEAR(psd.date) = ?', [$currentYear]);
+            })
+            ->leftJoin('print_receive_data as prd', function ($join) {
+                $join->on('psd.po_number', '=', 'prd.po_number')
+                    ->on('psd.product_combination_id', '=', 'prd.product_combination_id');
+            })
+            ->leftJoin('line_input_data as lid', function ($join) use ($currentYear) {
+                $join->on('cutting_data.po_number', '=', 'lid.po_number')
+                    ->on('cutting_data.product_combination_id', '=', 'lid.product_combination_id')
+                    ->whereRaw('MONTH(lid.date) = MONTH(cutting_data.date)')
+                    ->whereRaw('YEAR(lid.date) = ?', [$currentYear]);
+            })
+            ->leftJoin('output_finishing_data as ofd', function ($join) {
+                $join->on('lid.po_number', '=', 'ofd.po_number')
+                    ->on('lid.product_combination_id', '=', 'ofd.product_combination_id');
+            })
+            ->leftJoin('finish_packing_data as fpd', function ($join) use ($currentYear) {
+                $join->on('cutting_data.po_number', '=', 'fpd.po_number')
+                    ->on('cutting_data.product_combination_id', '=', 'fpd.product_combination_id')
+                    ->whereRaw('MONTH(fpd.date) = MONTH(cutting_data.date)')
+                    ->whereRaw('YEAR(fpd.date) = ?', [$currentYear]);
+            })
+            ->leftJoin('shipment_data as sd', function ($join) {
+                $join->on('fpd.po_number', '=', 'sd.po_number')
+                    ->on('fpd.product_combination_id', '=', 'sd.product_combination_id');
+            })
+            ->selectRaw('SUM(COALESCE(spr.total_sublimation_print_receive_waste_quantity, 0)) + SUM(COALESCE(prd.total_receive_waste_quantity, 0)) as printing_waste')
+            ->selectRaw('SUM(COALESCE(lid.total_input_waste_quantity, 0)) + SUM(COALESCE(ofd.total_output_waste_quantity, 0)) as sewing_waste')
+            ->selectRaw('SUM(COALESCE(fpd.total_packing_waste_quantity, 0)) + SUM(COALESCE(sd.total_shipment_waste_quantity, 0)) as packing_waste')
+            ->get();
+
+        // Monthly Completion Rate
+        $monthlyCompletion = DB::table('order_data')
+            ->select(
+                DB::raw('MONTH(order_data.date) as month'),
+                DB::raw('SUM(total_order_quantity) as total_orders')
+            )
+            ->whereYear('order_data.date', $currentYear)
+            ->groupBy(DB::raw('MONTH(order_data.date)'))
+            ->leftJoin('shipment_data as sd', function ($join) use ($currentYear) {
+                $join->on('order_data.po_number', '=', 'sd.po_number')
+                    ->on('order_data.product_combination_id', '=', 'sd.product_combination_id')
+                    ->whereRaw('MONTH(sd.date) = MONTH(order_data.date)')
+                    ->whereRaw('YEAR(sd.date) = ?', [$currentYear]);
+            })
+            ->selectRaw('SUM(COALESCE(sd.total_shipment_quantity, 0)) as total_shipped')
+            ->get();
+
+        $monthlyData = [];
+        for ($i = 1; $i <= 12; $i++) {
+            $month = Carbon::create()->month($i)->format('M');
+            $orderData = $monthlyOrders->firstWhere('month', $i);
+            $cuttingData = $monthlyCutting->firstWhere('month', $i);
+            $sewingData = $monthlySewing->firstWhere('month', $i);
+            $packingData = $monthlyPacking->firstWhere('month', $i);
+            $wasteData = $monthlyWaste->firstWhere('month', $i);
+            $completionData = $monthlyCompletion->firstWhere('month', $i);
+
+            $monthlyData[$month] = [
+                'total_orders' => [
+                    'value' => $orderData->total_orders ?? 0,
+                    'label' => 'Total Orders',
+                    'unit' => 'Units'
+                ],
+                'cutting_efficiency' => [
+                    'value' => ($orderData && $orderData->total_orders > 0 && $cuttingData) ?
+                        round(($cuttingData->total_cut ?? 0) / $orderData->total_orders * 100, 1) : 0,
+                    'label' => 'Cutting Efficiency',
+                    'unit' => '%'
+                ],
+                'sewing_efficiency' => [
+                    'value' => ($sewingData && $sewingData->total_input > 0) ?
+                        round(($sewingData->total_output ?? 0) / $sewingData->total_input * 100, 1) : 0,
+                    'label' => 'Sewing Efficiency',
+                    'unit' => '%'
+                ],
+                'packing_progress' => [
+                    'value' => $packingData->total_packed ?? 0,
+                    'label' => 'Packing Progress',
+                    'unit' => 'Units'
+                ],
+                'total_waste' => [
+                    'value' => ($wasteData ?
+                        (($wasteData->cutting_waste ?? 0) +
+                            ($wasteData->printing_waste ?? 0) +
+                            ($wasteData->sewing_waste ?? 0) +
+                            ($wasteData->packing_waste ?? 0)) : 0),
+                    'label' => 'Total Waste',
+                    'unit' => 'Units'
+                ],
+                'completion_rate' => [
+                    'value' => ($completionData && $completionData->total_orders > 0) ?
+                        round(($completionData->total_shipped ?? 0) / $completionData->total_orders * 100, 1) : 0,
+                    'label' => 'Completion Rate',
+                    'unit' => '%'
+                ]
+            ];
+        }
+
+        return $monthlyData;
+    }
+
+    private function getRecentActivities()
+    {
+        $activities = [];
+
+        $recentOrders = DB::table('order_data')
+            ->join('styles', 'order_data.style_id', '=', 'styles.id')
+            ->join('colors', 'order_data.color_id', '=', 'colors.id')
+            ->select('order_data.*', 'styles.name as style_name', 'colors.name as color_name')
+            ->orderBy('order_data.created_at', 'desc')
+            ->limit(3)
+            ->get();
+
+        foreach ($recentOrders as $order) {
+            $activities[] = [
+                'type' => 'order',
+                'po' => $order->po_number,
+                'style' => $order->style_name,
+                'color' => $order->color_name,
+                'quantity' => $order->total_order_quantity,
+                'time' => Carbon::parse($order->created_at)->diffForHumans()
+            ];
+        }
+
+        $recentCutting = DB::table('cutting_data')
+            ->join('product_combinations', 'cutting_data.product_combination_id', '=', 'product_combinations.id')
+            ->join('styles', 'product_combinations.style_id', '=', 'styles.id')
+            ->select('cutting_data.*', 'styles.name as style_name')
+            ->orderBy('cutting_data.created_at', 'desc')
+            ->limit(2)
+            ->get();
+
+        foreach ($recentCutting as $cutting) {
+            $activities[] = [
+                'type' => 'cutting',
+                'po' => $cutting->po_number,
+                'style' => $cutting->style_name,
+                'quantity' => $cutting->total_cut_quantity,
+                'time' => Carbon::parse($cutting->created_at)->diffForHumans()
+            ];
+        }
+
+        $recentPrinting = DB::table('print_send_data')
+            ->join('product_combinations', 'print_send_data.product_combination_id', '=', 'product_combinations.id')
+            ->join('styles', 'product_combinations.style_id', '=', 'styles.id')
+            ->select('print_send_data.*', 'styles.name as style_name')
+            ->orderBy('print_send_data.created_at', 'desc')
+            ->limit(2)
+            ->get();
+
+        foreach ($recentPrinting as $printing) {
+            $activities[] = [
+                'type' => 'printing',
+                'po' => $printing->po_number,
+                'style' => $printing->style_name,
+                'quantity' => $printing->total_send_quantity,
+                'time' => Carbon::parse($printing->created_at)->diffForHumans()
+            ];
+        }
+
+        $recentSewing = DB::table('line_input_data')
+            ->join('product_combinations', 'line_input_data.product_combination_id', '=', 'product_combinations.id')
+            ->join('styles', 'product_combinations.style_id', '=', 'styles.id')
+            ->select('line_input_data.*', 'styles.name as style_name')
+            ->orderBy('line_input_data.created_at', 'desc')
+            ->limit(2)
+            ->get();
+
+        foreach ($recentSewing as $sewing) {
+            $activities[] = [
+                'type' => 'sewing',
+                'po' => $sewing->po_number,
+                'style' => $sewing->style_name,
+                'quantity' => $sewing->total_input_quantity,
+                'time' => Carbon::parse($sewing->created_at)->diffForHumans()
+            ];
+        }
+
+        $recentShipments = DB::table('shipment_data')
+            ->join('product_combinations', 'shipment_data.product_combination_id', '=', 'product_combinations.id')
+            ->join('styles', 'product_combinations.style_id', '=', 'styles.id')
+            ->select('shipment_data.*', 'styles.name as style_name')
+            ->orderBy('shipment_data.created_at', 'desc')
+            ->limit(2)
+            ->get();
+
+        foreach ($recentShipments as $shipment) {
+            $activities[] = [
+                'type' => 'shipment',
+                'po' => $shipment->po_number,
+                'style' => $shipment->style_name,
+                'quantity' => $shipment->total_shipment_quantity,
+                'time' => Carbon::parse($shipment->created_at)->diffForHumans()
+            ];
+        }
+
+        usort($activities, function ($a, $b) {
+            return strtotime($b['time']) - strtotime($a['time']);
+        });
+
+        return array_slice($activities, 0, 5);
+    }
+
+    private function calculateEfficiencies($orders, $cutting, $sewing, $packing)
+    {
+        $cuttingEfficiency = $orders->total_orders > 0 ?
+            (($cutting->total_cut ?? 0) / $orders->total_orders) * 100 : 0;
+
+        $sewingEfficiency = ($sewing->total_input ?? 0) > 0 ?
+            (($sewing->total_output ?? 0) / ($sewing->total_input ?? 1)) * 100 : 0;
+
+        $packingEfficiency = ($packing->total_packed ?? 0) > 0 ?
+            (($packing->total_shipped ?? 0) / ($packing->total_packed ?? 1)) * 100 : 0;
+
+        $overallEfficiency = ($cuttingEfficiency + $sewingEfficiency + $packingEfficiency) / 3;
+
+        return [
+            'cutting' => round($cuttingEfficiency, 1),
+            'sewing' => round($sewingEfficiency, 1),
+            'packing' => round($packingEfficiency, 1),
+            'overall' => round($overallEfficiency, 1)
+        ];
+    }
+
+    public function DashboardData(Request $request)
+    {
+        $currentMonth = Carbon::now()->format('Y-m');
+        $currentYear = Carbon::now()->year;
+
+        // Get unique po_status values
+        $statuses = DB::table('order_data')->select('po_status')->distinct()->pluck('po_status')->toArray();
+        $statusSums = array_map(function ($status) {
+            return DB::raw("SUM(CASE WHEN po_status = '$status' THEN total_order_quantity ELSE 0 END) as {$status}_orders");
+        }, $statuses);
+
+        $selectStatements = array_merge([
+            DB::raw('SUM(total_order_quantity) as total_orders'),
+            DB::raw('COUNT(*) as order_count'),
+        ], $statusSums);
+
+        $ordersData = DB::table('order_data')
+            ->select($selectStatements)
+            ->first();
+
+        $cuttingData = DB::table('cutting_data')
+            ->select(
+                DB::raw('SUM(total_cut_quantity) as total_cut'),
+                DB::raw('AVG(total_cut_quantity) as avg_cut'),
+                DB::raw('SUM(COALESCE(total_cut_waste_quantity, 0)) as total_cut_waste')
+            )
+            ->first();
+
+        $printingData = DB::table('sublimation_print_sends as sps')
+            ->leftJoin('sublimation_print_receives as spr', function ($join) {
+                $join->on('sps.po_number', '=', 'spr.po_number')
+                    ->on('sps.product_combination_id', '=', 'spr.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(sps.total_sublimation_print_send_quantity) as total_sublimation_sent'),
+                DB::raw('SUM(COALESCE(spr.total_sublimation_print_receive_quantity, 0)) as total_sublimation_received'),
+                DB::raw('SUM(COALESCE(spr.total_sublimation_print_receive_waste_quantity, 0)) as sublimation_waste')
+            )
+            ->first();
+
+        $printData = DB::table('print_send_data as psd')
+            ->leftJoin('print_receive_data as prd', function ($join) {
+                $join->on('psd.po_number', '=', 'prd.po_number')
+                    ->on('psd.product_combination_id', '=', 'prd.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(psd.total_send_quantity) as total_print_sent'),
+                DB::raw('SUM(COALESCE(prd.total_receive_quantity, 0)) as total_print_received'),
+                DB::raw('SUM(COALESCE(prd.total_receive_waste_quantity, 0)) as print_waste')
+            )
+            ->first();
+
+        $sewingData = DB::table('line_input_data as lid')
+            ->leftJoin('output_finishing_data as ofd', function ($join) {
+                $join->on('lid.po_number', '=', 'ofd.po_number')
+                    ->on('lid.product_combination_id', '=', 'ofd.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(lid.total_input_quantity) as total_input'),
+                DB::raw('SUM(COALESCE(ofd.total_output_quantity, 0)) as total_output'),
+                DB::raw('SUM(COALESCE(lid.total_input_waste_quantity, 0)) as input_waste'),
+                DB::raw('SUM(COALESCE(ofd.total_output_waste_quantity, 0)) as output_waste')
+            )
+            ->first();
+
+        $packingData = DB::table('finish_packing_data as fpd')
+            ->leftJoin('shipment_data as sd', function ($join) {
+                $join->on('fpd.po_number', '=', 'sd.po_number')
+                    ->on('fpd.product_combination_id', '=', 'sd.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(fpd.total_packing_quantity) as total_packed'),
+                DB::raw('SUM(COALESCE(sd.total_shipment_quantity, 0)) as total_shipped'),
+                DB::raw('SUM(COALESCE(fpd.total_packing_waste_quantity, 0)) as packing_waste'),
+                DB::raw('SUM(COALESCE(sd.total_shipment_waste_quantity, 0)) as shipment_waste')
+            )
+            ->first();
+
+        $wasteData = [
+            'cutting' => $cuttingData->total_cut_waste ?? 0,
+            'printing' => ($printingData->sublimation_waste ?? 0) + ($printData->print_waste ?? 0),
+            'sewing' => ($sewingData->input_waste ?? 0) + ($sewingData->output_waste ?? 0),
+            'packing' => ($packingData->packing_waste ?? 0) + ($packingData->shipment_waste ?? 0)
+        ];
+
+        // Ready Goods Data
+        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $reportData = [];
+        $cardData = [
+            'total_ready' => 0,
+            'by_style' => [],
+            'by_color' => [],
+            'by_po_number' => []
+        ];
+
+        // Get distinct month-year combinations
+        $monthYears = FinishPackingData::selectRaw("FORMAT(date, 'yyyy-MM') as month_year")
+            ->distinct()
+            ->orderBy('month_year', 'desc')
+            ->pluck('month_year')
+            ->toArray();
+
+        // Base query for product combinations
+        $productCombinations = ProductCombination::whereHas('finishPackingData')
+            ->with('style', 'color')
+            ->get();
+
+        foreach ($productCombinations as $pc) {
+            $style = $pc->style->name;
+            $color = $pc->color->name;
+
+            $poNumbersQuery = FinishPackingData::where('product_combination_id', $pc->id)
+                ->whereRaw("FORMAT(date, 'yyyy-MM') = ?", [$currentMonth]);
+
+            $poNumbers = $poNumbersQuery->pluck('po_number')
+                ->unique()
+                ->toArray();
+
+            foreach ($poNumbers as $poNumber) {
+                $key = $poNumber . '-' . $style . '-' . $color;
+
+                if (!isset($reportData[$key])) {
+                    $reportData[$key] = [
+                        'month_year' => $currentMonth,
+                        'po_number' => $poNumber,
+                        'style' => $style,
+                        'color' => $color,
+                        'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                        'total' => 0
+                    ];
+                }
+
+                $packedQuery = FinishPackingData::where('product_combination_id', $pc->id)
+                    ->where('po_number', $poNumber)
+                    ->whereRaw("FORMAT(date, 'yyyy-MM') = ?", [$currentMonth]);
+
+                $packedQuantities = $packedQuery->get()
+                    ->flatMap(fn($item) => $item->packing_quantities)
+                    ->groupBy(fn($value, $key) => $key)
+                    ->map(fn($group) => $group->sum())
+                    ->toArray();
+
+                $shippedQuery = ShipmentData::where('product_combination_id', $pc->id)
+                    ->where('po_number', $poNumber)
+                    ->whereRaw("FORMAT(date, 'yyyy-MM') = ?", [$currentMonth]);
+
+                $shippedQuantities = $shippedQuery->get()
+                    ->flatMap(fn($item) => $item->shipment_quantities)
+                    ->groupBy(fn($value, $key) => $key)
+                    ->map(fn($group) => $group->sum())
+                    ->toArray();
+
+                foreach ($allSizes as $size) {
+                    $packed = $packedQuantities[$size->id] ?? 0;
+                    $shipped = $shippedQuantities[$size->id] ?? 0;
+                    $ready = max(0, $packed - $shipped);
+
+                    $reportData[$key]['sizes'][$size->id] = $ready;
+                    $reportData[$key]['total'] += $ready;
+
+                    $cardData['total_ready'] += $ready;
+                    $cardData['by_style'][$style] = ($cardData['by_style'][$style] ?? 0) + $ready;
+                    $cardData['by_color'][$color] = ($cardData['by_color'][$color] ?? 0) + $ready;
+                    $cardData['by_po_number'][$poNumber] = ($cardData['by_po_number'][$poNumber] ?? 0) + $ready;
+                }
+
+                if ($reportData[$key]['total'] == 0) {
+                    unset($reportData[$key]);
+                }
+            }
+        }
+
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = array_unique(
+            array_merge(
+                FinishPackingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                ShipmentData::distinct()->pluck('po_number')->filter()->values()->toArray()
+            )
+        );
+        sort($distinctPoNumbers);
+
+        $recentActivities = $this->getRecentActivities();
+        $monthlyTrends = $this->getMonthlyTrends();
+        $efficiencies = $this->calculateEfficiencies($ordersData, $cuttingData, $sewingData, $packingData);
+        $monthlyData = $this->getMonthlyData($currentYear);
+
+        return view('backend.DashboardData', compact(
+            'ordersData',
+            'cuttingData',
+            'printingData',
+            'printData',
+            'sewingData',
+            'packingData',
+            'wasteData',
+            'recentActivities',
+            'monthlyTrends',
+            'efficiencies',
+            'statuses',
+            'monthlyData',
+            'reportData',
+            'allSizes',
+            'allStyles',
+            'allColors',
+            'distinctPoNumbers',
+            'monthYears',
+            'cardData'
+        ));
+    }
+
+    // Keep the original readyGoodsReportDashboard for the standalone report page
+    public function readyGoodsReportDashboard(Request $request)
+    {
+        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $reportData = [];
+        $cardData = [
+            'total_ready' => 0,
+            'by_style' => [],
+            'by_color' => [],
+            'by_po_number' => []
+        ];
+
+        $styleIds = $request->input('style_id', []);
+        $colorIds = $request->input('color_id', []);
+        $poNumbers = $request->input('po_number', []);
+        $monthYear = $request->input('month_year');
+        $search = $request->input('search');
+
+        $monthYears = FinishPackingData::selectRaw("FORMAT(date, 'yyyy-MM') as month_year")
+            ->distinct()
+            ->orderBy('month_year', 'desc')
+            ->pluck('month_year')
+            ->toArray();
+
+        $productCombinationsQuery = ProductCombination::whereHas('finishPackingData')
+            ->with('style', 'color');
+
+        if (!empty($styleIds)) {
+            $productCombinationsQuery->whereIn('style_id', $styleIds);
+        }
+
+        if (!empty($colorIds)) {
+            $productCombinationsQuery->whereIn('color_id', $colorIds);
+        }
+
+        if ($search) {
+            $productCombinationsQuery->where(function ($q) use ($search) {
+                $q->whereHas('style', function ($q2) use ($search) {
+                    $q2->where('name', 'like', '%' . $search . '%');
+                })->orWhereHas('color', function ($q2) use ($search) {
+                    $q2->where('name', 'like', '%' . $search . '%');
+                });
+            });
+        }
+
+        $productCombinations = $productCombinationsQuery->get();
+
+        foreach ($productCombinations as $pc) {
+            $style = $pc->style->name;
+            $color = $pc->color->name;
+
+            $poNumbersQuery = FinishPackingData::where('product_combination_id', $pc->id);
+
+            if (!empty($poNumbers)) {
+                $poNumbersQuery->whereIn('po_number', $poNumbers);
+            }
+
+            if ($monthYear) {
+                $poNumbersQuery->whereRaw("FORMAT(date, 'yyyy-MM') = ?", [$monthYear]);
+            }
+
+            $poNumbers = $poNumbersQuery->pluck('po_number')
+                ->unique()
+                ->toArray();
+
+            foreach ($poNumbers as $poNumber) {
+                $key = $poNumber . '-' . $style . '-' . $color;
+
+                if (!isset($reportData[$key])) {
+                    $reportData[$key] = [
+                        'month_year' => $monthYear ?: 'All',
+                        'po_number' => $poNumber,
+                        'style' => $style,
+                        'color' => $color,
+                        'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                        'total' => 0
+                    ];
+                }
+
+                $packedQuery = FinishPackingData::where('product_combination_id', $pc->id)
+                    ->where('po_number', $poNumber);
+
+                if ($monthYear) {
+                    $packedQuery->whereRaw("FORMAT(date, 'yyyy-MM') = ?", [$monthYear]);
+                }
+
+                $packedQuantities = $packedQuery->get()
+                    ->flatMap(fn($item) => $item->packing_quantities)
+                    ->groupBy(fn($value, $key) => $key)
+                    ->map(fn($group) => $group->sum())
+                    ->toArray();
+
+                $shippedQuery = ShipmentData::where('product_combination_id', $pc->id)
+                    ->where('po_number', $poNumber);
+
+                if ($monthYear) {
+                    $shippedQuery->whereRaw("FORMAT(date, 'yyyy-MM') = ?", [$monthYear]);
+                }
+
+                $shippedQuantities = $shippedQuery->get()
+                    ->flatMap(fn($item) => $item->shipment_quantities)
+                    ->groupBy(fn($value, $key) => $key)
+                    ->map(fn($group) => $group->sum())
+                    ->toArray();
+
+                foreach ($allSizes as $size) {
+                    $packed = $packedQuantities[$size->id] ?? 0;
+                    $shipped = $shippedQuantities[$size->id] ?? 0;
+                    $ready = max(0, $packed - $shipped);
+
+                    $reportData[$key]['sizes'][$size->id] = $ready;
+                    $reportData[$key]['total'] += $ready;
+
+                    $cardData['total_ready'] += $ready;
+                    $cardData['by_style'][$style] = ($cardData['by_style'][$style] ?? 0) + $ready;
+                    $cardData['by_color'][$color] = ($cardData['by_color'][$color] ?? 0) + $ready;
+                    $cardData['by_po_number'][$poNumber] = ($cardData['by_po_number'][$poNumber] ?? 0) + $ready;
+                }
+
+                if ($reportData[$key]['total'] == 0) {
+                    unset($reportData[$key]);
+                }
+            }
+        }
+
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = array_unique(
+            array_merge(
+                FinishPackingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                ShipmentData::distinct()->pluck('po_number')->filter()->values()->toArray()
+            )
+        );
+        sort($distinctPoNumbers);
+
+        return view('backend.library.shipment_data.reports.ready_goods', [
+            'reportData' => array_values($reportData),
+            'allSizes' => $allSizes,
+            'allStyles' => $allStyles,
+            'allColors' => $allColors,
+            'distinctPoNumbers' => $distinctPoNumbers,
+            'monthYears' => $monthYears,
+            'cardData' => $cardData
+        ]);
+    }
+
+    public function homeDashboardData(Request $request)
+    {
+        $currentMonth = Carbon::now()->format('Y-m');
+        $currentYear = Carbon::now()->year;
+
+        // Get unique po_status values
+        $statuses = DB::table('order_data')->select('po_status')->distinct()->pluck('po_status')->toArray();
+        $statusSums = array_map(function ($status) {
+            return DB::raw("SUM(CASE WHEN po_status = '$status' THEN total_order_quantity ELSE 0 END) as {$status}_orders");
+        }, $statuses);
+
+        $selectStatements = array_merge([
+            DB::raw('SUM(total_order_quantity) as total_orders'),
+            DB::raw('COUNT(*) as order_count'),
+        ], $statusSums);
+
+        $ordersData = DB::table('order_data')
+            ->select($selectStatements)
+            ->first();
+
+        $cuttingData = DB::table('cutting_data')
+            ->select(
+                DB::raw('SUM(total_cut_quantity) as total_cut'),
+                DB::raw('AVG(total_cut_quantity) as avg_cut'),
+                DB::raw('SUM(COALESCE(total_cut_waste_quantity, 0)) as total_cut_waste')
+            )
+            ->first();
+
+        $printingData = DB::table('sublimation_print_sends as sps')
+            ->leftJoin('sublimation_print_receives as spr', function ($join) {
+                $join->on('sps.po_number', '=', 'spr.po_number')
+                    ->on('sps.product_combination_id', '=', 'spr.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(sps.total_sublimation_print_send_quantity) as total_sublimation_sent'),
+                DB::raw('SUM(COALESCE(spr.total_sublimation_print_receive_quantity, 0)) as total_sublimation_received'),
+                DB::raw('SUM(COALESCE(spr.total_sublimation_print_receive_waste_quantity, 0)) as sublimation_waste')
+            )
+            ->first();
+
+        $printData = DB::table('print_send_data as psd')
+            ->leftJoin('print_receive_data as prd', function ($join) {
+                $join->on('psd.po_number', '=', 'prd.po_number')
+                    ->on('psd.product_combination_id', '=', 'prd.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(psd.total_send_quantity) as total_print_sent'),
+                DB::raw('SUM(COALESCE(prd.total_receive_quantity, 0)) as total_print_received'),
+                DB::raw('SUM(COALESCE(prd.total_receive_waste_quantity, 0)) as print_waste')
+            )
+            ->first();
+
+        $sewingData = DB::table('line_input_data as lid')
+            ->leftJoin('output_finishing_data as ofd', function ($join) {
+                $join->on('lid.po_number', '=', 'ofd.po_number')
+                    ->on('lid.product_combination_id', '=', 'ofd.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(lid.total_input_quantity) as total_input'),
+                DB::raw('SUM(COALESCE(ofd.total_output_quantity, 0)) as total_output'),
+                DB::raw('SUM(COALESCE(lid.total_input_waste_quantity, 0)) as input_waste'),
+                DB::raw('SUM(COALESCE(ofd.total_output_waste_quantity, 0)) as output_waste')
+            )
+            ->first();
+
+        $packingData = DB::table('finish_packing_data as fpd')
+            ->leftJoin('shipment_data as sd', function ($join) {
+                $join->on('fpd.po_number', '=', 'sd.po_number')
+                    ->on('fpd.product_combination_id', '=', 'sd.product_combination_id');
+            })
+            ->select(
+                DB::raw('SUM(fpd.total_packing_quantity) as total_packed'),
+                DB::raw('SUM(COALESCE(sd.total_shipment_quantity, 0)) as total_shipped'),
+                DB::raw('SUM(COALESCE(fpd.total_packing_waste_quantity, 0)) as packing_waste'),
+                DB::raw('SUM(COALESCE(sd.total_shipment_waste_quantity, 0)) as shipment_waste')
+            )
+            ->first();
+
+        $wasteData = [
+            'cutting' => $cuttingData->total_cut_waste ?? 0,
+            'printing' => ($printingData->sublimation_waste ?? 0) + ($printData->print_waste ?? 0),
+            'sewing' => ($sewingData->input_waste ?? 0) + ($sewingData->output_waste ?? 0),
+            'packing' => ($packingData->packing_waste ?? 0) + ($packingData->shipment_waste ?? 0)
+        ];
+
+        // Ready Goods Data
+        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $reportData = [];
+        $cardData = [
+            'total_ready' => 0,
+            'by_style' => [],
+            'by_color' => [],
+            'by_po_number' => []
+        ];
+
+        // Get distinct month-year combinations
+        $monthYears = FinishPackingData::selectRaw("FORMAT(date, 'yyyy-MM') as month_year")
+            ->distinct()
+            ->orderBy('month_year', 'desc')
+            ->pluck('month_year')
+            ->toArray();
+
+        // Base query for product combinations
+        $productCombinations = ProductCombination::whereHas('finishPackingData')
+            ->with('style', 'color')
+            ->get();
+
+        foreach ($productCombinations as $pc) {
+            $style = $pc->style->name;
+            $color = $pc->color->name;
+
+            $poNumbersQuery = FinishPackingData::where('product_combination_id', $pc->id)
+                ->whereRaw("FORMAT(date, 'yyyy-MM') = ?", [$currentMonth]);
+
+            $poNumbers = $poNumbersQuery->pluck('po_number')
+                ->unique()
+                ->toArray();
+
+            foreach ($poNumbers as $poNumber) {
+                $key = $poNumber . '-' . $style . '-' . $color;
+
+                if (!isset($reportData[$key])) {
+                    $reportData[$key] = [
+                        'month_year' => $currentMonth,
+                        'po_number' => $poNumber,
+                        'style' => $style,
+                        'color' => $color,
+                        'sizes' => array_fill_keys($allSizes->pluck('id')->toArray(), 0),
+                        'total' => 0
+                    ];
+                }
+
+                $packedQuery = FinishPackingData::where('product_combination_id', $pc->id)
+                    ->where('po_number', $poNumber)
+                    ->whereRaw("FORMAT(date, 'yyyy-MM') = ?", [$currentMonth]);
+
+                $packedQuantities = $packedQuery->get()
+                    ->flatMap(fn($item) => $item->packing_quantities)
+                    ->groupBy(fn($value, $key) => $key)
+                    ->map(fn($group) => $group->sum())
+                    ->toArray();
+
+                $shippedQuery = ShipmentData::where('product_combination_id', $pc->id)
+                    ->where('po_number', $poNumber)
+                    ->whereRaw("FORMAT(date, 'yyyy-MM') = ?", [$currentMonth]);
+
+                $shippedQuantities = $shippedQuery->get()
+                    ->flatMap(fn($item) => $item->shipment_quantities)
+                    ->groupBy(fn($value, $key) => $key)
+                    ->map(fn($group) => $group->sum())
+                    ->toArray();
+
+                foreach ($allSizes as $size) {
+                    $packed = $packedQuantities[$size->id] ?? 0;
+                    $shipped = $shippedQuantities[$size->id] ?? 0;
+                    $ready = max(0, $packed - $shipped);
+
+                    $reportData[$key]['sizes'][$size->id] = $ready;
+                    $reportData[$key]['total'] += $ready;
+
+                    $cardData['total_ready'] += $ready;
+                    $cardData['by_style'][$style] = ($cardData['by_style'][$style] ?? 0) + $ready;
+                    $cardData['by_color'][$color] = ($cardData['by_color'][$color] ?? 0) + $ready;
+                    $cardData['by_po_number'][$poNumber] = ($cardData['by_po_number'][$poNumber] ?? 0) + $ready;
+                }
+
+                if ($reportData[$key]['total'] == 0) {
+                    unset($reportData[$key]);
+                }
+            }
+        }
+
+        $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
+        $allColors = Color::where('is_active', 1)->orderBy('name')->get();
+        $distinctPoNumbers = array_unique(
+            array_merge(
+                FinishPackingData::distinct()->pluck('po_number')->filter()->values()->toArray(),
+                ShipmentData::distinct()->pluck('po_number')->filter()->values()->toArray()
+            )
+        );
+        sort($distinctPoNumbers);
+
+        $recentActivities = $this->getRecentActivities();
+        $monthlyTrends = $this->getMonthlyTrends();
+        $efficiencies = $this->calculateEfficiencies($ordersData, $cuttingData, $sewingData, $packingData);
+        $monthlyData = $this->getMonthlyData($currentYear);
+
+        return view('backend.home', compact(
+            'ordersData',
+            'cuttingData',
+            'printingData',
+            'printData',
+            'sewingData',
+            'packingData',
+            'wasteData',
+            'recentActivities',
+            'monthlyTrends',
+            'efficiencies',
+            'statuses',
+            'monthlyData',
+            'reportData',
+            'allSizes',
+            'allStyles',
+            'allColors',
+            'distinctPoNumbers',
+            'monthYears',
+            'cardData'
+        ));
     }
 }

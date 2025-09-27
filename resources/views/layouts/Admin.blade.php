@@ -1108,4 +1108,5 @@
                 </div>
             </div>
         </div>
+    </div>
 </x-backend.layouts.master>

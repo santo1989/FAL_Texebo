@@ -1,73 +1,3 @@
-{{-- @switch(auth()->user()->role_id)
-    @case('1')
-        @include('layouts.Admin')
-    @break
-
-    @case('2')
-        @include('layouts.User')
-    @break
-
-    @case('3')
-        @include('layouts.supervisor')
-    @break
-
-    @case('4')
-        @include('layouts.hr_manager')
-    @break
-
-    @case('2')
-        @include('layouts.hr_officer')
-    @break
-
-    @default
-        <x-backend.layouts.master>
-
-
-        </x-backend.layouts.master>
-@endswitch
-
-<script>
-    $(document).ready(function() {
-        $('#example').DataTable();
-    } );
-</script> --}}
-
-{{-- @include('layouts.Admin') --}}
-{{-- 
-<x-backend.layouts.master>
-
-    <x-slot name="pageTitle">
-        Admin Dashboard
-    </x-slot>
-
-    <x-slot name='breadCrumb'>
-        <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader">
-                <div class="row">
-                    <div class="col-12">Dashboard</div>
-                  
-                </div>
-            </x-slot>
-        </x-backend.layouts.elements.breadcrumb>
-    </x-slot>
-
-    <div class="container-fluid">
-        <div class="row justify-content-center pb-3 text-center">
-            <div class="col-md-3" style="text-align: center !important; margin : 0 !important; padding : 0 !important; font-size : 12px !important; font-weight : bold !important ! width:20vw;">
-                <div class="card"> 
-                        <a href="{{ route('tna_home') }}" class="btn btn-sm btn-outline-success card-link">TNA</a> 
-                </div>
-            </div>
-            <div class="col-md-3" style="text-align: center !important; margin : 0 !important; padding : 0 !important; font-size : 12px !important; font-weight : bold !important ! width:20vw;">
-                <div class="card"> 
-                        <a href="{{ route('oms_home') }}" class="btn btn-sm btn-outline-success card-link">OMS</a> 
-                </div>
-            </div>
-        </div>
-    </div>
- 
-</x-backend.layouts.master> --}}
-
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
         Real-time Production Monitoring Dashboard
@@ -90,7 +20,7 @@
 
     <div class="container-fluid">
         <!-- Key Metrics Overview -->
-        <div class="row mb-1">
+        <div class="row mb-4">
             <!-- Total Orders -->
             <div class="col-xl-2 col-md-4 col-sm-6 mb-4">
                 <div class="card border-left-primary shadow h-100 py-2 metric-card" data-metric="total_orders">
@@ -245,8 +175,241 @@
                 </div>
             </div>
         </div>
+
+        <!-- Ready Goods Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-box me-2"></i>Ready Goods Overview - {{ Carbon\Carbon::now()->format('M Y') }}
+                        </h6>
+                        <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center">
+                            <div class="form-group me-2">
+                                <select name="month_year" id="month_year" class="form-control">
+                                    <option value="">All Months</option>
+                                    @foreach ($monthYears as $my)
+                                        <option value="{{ $my }}"
+                                            {{ $my == request('month_year', Carbon\Carbon::now()->format('Y-m')) ? 'selected' : '' }}>
+                                            {{ Carbon\Carbon::createFromFormat('Y-m', $my)->format('M Y') }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <button class="btn btn-outline-success btn-sm" type="submit">Filter</button>
+                        </form>
+                    </div>
+                    <div class="card-body">
+                        <!-- Ready Goods Cards -->
+                        <div class="row mb-4">
+                            <!-- Total Ready Goods -->
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <div class="card border-left-primary shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                    Total Ready Goods
+                                                </div>
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                    {{ number_format($cardData['total_ready']) }} Pcs
+                                                </div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <i class="fas fa-box fa-2x text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Total by Style -->
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <div class="card border-left-success shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                    Total by Style
+                                                </div>
+                                                <div class="text-xs text-muted">
+                                                    @foreach ($cardData['by_style'] as $style => $quantity)
+                                                        <div>{{ $style }}: {{ number_format($quantity) }} Pcs</div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <i class="fas fa-tshirt fa-2x text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Total by Color -->
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <div class="card border-left-info shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                                    Total by Color
+                                                </div>
+                                                <div class="text-xs text-muted">
+                                                    @foreach ($cardData['by_color'] as $color => $quantity)
+                                                        <div>{{ $color }}: {{ number_format($quantity) }} Pcs</div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <i class="fas fa-palette fa-2x text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Total by PO Number -->
+                            <div class="col-xl-3 col-md-6 mb-4">
+                                <div class="card border-left-warning shadow h-100 py-2">
+                                    <div class="card-body">
+                                        <div class="row no-gutters align-items-center">
+                                            <div class="col mr-2">
+                                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                                    Total by PO Number
+                                                </div>
+                                                <div class="text-xs text-muted">
+                                                    @foreach ($cardData['by_po_number'] as $po => $quantity)
+                                                        <div>{{ $po }}: {{ number_format($quantity) }} Pcs</div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ready Goods Table -->
+                        @if (empty($reportData))
+                            <div class="alert alert-info">
+                                No ready goods data available for {{ Carbon::now()->format('M Y') }}.
+                            </div>
+                        @else
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>PO Number</th>
+                                            <th>Style</th>
+                                            <th>Color</th>
+                                            @foreach ($allSizes as $size)
+                                                <th>{{ $size->name }}</th>
+                                            @endforeach
+                                            <th>Total Ready</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($reportData as $data)
+                                            <tr>
+                                                <td>{{ $data['po_number'] }}</td>
+                                                <td>{{ $data['style'] }}</td>
+                                                <td>{{ $data['color'] }}</td>
+                                                @foreach ($allSizes as $size)
+                                                    <td>{{ number_format($data['sizes'][$size->id] ?? 0) }}</td>
+                                                @endforeach
+                                                <td>{{ number_format($data['total']) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <th colspan="3">Grand Total</th>
+                                            @foreach ($allSizes as $size)
+                                                <th>
+                                                    @php
+                                                        $totalSizeReady = 0;
+                                                        foreach ($reportData as $data) {
+                                                            $totalSizeReady += $data['sizes'][$size->id] ?? 0;
+                                                        }
+                                                        echo number_format($totalSizeReady);
+                                                    @endphp
+                                                </th>
+                                            @endforeach
+                                            <th>{{ number_format($cardData['total_ready']) }}</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        @endif
+                        <div class="mt-3">
+                            <a href="{{ route('shipment_data.report.ready_goods') }}" class="btn btn-primary">
+                                View Full Ready Goods Report
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Visualizations -->
+        <div class="row">
+            <!-- Production Flow Chart -->
+            <div class="col-xl-8 col-lg-7">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-project-diagram me-2"></i>Monthly Production Flow - {{ date('Y') }}
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-area">
+                            <canvas id="productionFlowChart" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Waste Distribution -->
+            <div class="col-xl-4 col-lg-5">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-chart-pie me-2"></i>Waste Distribution
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-pie pt-4 pb-2">
+                            <canvas id="wasteDistributionChart" height="250"></canvas>
+                        </div>
+                        <div class="mt-4 text-center small">
+                            <span class="me-2">
+                                <i class="fas fa-circle text-primary"></i> Cutting:
+                                {{ number_format($wasteData['cutting']) }}
+                            </span>
+                            <span class="me-2">
+                                <i class="fas fa-circle text-success"></i> Printing:
+                                {{ number_format($wasteData['printing']) }}
+                            </span>
+                            <span class="me-2">
+                                <i class="fas fa-circle text-info"></i> Sewing:
+                                {{ number_format($wasteData['sewing']) }}
+                            </span>
+                            <span>
+                                <i class="fas fa-circle text-warning"></i> Packing:
+                                {{ number_format($wasteData['packing']) }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Process Breakdown -->
-        <div class="row mb-1">
+        <div class="row">
             <!-- Printing Process -->
             <div class="col-xl-3 col-md-6 mb-4">
                 <div class="card border-left-info shadow h-100 py-2">
@@ -353,171 +516,108 @@
                 </div>
             </div>
         </div>
-        <!-- Ready Goods Section -->
-        <div class="row mb-1">
-            <div class="col-12">
-                <div class="card shadow mb-4">
-                    <div class="card-header text-center">
-                        <h6 class="m-0 font-weight-bold text-primary text-center">
-                            <i class="fas fa-box me-2"></i>Ready Goods Overview -
-                            {{ Carbon\Carbon::now()->format('M Y') }}
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <!-- Ready Goods Cards -->
-                        <div class="row mb-4">
-                            <!-- Total Ready Goods -->
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-primary shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                                    Total Ready Goods
-                                                </div>
-                                                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                                    {{ number_format($cardData['total_ready']) }} Pcs
-                                                </div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-box fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- Total by Style -->
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-success shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                                    Total by Style
-                                                </div>
-                                                <div class="text-xs text-muted">
-                                                    @foreach ($cardData['by_style'] as $style => $quantity)
-                                                        <div>{{ $style }}: {{ number_format($quantity) }} Pcs
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-tshirt fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Total by Color -->
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-info shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                                    Total by Color
-                                                </div>
-                                                <div class="text-xs text-muted">
-                                                    @foreach ($cardData['by_color'] as $color => $quantity)
-                                                        <div>{{ $color }}: {{ number_format($quantity) }} Pcs
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-palette fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Total by PO Number -->
-                            <div class="col-xl-3 col-md-6 mb-4">
-                                <div class="card border-left-warning shadow h-100 py-2">
-                                    <div class="card-body">
-                                        <div class="row no-gutters align-items-center">
-                                            <div class="col mr-2">
-                                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                                    Total by PO Number
-                                                </div>
-                                                <div class="text-xs text-muted">
-                                                    @foreach ($cardData['by_po_number'] as $po => $quantity)
-                                                        <div>{{ $po }}: {{ number_format($quantity) }} Pcs
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                            <div class="col-auto">
-                                                <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Charts and Visualizations -->
-        <div class="row mb-1">
-            <!-- Production Flow Chart -->
-            <div class="col-xl-8 col-lg-7">
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                        <h6 class="m-0 font-weight-bold text-primary">
-                            <i class="fas fa-project-diagram me-2"></i>Monthly Production Flow - {{ date('Y') }}
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="chart-area">
-                            <canvas id="productionFlowChart" height="300"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Waste Distribution -->
-            <div class="col-xl-4 col-lg-5">
+        <!-- Recent Activities and Quick Actions -->
+        <div class="row">
+            <!-- Recent Activities -->
+            <div class="col-lg-6 mb-4">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3">
                         <h6 class="m-0 font-weight-bold text-primary">
-                            <i class="fas fa-chart-pie me-2"></i>Waste Distribution
+                            <i class="fas fa-bell me-2"></i>Recent Activities
                         </h6>
                     </div>
                     <div class="card-body">
-                        <div class="chart-pie pt-4 pb-2">
-                            <canvas id="wasteDistributionChart" height="250"></canvas>
+                        <div class="activity-feed">
+                            @forelse($recentActivities as $activity)
+                                <div class="feed-item d-flex align-items-center mb-3 p-2 border rounded">
+                                    <div class="feed-icon me-3">
+                                        @if ($activity['type'] == 'shipment')
+                                            <i class="fas fa-shipping-fast text-success fa-lg"></i>
+                                        @elseif($activity['type'] == 'cutting')
+                                            <i class="fas fa-cut text-danger fa-lg"></i>
+                                        @elseif($activity['type'] == 'printing')
+                                            <i class="fas fa-print text-info fa-lg"></i>
+                                        @elseif($activity['type'] == 'sewing')
+                                            <i class="fas fa-tshirt text-warning fa-lg"></i>
+                                        @else
+                                            <i class="fas fa-clipboard-list text-primary fa-lg"></i>
+                                        @endif
+                                    </div>
+                                    <div class="feed-content flex-grow-1">
+                                        <div class="text-sm font-weight-bold">
+                                            {{ ucfirst($activity['type']) }} - {{ $activity['po'] }}
+                                            @if (isset($activity['style']))
+                                                <small class="text-muted">({{ $activity['style'] }})</small>
+                                            @endif
+                                        </div>
+                                        <div class="text-xs text-muted">
+                                            {{ number_format($activity['quantity']) }} Pcs • {{ $activity['time'] }}
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                                    <div>No recent activities</div>
+                                </div>
+                            @endforelse
                         </div>
-                        <div class="mt-4 text-center small">
-                            <span class="me-2">
-                                <i class="fas fa-circle text-primary"></i> Cutting:
-                                {{ number_format($wasteData['cutting']) }}
-                            </span>
-                            <span class="me-2">
-                                <i class="fas fa-circle text-success"></i> Printing:
-                                {{ number_format($wasteData['printing']) }}
-                            </span>
-                            <span class="me-2">
-                                <i class="fas fa-circle text-info"></i> Sewing:
-                                {{ number_format($wasteData['sewing']) }}
-                            </span>
-                            <span>
-                                <i class="fas fa-circle text-warning"></i> Packing:
-                                {{ number_format($wasteData['packing']) }}
-                            </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="fas fa-bolt me-2"></i>Quick Actions
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <a href="{{ route('order_data.index') }}"
+                                    class="btn btn-primary btn-block btn-hover">
+                                    <i class="fas fa-plus me-2"></i>New Order
+                                </a>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <a href="{{ route('cutting_data.index') }}"
+                                    class="btn btn-success btn-block btn-hover">
+                                    <i class="fas fa-cut me-2"></i>Cutting Entry
+                                </a>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <a href="{{ route('line_input_data.index') }}"
+                                    class="btn btn-info btn-block btn-hover">
+                                    <i class="fas fa-keyboard me-2"></i>Sewing Input
+                                </a>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <a href="{{ route('shipment_data.index') }}"
+                                    class="btn btn-warning btn-block btn-hover">
+                                    <i class="fas fa-truck me-2"></i>Shipment
+                                </a>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <a href="{{ route('shipment_data.report.final_balance') }}"
+                                    class="btn btn-danger btn-block btn-hover">
+                                    <i class="fas fa-chart-bar me-2"></i>Reports
+                                </a>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <a href="{{ route('shipment_data.report.ready_goods') }}"
+                                    class="btn btn-secondary btn-block btn-hover">
+                                    <i class="fas fa-box me-2"></i>Ready Goods Report
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-
 
         <!-- Modal for Monthly Data -->
         <div class="modal fade" id="metricModal" tabindex="-1" aria-labelledby="metricModalLabel"
@@ -724,8 +824,7 @@
                         .then(data => {
                             const monthlyData = data.monthly_data;
                             const labels = Object.keys(monthlyData);
-                            const values = labels.map(month => monthlyData[month][metric]
-                                .value);
+                            const values = labels.map(month => monthlyData[month][metric].value);
                             const label = monthlyData[labels[0]][metric].label;
                             const unit = monthlyData[labels[0]][metric].unit;
 
@@ -752,8 +851,7 @@
                             }
 
                             // Create new chart
-                            const metricCtx = document.getElementById('metricChart').getContext(
-                                '2d');
+                            const metricCtx = document.getElementById('metricChart').getContext('2d');
                             metricChart = new Chart(metricCtx, {
                                 type: 'line',
                                 data: {
@@ -780,8 +878,7 @@
                                             beginAtZero: true,
                                             ticks: {
                                                 callback: function(value) {
-                                                    return value.toLocaleString() +
-                                                        (unit === '%' ? '%' : '');
+                                                    return value.toLocaleString() + (unit === '%' ? '%' : '');
                                                 }
                                             }
                                         }
@@ -802,12 +899,10 @@
                     .then(response => response.json())
                     .then(data => {
                         // Update key metrics
-                        document.getElementById('totalOrders').textContent = data.total_orders
-                            .toLocaleString();
+                        document.getElementById('totalOrders').textContent = data.total_orders.toLocaleString();
 
                         // Update status metrics
-                        const statusContainer = document.querySelector('#totalOrders').parentElement
-                            .querySelector('.mt-2.text-xs');
+                        const statusContainer = document.querySelector('#totalOrders').parentElement.querySelector('.mt-2.text-xs');
                         statusContainer.innerHTML = data.statuses.map(s => `
                         <span class="${s.status === 'running' ? 'text-success' : 'text-info'}">
                             <i class="fas fa-check-circle me-1"></i>

@@ -1,10 +1,10 @@
-{{-- <h1 class="mt-2 text-center">{{ $pageHeader }}</h1> --}}
-{{-- <ol class="breadcrumb mb-4">
+<h4 class="mt-2 text-center">{{ $pageHeader }}</h4>
+<ol class="breadcrumb mb-2">
 
      {{ $slot }} 
 
-</ol> --}}
-<div class="row justify-content-between">
+</ol>
+{{-- <div class="row justify-content-between">
     <div class="col-9 text-center">
         <h4 class="mt-1 text-center">{{ $pageHeader }}</h4>
     </div>
@@ -19,9 +19,6 @@
                         {{ auth()->user()->name ?? '' }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                        {{-- <li><a class="dropdown-item" href="#!">Settings</a></li> --}}
-                        {{-- <li><a class="dropdown-item" href="#!">Activity Log</a></li> --}}
-                        {{-- <li><hr class="dropdown-divider" /></li> --}}
                         <li>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
@@ -35,4 +32,4 @@
             </ul>
         </div>
     </div>
-</div>
+</div> --}}

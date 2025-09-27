@@ -75,7 +75,7 @@
             </div>
         </div>
         <!--cancel button-->
-        <button type="button" class="btn btn-secondary mt-3" onclick="window.history.back();">Cancel</button>
+        <a href="{{ route('product-combinations.index') }}" class="btn btn-secondary mt-3">Cancel</a>
         <button type="submit" class="btn btn-primary mt-3">Create Combinations</button>
     </form>
     
