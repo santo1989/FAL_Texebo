@@ -168,6 +168,18 @@
                             return $carry;
                         }, []);
 
+                    $alreadyWaste = App\Models\SublimationPrintReceive::where('po_number', $sublimationPrintReceiveDatum->po_number)
+                        ->where('product_combination_id', $sublimationPrintReceiveDatum->product_combination_id)
+                        ->where('id', '!=', $sublimationPrintReceiveDatum->id)
+                        ->get()
+                        ->reduce(function ($carry, $receive) {
+                            $quantities = $receive->sublimation_print_receive_waste_quantities ?? [];
+                            foreach ($quantities as $sizeId => $qty) {
+                                $carry[$sizeId] = ($carry[$sizeId] ?? 0) + $qty;
+                            }
+                            return $carry;
+                        }, []);
+
                     $orderQuantities = App\Models\OrderData::where('po_number', $sublimationPrintReceiveDatum->po_number)
                         ->where('product_combination_id', $sublimationPrintReceiveDatum->product_combination_id)
                         ->get()->reduce(function ($carry, $order) {
@@ -195,12 +207,12 @@
                             $sizeId = $size->id;
                             $sentQty = $sentQuantitiesBySize[$sizeId] ?? 0;
                             $alreadyReceivedQty = $alreadyReceived[$sizeId] ?? 0;
-                            $availableQty = max(0, $sentQty - $alreadyReceivedQty);
+                            $alreadyWasteQty = $alreadyWaste[$sizeId] ?? 0;
+                            $availableQty = max(0, $sentQty - ($alreadyReceivedQty + $alreadyWasteQty));
                             $currentReceiveQty = $sublimationPrintReceiveDatum->sublimation_print_receive_quantities[$sizeId] ?? 0;
                             $currentWasteQty = $sublimationPrintReceiveDatum->sublimation_print_receive_waste_quantities[$sizeId] ?? 0;
                             
                             // Calculate max allowed
-                            $maxAllowed = $availableQty;
                             $orderQty = $orderQuantities[$sizeId] ?? 0;
                             $cuttingQty = $cuttingData[$sizeId] ?? 0;
                         @endphp
@@ -218,25 +230,18 @@
                                            name="sublimation_print_receive_quantities[{{ $sizeId }}]"
                                            class="form-control receive-qty-input" 
                                            min="0" 
-                                           max="{{ $maxAllowed }}"
-                                           data-max-allowed="{{ $maxAllowed }}"
-                                           data-sent-qty="{{ $sentQty }}"
-                                           data-already-received="{{ $alreadyReceivedQty }}"
                                            value="{{ old('sublimation_print_receive_quantities.' . $sizeId, $currentReceiveQty) }}"
                                            placeholder="Receive Qty"
-                                           onchange="validateQuantity(this)">
-                                    <div class="invalid-feedback" id="error-{{ $sizeId }}" style="display: none;">
-                                        Receive quantity cannot exceed available quantity ({{ $maxAllowed }})
-                                    </div>
+                                           data-available="{{ $availableQty }}">
                                 </td>
                                 <td>
                                     <input type="number" 
                                            name="sublimation_print_receive_waste_quantities[{{ $sizeId }}]"
                                            class="form-control waste-qty-input" 
                                            min="0"
-                                           max="{{ $maxAllowed + $currentReceiveQty }}"
                                            value="{{ old('sublimation_print_receive_waste_quantities.' . $sizeId, $currentWasteQty) }}"
-                                           placeholder="Waste Qty">
+                                           placeholder="Waste Qty"
+                                           data-available="{{ $availableQty }}">
                                 </td>
                             </tr>
                         @endif
@@ -262,33 +267,20 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const receiveInputs = document.querySelectorAll('.receive-qty-input');
-            const wasteInputs = document.querySelectorAll('.waste-qty-input');
             const totalReceiveSpan = document.getElementById('total-receive-qty');
             const totalWasteSpan = document.getElementById('total-waste-qty');
             const form = document.getElementById('receiveForm');
-
-            // Adjust values on load if they exceed max allowed
-            receiveInputs.forEach(input => {
-                const maxAllowed = parseInt(input.getAttribute('data-max-allowed')) || 0;
-                let value = parseInt(input.value) || 0;
-                if (value > maxAllowed) {
-                    input.value = maxAllowed;
-                    const sizeId = input.name.match(/\d+/)[0];
-                    const errorElement = document.getElementById(`error-${sizeId}`);
-                    errorElement.style.display = 'block';
-                }
-            });
+            const tableBody = document.querySelector('tbody');
 
             function calculateTotals() {
                 let totalReceive = 0;
                 let totalWaste = 0;
 
-                receiveInputs.forEach(input => {
+                document.querySelectorAll('.receive-qty-input').forEach(input => {
                     totalReceive += parseInt(input.value) || 0;
                 });
 
-                wasteInputs.forEach(input => {
+                document.querySelectorAll('.waste-qty-input').forEach(input => {
                     totalWaste += parseInt(input.value) || 0;
                 });
 
@@ -296,32 +288,39 @@
                 totalWasteSpan.textContent = totalWaste;
             }
 
-            // Validate quantity input
-            window.validateQuantity = function(input) {
-                const maxAllowed = parseInt(input.getAttribute('data-max-allowed')) || 0;
-                const value = parseInt(input.value) || 0;
-                const sizeId = input.name.match(/\d+/)[0];
-                const errorElement = document.getElementById(`error-${sizeId}`);
-                
-                if (value > maxAllowed) {
-                    input.value = maxAllowed;
-                    errorElement.style.display = 'block';
-                } else {
-                    errorElement.style.display = 'none';
+            tableBody.addEventListener('input', function(e) {
+                const target = e.target;
+                if (target.classList.contains('receive-qty-input') || target.classList.contains('waste-qty-input')) {
+                    const row = target.closest('tr');
+                    const isReceive = target.classList.contains('receive-qty-input');
+                    const receiveInput = row.querySelector('.receive-qty-input');
+                    const wasteInput = row.querySelector('.waste-qty-input');
+                    let receiveVal = parseInt(receiveInput.value) || 0;
+                    let wasteVal = parseInt(wasteInput.value) || 0;
+                    const available = parseInt(receiveInput.dataset.available) || 0;
+                    let value = parseInt(target.value) || 0;
+
+                    // Ensure non-negative
+                    if (value < 0) {
+                        value = 0;
+                        target.value = 0;
+                    }
+
+                    // Check sum
+                    if (receiveVal + wasteVal > available) {
+                        const otherVal = isReceive ? wasteVal : receiveVal;
+                        const maxAllowed = available - otherVal;
+                        target.value = maxAllowed;
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Invalid Input',
+                            text: `Receive + Waste cannot exceed available quantity (${available}). Adjusted to ${maxAllowed}.`,
+                        });
+                        value = maxAllowed;
+                    }
+
+                    calculateTotals();
                 }
-                
-                calculateTotals();
-            };
-
-            // Add event listeners to all quantity inputs
-            receiveInputs.forEach(input => {
-                input.addEventListener('input', function() {
-                    validateQuantity(this);
-                });
-            });
-
-            wasteInputs.forEach(input => {
-                input.addEventListener('input', calculateTotals);
             });
 
             // Form validation before submission
@@ -329,17 +328,21 @@
                 let isValid = true;
                 let errorMessage = '';
                 
-                receiveInputs.forEach(input => {
-                    const maxAllowed = parseInt(input.getAttribute('data-max-allowed')) || 0;
-                    const value = parseInt(input.value) || 0;
+                const rows = document.querySelectorAll('tbody tr[data-size-id]');
+                for (let row of rows) {
+                    const receiveInput = row.querySelector('.receive-qty-input');
+                    const wasteInput = row.querySelector('.waste-qty-input');
+                    const receiveVal = parseInt(receiveInput.value) || 0;
+                    const wasteVal = parseInt(wasteInput.value) || 0;
+                    const available = parseInt(receiveInput.dataset.available) || 0;
                     
-                    if (value > maxAllowed) {
+                    if (receiveVal + wasteVal > available) {
                         isValid = false;
-                        const sizeName = input.closest('tr').querySelector('td:first-child').textContent;
-                        errorMessage = `Receive quantity for ${sizeName} cannot exceed ${maxAllowed}`;
-                        return false; // Break out of loop
+                        const sizeName = row.querySelector('td:first-child').textContent;
+                        errorMessage = `Receive + Waste for ${sizeName} cannot exceed ${available}`;
+                        break;
                     }
-                });
+                }
                 
                 if (!isValid) {
                     e.preventDefault();

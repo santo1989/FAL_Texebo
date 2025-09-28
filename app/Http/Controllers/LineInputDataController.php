@@ -668,110 +668,214 @@ class LineInputDataController extends Controller
 
 
 
+    // public function find(Request $request)
+    // {
+    //     $poNumbers = $request->input('po_numbers', []);
+
+    //     if (empty($poNumbers)) {
+    //         return response()->json([]);
+    //     }
+
+    //     $result = [];
+    //     // Remove the global processed combinations array
+    //     // $processedCombinations = [];
+
+    //     foreach ($poNumbers as $poNumber) {
+    //         // Get all product combinations that have data in any of the sources for this PO number
+    //         $productCombinations = ProductCombination::where(function ($query) use ($poNumber) {
+    //             $query->whereHas('cuttingData', function ($q) use ($poNumber) {
+    //                 $q->where('po_number', 'like', '%' . $poNumber . '%');
+    //             })
+    //                 ->orWhereHas('printReceives', function ($q) use ($poNumber) {
+    //                     $q->where('po_number', 'like', '%' . $poNumber . '%');
+    //                 })
+    //                 ->orWhereHas('sublimationPrintReceives', function ($q) use ($poNumber) {
+    //                     $q->where('po_number', 'like', '%' . $poNumber . '%');
+    //                 });
+    //         })
+    //             ->with('style', 'color', 'size')
+    //             ->get();
+
+    //         // Create a processed combinations array PER PO NUMBER
+    //         $processedCombinationsForPo = [];
+
+    //         foreach ($productCombinations as $pc) {
+    //             if (!$pc->style || !$pc->color) {
+    //                 continue;
+    //             }
+
+    //             $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
+
+    //             // Skip if we've already processed this combination FOR THIS PO
+    //             if (in_array($combinationKey, $processedCombinationsForPo)) {
+    //                 continue;
+    //             }
+
+    //             // Mark this combination as processed FOR THIS PO
+    //             $processedCombinationsForPo[] = $combinationKey;
+
+    //             // Get order quantities for this PO and product combination
+    //             $orderData = OrderData::where('product_combination_id', $pc->id)
+    //                 ->where('po_number', $poNumber)
+    //                 ->first();
+
+    //             if (!$orderData) {
+    //                 continue;
+    //             }
+
+    //             // Get available quantities from previous stages based on product combination type
+    //             $availableQuantities = [];
+
+    //             if ($pc->print_embroidery && !$pc->sublimation_print) {
+    //                 // Print/Embroidery
+    //                 PrintReceiveData::where('product_combination_id', $pc->id)
+    //                     ->where('po_number', 'like', '%' . $poNumber . '%')
+    //                     ->get()
+    //                     ->each(function ($item) use (&$availableQuantities) {
+    //                         foreach ($item->receive_quantities as $sizeId => $quantity) {
+    //                             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+    //                         }
+    //                     });
+    //             } elseif (!$pc->print_embroidery && $pc->sublimation_print) {
+    //                 // Sublimation
+    //                 SublimationPrintReceive::where('product_combination_id', $pc->id)
+    //                     ->where('po_number', 'like', '%' . $poNumber . '%')
+    //                     ->get()
+    //                     ->each(function ($item) use (&$availableQuantities) {
+    //                         foreach ($item->sublimation_print_receive_quantities as $sizeId => $quantity) {
+    //                             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+    //                         }
+    //                     });
+    //             } elseif ($pc->print_embroidery && $pc->sublimation_print) {
+    //                 // Both print and sublimation
+    //                 PrintReceiveData::where('product_combination_id', $pc->id)
+    //                     ->where('po_number', 'like', '%' . $poNumber . '%')
+    //                     ->get()
+    //                     ->each(function ($item) use (&$availableQuantities) {
+    //                         foreach ($item->receive_quantities as $sizeId => $quantity) {
+    //                             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+    //                         }
+    //                     });
+
+    //                 SublimationPrintReceive::where('product_combination_id', $pc->id)
+    //                     ->where('po_number', 'like', '%' . $poNumber . '%')
+    //                     ->get()
+    //                     ->each(function ($item) use (&$availableQuantities) {
+    //                         foreach ($item->sublimation_print_receive_quantities as $sizeId => $quantity) {
+    //                             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+    //                         }
+    //                     });
+    //             } else {
+    //                 // Cutting only
+    //                 CuttingData::where('product_combination_id', $pc->id)
+    //                     ->where('po_number', 'like', '%' . $poNumber . '%')
+    //                     ->get()
+    //                     ->each(function ($item) use (&$availableQuantities) {
+    //                         foreach ($item->cut_quantities as $sizeId => $quantity) {
+    //                             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+    //                         }
+    //                     });
+    //             }
+
+    //             // Subtract already input quantities
+    //             $inputQuantities = [];
+    //             LineInputData::where('product_combination_id', $pc->id)
+    //                 ->where('po_number', 'like', '%' . $poNumber . '%')
+    //                 ->get()
+    //                 ->each(function ($item) use (&$inputQuantities) {
+    //                     foreach ($item->input_quantities as $sizeId => $quantity) {
+    //                         $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $quantity;
+    //                     }
+    //                 });
+
+    //             foreach ($availableQuantities as $sizeId => &$qty) {
+    //                 $inputQty = $inputQuantities[$sizeId] ?? 0;
+    //                 $qty = max(0, $qty - $inputQty);
+    //             }
+
+    //             $result[$poNumber][] = [
+    //                 'combination_id' => $pc->id,
+    //                 'style' => $pc->style->name,
+    //                 'color' => $pc->color->name,
+    //                 'available_quantities' => $availableQuantities,
+    //                 'order_quantities' => $orderData->order_quantities ?? [],
+    //                 'size_ids' => array_keys($availableQuantities)
+    //             ];
+    //         }
+    //     }
+
+    //     return response()->json($result);
+    // }
+
     public function find(Request $request)
     {
         $poNumbers = $request->input('po_numbers', []);
-
         if (empty($poNumbers)) {
             return response()->json([]);
         }
-
         $result = [];
-        // Remove the global processed combinations array
-        // $processedCombinations = [];
-
         foreach ($poNumbers as $poNumber) {
-            // Get all product combinations that have data in any of the sources for this PO number
             $productCombinations = ProductCombination::where(function ($query) use ($poNumber) {
                 $query->whereHas('cuttingData', function ($q) use ($poNumber) {
-                    $q->where('po_number', 'like', '%' . $poNumber . '%');
-                })
-                    ->orWhereHas('printReceives', function ($q) use ($poNumber) {
-                        $q->where('po_number', 'like', '%' . $poNumber . '%');
-                    })
-                    ->orWhereHas('sublimationPrintReceives', function ($q) use ($poNumber) {
-                        $q->where('po_number', 'like', '%' . $poNumber . '%');
-                    });
-            })
-                ->with('style', 'color', 'size')
-                ->get();
+                    $q->where('po_number', $poNumber); // Changed to exact match
+                })->orWhereHas('printReceives', function ($q) use ($poNumber) {
+                    $q->where('po_number', $poNumber);
+                })->orWhereHas('sublimationPrintReceives', function ($q) use ($poNumber) {
+                    $q->where('po_number', $poNumber);
+                });
+            })->with('style', 'color', 'size')->get();
 
-            // Create a processed combinations array PER PO NUMBER
             $processedCombinationsForPo = [];
-
             foreach ($productCombinations as $pc) {
-                if (!$pc->style || !$pc->color) {
-                    continue;
-                }
+                if (!$pc->style || !$pc->color) continue;
 
                 $combinationKey = $pc->id . '-' . $pc->style->name . '-' . $pc->color->name;
-
-                // Skip if we've already processed this combination FOR THIS PO
-                if (in_array($combinationKey, $processedCombinationsForPo)) {
-                    continue;
-                }
-
-                // Mark this combination as processed FOR THIS PO
+                if (in_array($combinationKey, $processedCombinationsForPo)) continue;
                 $processedCombinationsForPo[] = $combinationKey;
 
-                // Get order quantities for this PO and product combination
                 $orderData = OrderData::where('product_combination_id', $pc->id)
                     ->where('po_number', $poNumber)
                     ->first();
+                if (!$orderData) continue;
 
-                if (!$orderData) {
-                    continue;
-                }
-
-                // Get available quantities from previous stages based on product combination type
                 $availableQuantities = [];
-
                 if ($pc->print_embroidery && !$pc->sublimation_print) {
                     // Print/Embroidery
                     PrintReceiveData::where('product_combination_id', $pc->id)
-                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->where('po_number', $poNumber)
                         ->get()
                         ->each(function ($item) use (&$availableQuantities) {
-                            foreach ($item->receive_quantities as $sizeId => $quantity) {
+                            foreach ($item->receive_quantities ?? [] as $sizeId => $quantity) {
                                 $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
                             }
                         });
                 } elseif (!$pc->print_embroidery && $pc->sublimation_print) {
                     // Sublimation
                     SublimationPrintReceive::where('product_combination_id', $pc->id)
-                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->where('po_number', $poNumber)
                         ->get()
                         ->each(function ($item) use (&$availableQuantities) {
-                            foreach ($item->sublimation_print_receive_quantities as $sizeId => $quantity) {
+                            foreach ($item->receive_quantities ?? [] as $sizeId => $quantity) { // Fixed
                                 $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
                             }
                         });
                 } elseif ($pc->print_embroidery && $pc->sublimation_print) {
-                    // Both print and sublimation
+                    // Both
                     PrintReceiveData::where('product_combination_id', $pc->id)
-                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->where('po_number', $poNumber)
                         ->get()
                         ->each(function ($item) use (&$availableQuantities) {
-                            foreach ($item->receive_quantities as $sizeId => $quantity) {
-                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-                            }
-                        });
-
-                    SublimationPrintReceive::where('product_combination_id', $pc->id)
-                        ->where('po_number', 'like', '%' . $poNumber . '%')
-                        ->get()
-                        ->each(function ($item) use (&$availableQuantities) {
-                            foreach ($item->sublimation_print_receive_quantities as $sizeId => $quantity) {
+                            foreach ($item->receive_quantities ?? [] as $sizeId => $quantity) {
                                 $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
                             }
                         });
                 } else {
                     // Cutting only
                     CuttingData::where('product_combination_id', $pc->id)
-                        ->where('po_number', 'like', '%' . $poNumber . '%')
+                        ->where('po_number', $poNumber)
                         ->get()
                         ->each(function ($item) use (&$availableQuantities) {
-                            foreach ($item->cut_quantities as $sizeId => $quantity) {
+                            foreach ($item->cut_quantities ?? [] as $sizeId => $quantity) {
                                 $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
                             }
                         });
@@ -780,17 +884,15 @@ class LineInputDataController extends Controller
                 // Subtract already input quantities
                 $inputQuantities = [];
                 LineInputData::where('product_combination_id', $pc->id)
-                    ->where('po_number', 'like', '%' . $poNumber . '%')
+                    ->where('po_number', $poNumber)
                     ->get()
                     ->each(function ($item) use (&$inputQuantities) {
-                        foreach ($item->input_quantities as $sizeId => $quantity) {
+                        foreach ($item->input_quantities ?? [] as $sizeId => $quantity) {
                             $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $quantity;
                         }
                     });
-
                 foreach ($availableQuantities as $sizeId => &$qty) {
-                    $inputQty = $inputQuantities[$sizeId] ?? 0;
-                    $qty = max(0, $qty - $inputQty);
+                    $qty = max(0, $qty - ($inputQuantities[$sizeId] ?? 0));
                 }
 
                 $result[$poNumber][] = [
@@ -803,7 +905,6 @@ class LineInputDataController extends Controller
                 ];
             }
         }
-
         return response()->json($result);
     }
 

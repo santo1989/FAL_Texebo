@@ -26,6 +26,7 @@
                             <form class="d-flex float-right" action="{{ route('print_send_data.report.ready') }}"
                                 method="GET">
                                 <div class="row g-2">
+                                    {{-- ... existing filters (style, color, po, dates, search) ... --}}
                                     <div class="col-md-2">
                                         <div class="form-group">
                                             <label for="style_id">Style</label>
@@ -109,14 +110,28 @@
                             <table class="table table-bordered table-hover text-center">
                                 <thead>
                                     <tr>
-                                        <th>Style</th>
-                                        <th>Color</th>
-                                        <th>PO Number(s)</th>
-                                        <th>Type</th>
-                                        <th>Total Cut</th>
-                                        <th>Total Sent</th>
-                                        <th>Total Received</th>
-                                        <th>Status</th>
+                                        <th rowspan="2">Style</th>
+                                        <th rowspan="2">Color</th>
+                                        <th rowspan="2">PO Number(s)</th>
+                                        <th rowspan="2">Type</th>
+                                        <th colspan="{{ count($allSizes) + 1 }}">Cut Quantities</th>
+                                        <th colspan="{{ count($allSizes) + 1 }}">Sent Quantities</th>
+                                        <th colspan="{{ count($allSizes) + 1 }}">Received Quantities</th>
+                                        <th rowspan="2">Status</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Total</th>
+                                        @foreach (array_values($allSizes) as $sizeName)
+                                            <th>{{ $sizeName }}</th>
+                                        @endforeach
+                                        <th>Total</th>
+                                        @foreach (array_values($allSizes) as $sizeName)
+                                            <th>{{ $sizeName }}</th>
+                                        @endforeach
+                                        <th>Total</th>
+                                        @foreach (array_values($allSizes) as $sizeName)
+                                            <th>{{ $sizeName }}</th>
+                                        @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -124,16 +139,32 @@
                                         <tr>
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
-                                            <td>{{ $data['po_number'] ?? 'N/A' }}</td> {{-- Display PO Number --}}
+                                            <td>{{ $data['po_number'] ?? 'N/A' }}</td>
                                             <td>{{ $data['type'] }}</td>
+
+                                            {{-- Cut Quantities --}}
                                             <td>{{ $data['total_cut'] }}</td>
+                                            @foreach (array_values($allSizes) as $sizeName)
+                                                <td>{{ $data['size_wise_cut'][$sizeName] ?? 0 }}</td>
+                                            @endforeach
+
+                                            {{-- Sent Quantities --}}
                                             <td>{{ $data['total_sent'] }}</td>
-                                            <td>{{ $data['total_received'] ?? 0 }}</td> {{-- Display Total Received --}}
-                                            <td>{{ $data['status'] ?? 'N/A' }}</td> {{-- Display Status --}}
+                                            @foreach (array_values($allSizes) as $sizeName)
+                                                <td>{{ $data['size_wise_sent'][$sizeName] ?? 0 }}</td>
+                                            @endforeach
+
+                                            {{-- Received Quantities --}}
+                                            <td>{{ $data['total_received'] ?? 0 }}</td>
+                                            @foreach (array_values($allSizes) as $sizeName)
+                                                <td>{{ $data['size_wise_received'][$sizeName] ?? 0 }}</td>
+                                            @endforeach
+
+                                            <td>{{ $data['status'] ?? 'N/A' }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="8" class="text-center">No data found for ready to input.
+                                            <td colspan="{{ 5 + (count($allSizes) * 3) + 3 }}" class="text-center">No data found.
                                             </td>
                                         </tr>
                                     @endforelse

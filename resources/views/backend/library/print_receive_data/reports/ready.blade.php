@@ -103,36 +103,66 @@
                             </form>
                         </div>
                         <div class="card-body">
-                            <table class="table table-bordered table-hover">
+                            <table class="table table-bordered table-hover text-center">
                                 <thead>
-                                    <!-- In your table header -->
                                     <tr>
-                                        <th>Sl#</th>
-                                        <th>Style</th>
-                                        <th>Color</th>
-                                        <th>Process Type</th>
-                                        <th>Total Cut Quantity</th>
-                                        <th>Total Sent</th>
-                                        <th>Total Received (Good)</th>
-                                        <th>Total Received (Waste)</th>
+                                        <th rowspan="2">Style</th>
+                                        <th rowspan="2">Color</th>
+                                        <th rowspan="2">PO Number(s)</th>
+                                        <th rowspan="2">Type</th>
+                                        <th colspan="{{ count($allSizes) + 1 }}">Cut Quantities</th>
+                                        <th colspan="{{ count($allSizes) + 1 }}">Sent Quantities</th>
+                                        <th colspan="{{ count($allSizes) + 1 }}">Received Quantities</th>
+                                        <th rowspan="2">Status</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Total</th>
+                                        @foreach (array_values($allSizes) as $sizeName)
+                                            <th>{{ $sizeName }}</th>
+                                        @endforeach
+                                        <th>Total</th>
+                                        @foreach (array_values($allSizes) as $sizeName)
+                                            <th>{{ $sizeName }}</th>
+                                        @endforeach
+                                        <th>Total</th>
+                                        @foreach (array_values($allSizes) as $sizeName)
+                                            <th>{{ $sizeName }}</th>
+                                        @endforeach
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse ($readyData as $data)
                                         <tr>
-                                            <td>{{ $loop->iteration }}</td>
                                             <td>{{ $data['style'] }}</td>
                                             <td>{{ $data['color'] }}</td>
+                                            <td>{{ $data['po_number'] ?? 'N/A' }}</td>
                                             <td>{{ $data['type'] }}</td>
+
+                                            {{-- Cut Quantities --}}
                                             <td>{{ $data['total_cut'] }}</td>
+                                            @foreach (array_values($allSizes) as $sizeName)
+                                                <td>{{ $data['size_wise_cut'][$sizeName] ?? 0 }}</td>
+                                            @endforeach
+
+                                            {{-- Sent Quantities --}}
                                             <td>{{ $data['total_sent'] }}</td>
-                                            <td>{{ $data['total_received_good'] }}</td>
-                                            <td>{{ $data['total_received_waste'] }}</td>
+                                            @foreach (array_values($allSizes) as $sizeName)
+                                                <td>{{ $data['size_wise_sent'][$sizeName] ?? 0 }}</td>
+                                            @endforeach
+
+                                            {{-- Received Quantities --}}
+                                            <td>{{ $data['total_received'] ?? 0 }}</td>
+                                            @foreach (array_values($allSizes) as $sizeName)
+                                                <td>{{ $data['size_wise_received'][$sizeName] ?? 0 }}</td>
+                                            @endforeach
+
+                                            <td>{{ $data['status'] ?? 'N/A' }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="8" class="text-center">No data found for items ready for
-                                                input.</td>
+                                            <td colspan="{{ 5 + count($allSizes) * 3 + 3 }}" class="text-center">No
+                                                data found.
+                                            </td>
                                         </tr>
                                     @endforelse
                                 </tbody>
