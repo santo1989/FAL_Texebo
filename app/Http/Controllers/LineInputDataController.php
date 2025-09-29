@@ -1699,14 +1699,14 @@ class LineInputDataController extends Controller
                         }
                     });
 
-                SublimationPrintReceive::where('product_combination_id', $pc->id)
-                    ->where('po_number', $poNumber)
-                    ->get()
-                    ->each(function ($item) use (&$initialSourceQuantities) {
-                        foreach ($item->sublimation_print_receive_quantities ?? [] as $sizeId => $quantity) {
-                            $initialSourceQuantities[$sizeId] = ($initialSourceQuantities[$sizeId] ?? 0) + $quantity;
-                        }
-                    });
+                // SublimationPrintReceive::where('product_combination_id', $pc->id)
+                //     ->where('po_number', $poNumber)
+                //     ->get()
+                //     ->each(function ($item) use (&$initialSourceQuantities) {
+                //         foreach ($item->sublimation_print_receive_quantities ?? [] as $sizeId => $quantity) {
+                //             $initialSourceQuantities[$sizeId] = ($initialSourceQuantities[$sizeId] ?? 0) + $quantity;
+                //         }
+                //     });
             } else {
                 // Cutting only (default or if no print/sublimation applies)
                 CuttingData::where('product_combination_id', $pc->id)
@@ -1993,14 +1993,14 @@ class LineInputDataController extends Controller
                                 $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $qty;
                             }
                         });
-                    SublimationPrintReceive::where('product_combination_id', $pc->id)
-                        ->where('po_number', $poNumber)
-                        ->get()
-                        ->each(function ($item) use (&$availableQuantities) {
-                            foreach ($item->sublimation_print_receive_quantities ?? [] as $sizeId => $qty) {
-                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $qty;
-                            }
-                        });
+                    // SublimationPrintReceive::where('product_combination_id', $pc->id)
+                    //     ->where('po_number', $poNumber)
+                    //     ->get()
+                    //     ->each(function ($item) use (&$availableQuantities) {
+                    //         foreach ($item->sublimation_print_receive_quantities ?? [] as $sizeId => $qty) {
+                    //             $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $qty;
+                    //         }
+                    //     });
                 } else {
                     // Both are false - from CuttingData
                     CuttingData::where('product_combination_id', $pc->id)
