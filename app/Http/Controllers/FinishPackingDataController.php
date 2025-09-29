@@ -573,7 +573,7 @@ class FinishPackingDataController extends Controller
     //     }
 
     //     $finishPackingData = $query->get();
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $reportData = [];
 
     //     foreach ($finishPackingData as $data) {
@@ -739,7 +739,7 @@ class FinishPackingDataController extends Controller
 
     // public function balanceReport(Request $request)
     // {
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $reportData = [];
 
     //     // Get filter parameters
@@ -921,7 +921,7 @@ class FinishPackingDataController extends Controller
     //     }
 
     //     $finishPackingData = $query->get();
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $reportData = [];
 
     //     foreach ($finishPackingData as $data) {
@@ -1007,7 +1007,7 @@ class FinishPackingDataController extends Controller
     // }
     // public function balanceReport(Request $request)
     // {
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $reportData = [];
 
     //     $productCombinations = ProductCombination::whereHas('lineInputData') // Only include PCs that have at least some line input
@@ -1383,7 +1383,7 @@ class FinishPackingDataController extends Controller
     //     }
 
     //     $finishPackingData = $query->orderBy('date', 'desc')->paginate(10);
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
     //     return view('backend.library.finish_packing_data.index', compact('finishPackingData', 'allSizes'));
     // }
@@ -1561,7 +1561,7 @@ class FinishPackingDataController extends Controller
     //     }
 
     //     $finishPackingData = $query->get();
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $reportData = [];
 
     //     foreach ($finishPackingData as $data) {
@@ -1595,7 +1595,7 @@ class FinishPackingDataController extends Controller
 
     // public function sewingWipReport(Request $request)
     // {
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $wipData = [];
 
     //     $productCombinations = ProductCombination::whereHas('lineInputData')
@@ -1701,7 +1701,7 @@ class FinishPackingDataController extends Controller
             });
         }
         $finishPackingData = $query->get();
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
         foreach ($finishPackingData as $data) {
             $style = $data->productCombination->style->name;
@@ -1745,7 +1745,7 @@ class FinishPackingDataController extends Controller
 
     public function balanceReport(Request $request)
     {
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
 
         // Get filter parameters

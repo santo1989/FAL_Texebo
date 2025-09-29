@@ -584,7 +584,7 @@ class ShipmentDataController extends Controller
     //     }
 
     //     $shipmentData = $query->get();
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $reportData = [];
 
     //     foreach ($shipmentData as $data) {
@@ -632,7 +632,7 @@ class ShipmentDataController extends Controller
 
     // public function readyGoodsReport(Request $request)
     // {
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $reportData = [];
 
     //     // Get all product combinations that have finish packing data
@@ -1039,7 +1039,7 @@ class ShipmentDataController extends Controller
         }
 
         $shipmentData = $query->get();
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
 
         foreach ($shipmentData as $data) {
@@ -1095,7 +1095,7 @@ class ShipmentDataController extends Controller
 
     public function readyGoodsReport(Request $request)
     {
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
 
         // Get filter parameters
@@ -2973,7 +2973,7 @@ class ShipmentDataController extends Controller
         ];
 
         // Ready Goods Data
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
         $cardData = [
             'total_ready' => 0,
@@ -3100,7 +3100,7 @@ class ShipmentDataController extends Controller
     // Keep the original readyGoodsReportDashboard for the standalone report page
     public function readyGoodsReportDashboard(Request $request)
     {
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
         $cardData = [
             'total_ready' => 0,
@@ -3329,7 +3329,7 @@ class ShipmentDataController extends Controller
         ];
 
         // Ready Goods Data
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $reportData = [];
         $cardData = [
             'total_ready' => 0,

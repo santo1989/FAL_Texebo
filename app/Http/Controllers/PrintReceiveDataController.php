@@ -573,7 +573,7 @@ class PrintReceiveDataController extends Controller
         }
 
         $printReceiveData = $query->get();
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
         // Create a map for size ID to size name and vice versa
         $sizeIdToName = $allSizes->pluck('name', 'id')->toArray();
@@ -633,7 +633,7 @@ class PrintReceiveDataController extends Controller
 
     public function totalPrintEmbBalanceReport(Request $request)
     {
-        $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
         $sizeIdToName = $allSizes->pluck('name', 'id')->toArray();
 
         // Get filter parameters
@@ -1431,7 +1431,7 @@ class PrintReceiveDataController extends Controller
     //     }
 
     //     $printReceiveData = $query->get();
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
 
     //     // Create a map for size ID to size name and vice versa
     //     $sizeIdToName = $allSizes->pluck('name', 'id')->toArray();
@@ -1483,7 +1483,7 @@ class PrintReceiveDataController extends Controller
 
     // public function totalPrintEmbBalanceReport(Request $request)
     // {
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $sizeIdToName = $allSizes->pluck('name', 'id')->toArray();
     //     $sizeNameToId = $allSizes->pluck('id', 'name')->map(fn($id) => strtolower($allSizes->firstWhere('id', $id)->name))->toArray();
 
@@ -1580,7 +1580,7 @@ class PrintReceiveDataController extends Controller
     //         ->with('style', 'color')
     //         ->get();
 
-    //     $allSizes = Size::where('is_active', 1)->orderBy('name', 'asc')->get();
+    //     $allSizes = Size::where('is_active', 1)->orderBy('id', 'asc')->get();
     //     $sizeIdToName = $allSizes->pluck('name', 'id')->toArray();
     //     $sizeNameToId = $allSizes->pluck('id', 'name')->map(fn($id) => strtolower($allSizes->firstWhere('id', $id)->name))->toArray();
 

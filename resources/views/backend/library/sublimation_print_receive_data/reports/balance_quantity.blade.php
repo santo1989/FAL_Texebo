@@ -1,16 +1,15 @@
 <x-backend.layouts.master>
     <x-slot name="pageTitle">
-        Print/Embroidery Balance Quantity Report
+        Sublimation Print/Embroidery Balance Quantity Report
     </x-slot>
 
     <x-slot name='breadCrumb'>
         <x-backend.layouts.elements.breadcrumb>
-            <x-slot name="pageHeader"> Print/Embroidery Balance Quantity Report </x-slot>
+            <x-slot name="pageHeader"> Sublimation Print/Embroidery Balance Quantity Report </x-slot>
             <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('sublimation_print_receive_data.index') }}">Print/Emb
-                    Receive</a>
+            <li class="breadcrumb-item"><a href="{{ route('sublimation_print_receive_data.index') }}">Sublimation Print/Embroidery Receive</a>
             </li>
-            <li class="breadcrumb-item active">Balance Quantity Report</li>
+            <li class="breadcrumb-item active">Sublimation Balance Quantity Report</li>
         </x-backend.layouts.elements.breadcrumb>
     </x-slot>
 
@@ -20,7 +19,7 @@
                 <div class="col-12">
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Print/Embroidery Balance Quantities (Sent - Received)</h3>
+                            <h3 class="card-title">Sublimation Print/Embroidery Balance Quantities (Sent - Received)</h3>
                             <a href="{{ route('sublimation_print_receive_data.index') }}"
                                 class="btn btn-primary float-right">Back
                                 to List</a>
