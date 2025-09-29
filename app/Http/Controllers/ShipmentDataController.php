@@ -1748,9 +1748,210 @@ class ShipmentDataController extends Controller
         return view('backend.library.old_data.create', compact('allSizes', 'distinctPoNumbers'));
     }
 
+    // public function old_data_store(Request $request)
+    // {
+    //     // dd($request->all());
+    //     Log::info('Old Data Store Request Data:', $request->all());
+
+    //     $request->validate([
+    //         'date' => 'required|date',
+    //         'po_number' => 'required|array',
+    //         'po_number.*' => 'string',
+    //         'Stage' => 'required|string|in:CuttingData,SublimationPrintSend,SublimationPrintReceive,PrintSendData,PrintReceiveData,LineInputData,OutputFinishingData,FinishPackingData',
+    //         'old_order' => 'required|in:yes,no',
+    //         'rows' => 'required|array',
+    //         'rows.*.po_number' => 'required|string|in:' . implode(',', $request->input('po_number', [])),
+    //         'rows.*.product_combination_id' => 'required|integer|exists:product_combinations,id',
+    //         'rows.*.Old_data_qty' => 'required|array',
+    //         'rows.*.Old_data_qty.*' => 'nullable|integer|min:0',
+    //     ]);
+    //     // dd($request->all());
+
+
+    //     $allStages = [
+    //         'CuttingData',
+    //         'SublimationPrintSend',
+    //         'SublimationPrintReceive',
+    //         'PrintSendData',
+    //         'PrintReceiveData',
+    //         'LineInputData',
+    //         'OutputFinishingData',
+    //         'FinishPackingData',
+    //         // 'ShipmentData'
+    //     ];
+
+    //     $currentStage = $request->Stage;
+    //     $stagesToProcess = [];
+
+    //     // Determine all stages from the beginning up to and including the current stage
+    //     foreach ($allStages as $stage) {
+    //         $stagesToProcess[] = $stage;
+    //         if ($stage === $currentStage) {
+    //             break;
+    //         }
+    //     }
+
+    //     try {
+    //         DB::beginTransaction();
+
+    //         $poNumbers = implode(',', $request->po_number);
+
+    //         foreach ($request->rows as $rowIndex => $row) {
+    //             $productCombinationId = $row['product_combination_id'];
+    //             $oldDataQuantities = array_filter($row['Old_data_qty'] ?? [], fn($value) => $value !== null && $value !== '');
+    //             $oldDataWasteQuantities = array_filter($row['Old_data_waste'] ?? [], fn($value) => $value !== null && $value !== '');
+
+    //             // Fetch product combination to check flags
+    //             $productCombination = ProductCombination::find($productCombinationId);
+
+    //             if (!$productCombination) {
+    //                 throw ValidationException::withMessages([
+    //                     "rows.{$rowIndex}.product_combination_id" => "Product Combination not found for ID: {$productCombinationId}"
+    //                 ]);
+    //             }
+
+    //             if (empty($oldDataQuantities) && empty($oldDataWasteQuantities)) {
+    //                 Log::info("Skipping row {$rowIndex}: No old data quantities or waste provided.");
+    //                 continue;
+    //             }
+
+    //             foreach ($stagesToProcess as $stage) {
+    //                 // Skip conditional stages if their flags are not set in ProductCombination
+    //                 if (in_array($stage, ['SublimationPrintSend', 'SublimationPrintReceive']) && !$productCombination->sublimation_print) {
+    //                     Log::info("Skipping stage {$stage} for Product Combination ID {$productCombinationId} as sublimation_print is false.");
+    //                     continue;
+    //                 }
+    //                 if (in_array($stage, ['PrintSendData', 'PrintReceiveData']) && !$productCombination->print_embroidery) {
+    //                     Log::info("Skipping stage {$stage} for Product Combination ID {$productCombinationId} as print_embroidery is false.");
+    //                     continue;
+    //                 }
+
+    //                 $quantities = [];
+    //                 $wasteQuantities = [];
+    //                 $totalQuantity = 0;
+    //                 $totalWasteQuantity = 0;
+
+    //                 // Use the Old_data_qty and Old_data_waste for all stages being populated
+    //                 foreach ($oldDataQuantities as $sizeId => $qty) {
+    //                     if ((int)$qty > 0) {
+    //                         $quantities[$sizeId] = (int)$qty;
+    //                         $totalQuantity += (int)$qty;
+    //                     }
+    //                 }
+
+    //                 foreach ($oldDataWasteQuantities as $sizeId => $waste) {
+    //                     if ((int)$waste > 0) {
+    //                         $wasteQuantities[$sizeId] = (int)$waste;
+    //                         $totalWasteQuantity += (int)$waste;
+    //                     }
+    //                 }
+
+    //                 // Only create a record if there's at least one valid quantity or waste quantity
+    //                 if (empty($quantities) && empty($wasteQuantities)) {
+    //                     Log::info("Skipping record creation for stage {$stage} for row {$rowIndex}: No quantities or waste provided for this stage.");
+    //                     continue;
+    //                 }
+
+    //                 $commonData = [
+    //                     'date' => $request->date,
+    //                     'product_combination_id' => $productCombinationId,
+    //                     'po_number' => $poNumbers,
+    //                     'old_order' => $request->old_order,
+    //                 ];
+
+    //                 switch ($stage) {
+    //                     case 'CuttingData':
+    //                         CuttingData::create(array_merge($commonData, [
+    //                             'cut_quantities' => $quantities,
+    //                             'total_cut_quantity' => $totalQuantity,
+    //                         ]));
+    //                         break;
+    //                     case 'SublimationPrintSend':
+    //                         SublimationPrintSend::create(array_merge($commonData, [
+    //                             'sublimation_print_send_quantities' => $quantities,
+    //                             'total_sublimation_print_send_quantity' => $totalQuantity,
+    //                             'sublimation_print_send_waste_quantities' => $wasteQuantities,
+    //                             'total_sublimation_print_send_waste_quantity' => $totalWasteQuantity,
+    //                         ]));
+    //                         break;
+    //                     case 'SublimationPrintReceive':
+    //                         SublimationPrintReceive::create(array_merge($commonData, [
+    //                             'sublimation_print_receive_quantities' => $quantities,
+    //                             'total_sublimation_print_receive_quantity' => $totalQuantity,
+    //                             'sublimation_print_receive_waste_quantities' => $wasteQuantities,
+    //                             'total_sublimation_print_receive_waste_quantity' => $totalWasteQuantity,
+    //                         ]));
+    //                         break;
+    //                     case 'PrintSendData':
+    //                         PrintSendData::create(array_merge($commonData, [
+    //                             'send_quantities' => $quantities,
+    //                             'total_send_quantity' => $totalQuantity,
+    //                             'send_waste_quantities' => $wasteQuantities,
+    //                             'total_send_waste_quantity' => $totalWasteQuantity,
+    //                         ]));
+    //                         break;
+    //                     case 'PrintReceiveData':
+    //                         PrintReceiveData::create(array_merge($commonData, [
+    //                             'receive_quantities' => $quantities,
+    //                             'total_receive_quantity' => $totalQuantity,
+    //                             'receive_waste_quantities' => $wasteQuantities,
+    //                             'total_receive_waste_quantity' => $totalWasteQuantity,
+    //                         ]));
+    //                         break;
+    //                     case 'LineInputData':
+    //                         LineInputData::create(array_merge($commonData, [
+    //                             'input_quantities' => $quantities,
+    //                             'total_input_quantity' => $totalQuantity,
+    //                             'input_waste_quantities' => $wasteQuantities,
+    //                             'total_input_waste_quantity' => $totalWasteQuantity,
+    //                         ]));
+    //                         break;
+    //                     case 'OutputFinishingData':
+    //                         OutputFinishingData::create(array_merge($commonData, [
+    //                             'output_quantities' => $quantities,
+    //                             'total_output_quantity' => $totalQuantity,
+    //                             'output_waste_quantities' => $wasteQuantities,
+    //                             'total_output_waste_quantity' => $totalWasteQuantity,
+    //                         ]));
+    //                         break;
+    //                     case 'FinishPackingData':
+    //                         FinishPackingData::create(array_merge($commonData, [
+    //                             'packing_quantities' => $quantities,
+    //                             'total_packing_quantity' => $totalQuantity,
+    //                             'packing_waste_quantities' => $wasteQuantities,
+    //                             'total_packing_waste_quantity' => $totalWasteQuantity,
+    //                         ]));
+    //                         break;
+    //                     case 'ShipmentData':
+    //                         ShipmentData::create(array_merge($commonData, [
+    //                             'shipment_quantities' => $quantities,
+    //                             'total_shipment_quantity' => $totalQuantity,
+    //                             'shipment_waste_quantities' => $wasteQuantities,
+    //                             'total_shipment_waste_quantity' => $totalWasteQuantity,
+    //                         ]));
+    //                         break;
+    //                     default:
+    //                         // Should not happen if validation is correct
+    //                         break;
+    //                 }
+    //                 Log::info("Created data for stage {$stage} for PO {$poNumbers}, Combination ID: {$productCombinationId}");
+    //             }
+    //         }
+
+    //         DB::commit();
+
+    //         return redirect()->route('old_data_index')->withMessage('Old order data created successfully.');
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Error storing old order data: ' . $e->getMessage(), ['exception' => $e]);
+    //         return redirect()->back()
+    //             ->with('error', 'Error occurred while creating old order data: ' . $e->getMessage())
+    //             ->withInput();
+    //     }
+    // }
+
     public function old_data_store(Request $request)
     {
-        // dd($request->all());
         Log::info('Old Data Store Request Data:', $request->all());
 
         $request->validate([
@@ -1765,8 +1966,6 @@ class ShipmentDataController extends Controller
             'rows.*.Old_data_qty' => 'required|array',
             'rows.*.Old_data_qty.*' => 'nullable|integer|min:0',
         ]);
-        // dd($request->all());
-
 
         $allStages = [
             'CuttingData',
@@ -1777,13 +1976,11 @@ class ShipmentDataController extends Controller
             'LineInputData',
             'OutputFinishingData',
             'FinishPackingData',
-            // 'ShipmentData'
         ];
 
         $currentStage = $request->Stage;
         $stagesToProcess = [];
 
-        // Determine all stages from the beginning up to and including the current stage
         foreach ($allStages as $stage) {
             $stagesToProcess[] = $stage;
             if ($stage === $currentStage) {
@@ -1794,14 +1991,13 @@ class ShipmentDataController extends Controller
         try {
             DB::beginTransaction();
 
-            $poNumbers = implode(',', $request->po_number);
-
             foreach ($request->rows as $rowIndex => $row) {
                 $productCombinationId = $row['product_combination_id'];
+                $poNumber = $row['po_number']; // Get individual PO number from row
+
                 $oldDataQuantities = array_filter($row['Old_data_qty'] ?? [], fn($value) => $value !== null && $value !== '');
                 $oldDataWasteQuantities = array_filter($row['Old_data_waste'] ?? [], fn($value) => $value !== null && $value !== '');
 
-                // Fetch product combination to check flags
                 $productCombination = ProductCombination::find($productCombinationId);
 
                 if (!$productCombination) {
@@ -1831,7 +2027,6 @@ class ShipmentDataController extends Controller
                     $totalQuantity = 0;
                     $totalWasteQuantity = 0;
 
-                    // Use the Old_data_qty and Old_data_waste for all stages being populated
                     foreach ($oldDataQuantities as $sizeId => $qty) {
                         if ((int)$qty > 0) {
                             $quantities[$sizeId] = (int)$qty;
@@ -1846,7 +2041,6 @@ class ShipmentDataController extends Controller
                         }
                     }
 
-                    // Only create a record if there's at least one valid quantity or waste quantity
                     if (empty($quantities) && empty($wasteQuantities)) {
                         Log::info("Skipping record creation for stage {$stage} for row {$rowIndex}: No quantities or waste provided for this stage.");
                         continue;
@@ -1855,7 +2049,7 @@ class ShipmentDataController extends Controller
                     $commonData = [
                         'date' => $request->date,
                         'product_combination_id' => $productCombinationId,
-                        'po_number' => $poNumbers,
+                        'po_number' => $poNumber, // Use individual PO number instead of imploded string
                         'old_order' => $request->old_order,
                     ];
 
@@ -1922,19 +2116,10 @@ class ShipmentDataController extends Controller
                                 'total_packing_waste_quantity' => $totalWasteQuantity,
                             ]));
                             break;
-                        case 'ShipmentData':
-                            ShipmentData::create(array_merge($commonData, [
-                                'shipment_quantities' => $quantities,
-                                'total_shipment_quantity' => $totalQuantity,
-                                'shipment_waste_quantities' => $wasteQuantities,
-                                'total_shipment_waste_quantity' => $totalWasteQuantity,
-                            ]));
-                            break;
                         default:
-                            // Should not happen if validation is correct
                             break;
                     }
-                    Log::info("Created data for stage {$stage} for PO {$poNumbers}, Combination ID: {$productCombinationId}");
+                    Log::info("Created data for stage {$stage} for PO {$poNumber}, Combination ID: {$productCombinationId}");
                 }
             }
 
@@ -1950,174 +2135,6 @@ class ShipmentDataController extends Controller
         }
     }
 
-    //     public function old_data_index(Request $request)
-    //     {
-    //         // Define all models that store old order data
-    //         $oldOrderModels = [
-    //             'CuttingData' => CuttingData::class,
-    //             'SublimationPrintSend' => SublimationPrintSend::class,
-    //             'SublimationPrintReceive' => SublimationPrintReceive::class,
-    //             'PrintSendData' => PrintSendData::class,
-    //             'PrintReceiveData' => PrintReceiveData::class,
-    //             'LineInputData' => LineInputData::class,
-    //             'OutputFinishingData' => OutputFinishingData::class,
-    //             'FinishPackingData' => FinishPackingData::class,
-    //             'ShipmentData' => ShipmentData::class,
-    //         ];
-
-    //         $allOldData = collect(); // Initialize an empty collection to hold all consolidated data
-    // // Get filter parameters
-    //         $styleIds = $request->input('style_id', []);
-    //         $colorIds = $request->input('color_id', []);
-    //         $poNumbers = $request->input('po_number', []);
-    //         $startDate = $request->input('start_date');
-    //         $endDate = $request->input('end_date');
-    //         $search = $request->input('search');
-
-
-
-
-    //         foreach ($oldOrderModels as $stageName => $modelClass) {
-    //             $data = $modelClass::where('old_order', 'yes')
-    //                 ->with('productCombination.style', 'productCombination.color', 'productCombination.size')
-    //                 ->get();
-
-    //             foreach ($data as $item) {
-    //                 // Prepare common attributes
-    //                 $record = [
-    //                     'id' => $item->id,
-    //                     'stage' => $stageName,
-    //                     'date' => $item->date,
-    //                     'po_number' => $item->po_number, // This might be a comma-separated string
-    //                     'old_order' => $item->old_order,
-    //                     'product_combination_id' => $item->product_combination_id,
-    //                     'style_name' => $item->productCombination->style->name ?? 'N/A',
-    //                     'color_name' => $item->productCombination->color->name ?? 'N/A',
-    //                     'size_name' => $item->productCombination->size->name ?? 'N/A', // This might not be relevant if quantities are by size_id
-    //                     'quantities' => [], // Will store specific quantity data for the stage
-    //                     'waste_quantities' => [], // Will store specific waste data for the stage
-    //                     'total_quantity' => 0,
-    //                     'total_waste_quantity' => 0,
-    //                 ];
-
-    //                 // Dynamically get the quantity and waste fields based on the stage name
-    //                 $qtyField = strtolower(str_replace('Data', '', str_replace('SublimationPrint', 'sublimation_print_', str_replace('Print', '', $stageName)))) . '_quantities';
-    //                 $totalQtyField = 'total_' . $qtyField;
-    //                 $wasteQtyField = strtolower(str_replace('Data', '', str_replace('SublimationPrint', 'sublimation_print_', str_replace('Print', '', $stageName)))) . '_waste_quantities';
-    //                 $totalWasteQtyField = 'total_' . $wasteQtyField;
-
-
-    //                 // Handle specific field names for each model
-    //                 if ($stageName === 'CuttingData') {
-    //                     $record['quantities'] = $item->cut_quantities ?? [];
-    //                     $record['total_quantity'] = $item->total_cut_quantity ?? 0;
-    //                     $record['waste_quantities'] = []; // Cutting data typically doesn't have waste directly
-    //                     $record['total_waste_quantity'] = 0;
-    //                 } else if ($stageName === 'SublimationPrintSend') {
-    //                     $record['quantities'] = $item->sublimation_print_send_quantities ?? [];
-    //                     $record['total_quantity'] = $item->total_sublimation_print_send_quantity ?? 0;
-    //                     $record['waste_quantities'] = $item->sublimation_print_send_waste_quantities ?? [];
-    //                     $record['total_waste_quantity'] = $item->total_sublimation_print_send_waste_quantity ?? 0;
-    //                 } else if ($stageName === 'SublimationPrintReceive') {
-    //                     $record['quantities'] = $item->sublimation_print_receive_quantities ?? [];
-    //                     $record['total_quantity'] = $item->total_sublimation_print_receive_quantity ?? 0;
-    //                     $record['waste_quantities'] = $item->sublimation_print_receive_waste_quantities ?? [];
-    //                     $record['total_waste_quantity'] = $item->total_sublimation_print_receive_waste_quantity ?? 0;
-    //                 } else if ($stageName === 'PrintSendData') {
-    //                     $record['quantities'] = $item->send_quantities ?? [];
-    //                     $record['total_quantity'] = $item->total_send_quantity ?? 0;
-    //                     $record['waste_quantities'] = $item->send_waste_quantities ?? [];
-    //                     $record['total_waste_quantity'] = $item->total_send_waste_quantity ?? 0;
-    //                 } else if ($stageName === 'PrintReceiveData') {
-    //                     $record['quantities'] = $item->receive_quantities ?? [];
-    //                     $record['total_quantity'] = $item->total_receive_quantity ?? 0;
-    //                     $record['waste_quantities'] = $item->receive_waste_quantities ?? [];
-    //                     $record['total_waste_quantity'] = $item->total_receive_waste_quantity ?? 0;
-    //                 } else if ($stageName === 'LineInputData') {
-    //                     $record['quantities'] = $item->input_quantities ?? [];
-    //                     $record['total_quantity'] = $item->total_input_quantity ?? 0;
-    //                     $record['waste_quantities'] = $item->input_waste_quantities ?? [];
-    //                     $record['total_waste_quantity'] = $item->total_input_waste_quantity ?? 0;
-    //                 } else if ($stageName === 'OutputFinishingData') {
-    //                     $record['quantities'] = $item->output_quantities ?? [];
-    //                     $record['total_quantity'] = $item->total_output_quantity ?? 0;
-    //                     $record['waste_quantities'] = $item->output_waste_quantities ?? [];
-    //                     $record['total_waste_quantity'] = $item->total_output_waste_quantity ?? 0;
-    //                 } else if ($stageName === 'FinishPackingData') {
-    //                     $record['quantities'] = $item->packing_quantities ?? [];
-    //                     $record['total_quantity'] = $item->total_packing_quantity ?? 0;
-    //                     $record['waste_quantities'] = $item->packing_waste_quantities ?? [];
-    //                     $record['total_waste_quantity'] = $item->total_packing_waste_quantity ?? 0;
-    //                 } else if ($stageName === 'ShipmentData') {
-    //                     $record['quantities'] = $item->shipment_quantities ?? [];
-    //                     $record['total_quantity'] = $item->total_shipment_quantity ?? 0;
-    //                     $record['waste_quantities'] = $item->shipment_waste_quantities ?? [];
-    //                     $record['total_waste_quantity'] = $item->total_shipment_waste_quantity ?? 0;
-    //                 }
-
-
-    //                 $allOldData->push($record);
-    //             }
-    //         }
-
-    //         // You might want to sort $allOldData for better display, e.g., by date or PO number
-    //         $allOldData = $allOldData->sortBy('date')->sortBy('po_number');
-    //         // Apply filters
-    //         $query = $allOldData;
-    //         // Style filter
-    //         if (!empty($styleIds)) {
-    //             $query->whereHas('productCombination', function ($q) use ($styleIds) {
-    //                 $q->whereIn('style_id', $styleIds);
-    //             });
-    //         }
-
-    //         // Color filter
-    //         if (!empty($colorIds)) {
-    //             $query->whereHas('productCombination', function ($q) use ($colorIds) {
-    //                 $q->whereIn('color_id', $colorIds);
-    //             });
-    //         }
-
-    //         // PO Number filter
-    //         if (!empty($poNumbers)) {
-    //             $query->whereIn('po_number', $poNumbers);
-    //         }
-
-    //         // Date range filter
-    //         if ($startDate && $endDate) {
-    //             $query->whereBetween('date', [$startDate, $endDate]);
-    //         } elseif ($request->filled('date')) {
-    //             // Single date filter (for backward compatibility)
-    //             $query->whereDate('date', $request->input('date'));
-    //         }
-
-    //         // Search filter
-    //         if ($request->filled('search')) {
-    //             $search = $request->input('search');
-    //             $query->where(function ($q) use ($search) {
-    //                 $q->where('po_number', 'like', '%' . $search . '%')
-    //                     ->orWhere('shipment_number', 'like', '%' . $search . '%')
-    //                     ->orWhereHas('productCombination.style', function ($q2) use ($search) {
-    //                         $q2->where('name', 'like', '%' . $search . '%');
-    //                     })
-    //                     ->orWhereHas('productCombination.color', function ($q2) use ($search) {
-    //                         $q2->where('name', 'like', '%' . $search . '%');
-    //                     })
-    //                     ->orWhereHas('productCombination.buyer', function ($q2) use ($search) {
-    //                         $q2->where('name', 'like', '%' . $search . '%');
-    //                     });
-    //             });
-    //         }
-    //         $allOldData = $query;
-    //         $allSizes = Size::all();
-
-    //         // Get filter options
-    //         $allStyles = Style::where('is_active', 1)->orderBy('name')->get();
-    //         $allColors = Color::where('is_active', 1)->orderBy('name')->get();
-    //         $distinctPoNumbers = CuttingData::where('old_order', 'yes')->distinct()->pluck('po_number')->filter()->values();
-
-    //         return view('backend.library.old_data.index', compact('allOldData', 'allSizes', 'allStyles', 'allColors', 'distinctPoNumbers'));
-    //     }
 
     public function old_data_index(Request $request)
     {
