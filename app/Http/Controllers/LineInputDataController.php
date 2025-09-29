@@ -813,11 +813,12 @@ class LineInputDataController extends Controller
         if (empty($poNumbers)) {
             return response()->json([]);
         }
+
         $result = [];
         foreach ($poNumbers as $poNumber) {
             $productCombinations = ProductCombination::where(function ($query) use ($poNumber) {
                 $query->whereHas('cuttingData', function ($q) use ($poNumber) {
-                    $q->where('po_number', $poNumber); // Changed to exact match
+                    $q->where('po_number', $poNumber);
                 })->orWhereHas('printReceives', function ($q) use ($poNumber) {
                     $q->where('po_number', $poNumber);
                 })->orWhereHas('sublimationPrintReceives', function ($q) use ($poNumber) {
@@ -838,39 +839,12 @@ class LineInputDataController extends Controller
                     ->first();
                 if (!$orderData) continue;
 
+                $stage_name = '';
                 $availableQuantities = [];
-                if ($pc->print_embroidery && !$pc->sublimation_print) {
-                    // Print/Embroidery
-                    PrintReceiveData::where('product_combination_id', $pc->id)
-                        ->where('po_number', $poNumber)
-                        ->get()
-                        ->each(function ($item) use (&$availableQuantities) {
-                            foreach ($item->receive_quantities ?? [] as $sizeId => $quantity) {
-                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-                            }
-                        });
-                } elseif (!$pc->print_embroidery && $pc->sublimation_print) {
-                    // Sublimation
-                    SublimationPrintReceive::where('product_combination_id', $pc->id)
-                        ->where('po_number', $poNumber)
-                        ->get()
-                        ->each(function ($item) use (&$availableQuantities) {
-                            foreach ($item->receive_quantities ?? [] as $sizeId => $quantity) { // Fixed
-                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-                            }
-                        });
-                } elseif ($pc->print_embroidery && $pc->sublimation_print) {
-                    // Both
-                    PrintReceiveData::where('product_combination_id', $pc->id)
-                        ->where('po_number', $poNumber)
-                        ->get()
-                        ->each(function ($item) use (&$availableQuantities) {
-                            foreach ($item->receive_quantities ?? [] as $sizeId => $quantity) {
-                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
-                            }
-                        });
-                } else {
-                    // Cutting only
+
+                // ✅ Decide source table based on print_embroidery + sublimation_print
+                if ($pc->print_embroidery == 0 && $pc->sublimation_print == 0) {
+                    $stage_name = 'CuttingData';
                     CuttingData::where('product_combination_id', $pc->id)
                         ->where('po_number', $poNumber)
                         ->get()
@@ -879,9 +853,39 @@ class LineInputDataController extends Controller
                                 $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
                             }
                         });
+                } elseif ($pc->print_embroidery == 1 && $pc->sublimation_print == 1) {
+                    $stage_name = 'PrintReceiveData';
+                    PrintReceiveData::where('product_combination_id', $pc->id)
+                        ->where('po_number', $poNumber)
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->receive_quantities ?? [] as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+                } elseif ($pc->print_embroidery == 1 && $pc->sublimation_print == 0) {
+                    $stage_name = 'PrintReceiveData';
+                    PrintReceiveData::where('product_combination_id', $pc->id)
+                        ->where('po_number', $poNumber)
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->receive_quantities ?? [] as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
+                } elseif ($pc->print_embroidery == 0 && $pc->sublimation_print == 1) {
+                    $stage_name = 'SublimationPrintReceive';
+                    SublimationPrintReceive::where('product_combination_id', $pc->id)
+                        ->where('po_number', $poNumber)
+                        ->get()
+                        ->each(function ($item) use (&$availableQuantities) {
+                            foreach ($item->sublimation_print_receive_quantities ?? [] as $sizeId => $quantity) {
+                                $availableQuantities[$sizeId] = ($availableQuantities[$sizeId] ?? 0) + $quantity;
+                            }
+                        });
                 }
 
-                // Subtract already input quantities
+                // ✅ Subtract LineInputData quantities
                 $inputQuantities = [];
                 LineInputData::where('product_combination_id', $pc->id)
                     ->where('po_number', $poNumber)
@@ -891,22 +895,26 @@ class LineInputDataController extends Controller
                             $inputQuantities[$sizeId] = ($inputQuantities[$sizeId] ?? 0) + $quantity;
                         }
                     });
+
                 foreach ($availableQuantities as $sizeId => &$qty) {
                     $qty = max(0, $qty - ($inputQuantities[$sizeId] ?? 0));
                 }
 
                 $result[$poNumber][] = [
-                    'combination_id' => $pc->id,
-                    'style' => $pc->style->name,
-                    'color' => $pc->color->name,
+                    'combination_id'   => $pc->id,
+                    'style'            => $pc->style->name,
+                    'color'            => $pc->color->name,
                     'available_quantities' => $availableQuantities,
                     'order_quantities' => $orderData->order_quantities ?? [],
-                    'size_ids' => array_keys($availableQuantities)
+                    'size_ids'         => array_keys($availableQuantities),
+                    'stage_name'       => $stage_name
                 ];
             }
         }
+
         return response()->json($result);
     }
+
 
 
     // public function inputBalanceReport(Request $request)
